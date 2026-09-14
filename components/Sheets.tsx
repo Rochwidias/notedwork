@@ -107,7 +107,7 @@ export function MailSheet({
   open: boolean;
   preset: ComposePreset | null;
   onClose: () => void;
-  onSave: () => void;
+  onSave: (to: string, subj: string, body: string) => void;
 }) {
   const [to, setTo] = useState("");
   const [subj, setSubj] = useState("");
@@ -130,7 +130,7 @@ export function MailSheet({
       <form
         onSubmit={(e) => {
           e.preventDefault();
-          onSave();
+          onSave(to, subj, body);
           setTo("");
           setSubj("");
           setBody("");

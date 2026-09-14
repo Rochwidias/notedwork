@@ -5,6 +5,13 @@ import type { Mail } from "@/lib/types";
 
 export type MailStatus = "all" | "unread" | "star" | "arch" | "trash";
 
+interface RemoteState {
+  connected: boolean;
+  loading: boolean;
+  hasMore: boolean;
+  onMore: () => void;
+}
+
 interface Props {
   mails: Mail[];
   readMail: string[];
@@ -19,6 +26,7 @@ interface Props {
   onBack: () => void;
   search: string;
   onSearch: (q: string) => void;
+  remote?: RemoteState;
 }
 
 const STATUS_LABEL: [MailStatus, (c: Counts) => string][] = [
@@ -37,7 +45,8 @@ interface Counts {
 }
 
 export default function EmailView(props: Props) {
-  const { mails, readMail, starred, archived, deleted } = props;
+  const { mails, readMail, starred, archived, deleted, remote } = props;
+  const isRemote = !!remote?.connected;
   const [status, setStatus] = useState<MailStatus>("all");
   const [tag, setTag] = useState<string>("all");
 
@@ -80,7 +89,10 @@ export default function EmailView(props: Props) {
   return (
     <section className="view active" id="v-email">
       <div className="greet">
-        Email kampus<small>Data contoh tema mahasiswa — nanti tersambung ke Gmail via MCP</small>
+        Email kampus
+        <small>
+          {isRemote ? "Gmail asli — sync diam-diam tiap buka tab" : "Data contoh tema mahasiswa — login Google untuk email asli"}
+        </small>
       </div>
       <input
         className="search"
@@ -136,9 +148,14 @@ export default function EmailView(props: Props) {
         ) : (
           <div className="empty">📭 Tidak ada email di sini.</div>
         )}
-        {status === "trash" && list.length > 0 && (
+        {!isRemote && status === "trash" && list.length > 0 && (
           <button className="btn danger block" onClick={props.onEmptyTrash}>
             🗑️ Kosongkan sampah
+          </button>
+        )}
+        {isRemote && remote?.hasMore && (
+          <button className="btn ghost block" onClick={remote.onMore} style={{ marginTop: 6 }}>
+            {remote.loading ? "Memuat…" : "Muat lagi (50 berikutnya)"}
           </button>
         )}
       </div>
@@ -153,14 +170,19 @@ function MailDetail({
   deleted,
   onBack,
   onAction,
-}: { m: Mail } & Pick<Props, "starred" | "archived" | "deleted" | "onBack" | "onAction">) {
+  remote,
+}: { m: Mail } & Pick<Props, "starred" | "archived" | "deleted" | "onBack" | "onAction" | "remote">) {
+  const isRemote = !!remote?.connected;
   const isDel = deleted.includes(m.id);
   const isArch = archived.includes(m.id);
   const isStar = starred.includes(m.id);
   return (
     <section className="view active" id="v-email">
       <div className="greet">
-        Email kampus<small>Data contoh tema mahasiswa — nanti tersambung ke Gmail via MCP</small>
+        Email kampus
+        <small>
+          {isRemote ? "Gmail asli — sync diam-diam tiap buka tab" : "Data contoh tema mahasiswa — login Google untuk email asli"}
+        </small>
       </div>
       <div className="card">
         <button className="link" onClick={onBack}>
@@ -183,14 +205,35 @@ function MailDetail({
                   📄
                   <div>
                     <div className="n">{f.name}</div>
-                    <div className="z">{f.size} • contoh</div>
+                    <div className="z">{f.size}{isRemote ? "" : " • contoh"}</div>
                   </div>
                 </div>
               ))}
             </div>
           )}
           <div className="mactions">
-            {isDel ? (
+            {isRemote ? (
+              <>
+                <button className="btn soft sm" onClick={() => onAction("reply")}>
+                  ↩️ Balas
+                </button>
+                <button className="btn soft sm" onClick={() => onAction("fwd")}>
+                  ➡️ Teruskan
+                </button>
+                <button className="btn ghost sm" onClick={() => onAction("star")}>
+                  {isStar ? "★ Hapus bintang" : "☆ Bintang"}
+                </button>
+                <button className="btn ghost sm" onClick={() => onAction("arch")}>
+                  📦 Arsip
+                </button>
+                <button className="btn ghost sm" onClick={() => onAction("unread")}>
+                  👁️ Belum dibaca
+                </button>
+                <button className="btn danger sm" onClick={() => onAction("del")}>
+                  🗑️ Arsipkan
+                </button>
+              </>
+            ) : isDel ? (
               <>
                 <button className="btn soft sm" onClick={() => onAction("restore")}>
                   ↩️ Pulihkan
