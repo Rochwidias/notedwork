@@ -126,7 +126,7 @@ export function MailSheet({
   return (
     <Shell id="ovMail" open={open} onClose={onClose}>
       <h2>{preset ? (isReply ? "↩️ Balas Email" : "➡️ Teruskan Email") : "✉️ Tulis Email"}</h2>
-      <p className="hint">Contoh saja — tersimpan sebagai konsep di perangkat.</p>
+      <p className="hint">Terkirim langsung via Gmail.</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -155,7 +155,7 @@ export function MailSheet({
             Tutup
           </button>
           <button type="submit" className="btn primary">
-            Kirim (contoh)
+            Kirim
           </button>
         </div>
       </form>

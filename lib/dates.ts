@@ -26,14 +26,6 @@ export const PRIO: Record<Prio, [string, string]> = {
 export const RCOL = ["#00cfff", "#22c55e", "#f59e0b", "#7c5cff", "#ec4899", "#ef4444"];
 export const SCHED_COLORS = ["#22c55e", "#00cfff", "#f59e0b", "#7c5cff", "#ec4899", "#ef4444"];
 
-export function offsetDate(n: number): string {
-  const d = new Date();
-  d.setDate(d.getDate() + n);
-  return (
-    d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0")
-  );
-}
-
 export function todayStr(): string {
   const d = new Date();
   return (

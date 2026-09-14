@@ -100,6 +100,7 @@ function toMail(msg: GmailMessage, internalDate?: string): Mail {
   const fromRaw = header(msg, "From");
   const from = fromRaw.replace(/<[^>]*>/g, "").replace(/"/g, "").trim() || fromRaw || "(tanpa pengirim)";
   const emailMatch = fromRaw.match(/<([^>]+)>/);
+  const labels = msg.labelIds ?? [];
   return {
     id: msg.id,
     from,
@@ -108,8 +109,9 @@ function toMail(msg: GmailMessage, internalDate?: string): Mail {
     prev: msg.snippet ?? "",
     body: extractBody(msg),
     time: prettyDate(internalDate),
-    tag: "Gmail",
+    tag: labels.includes("STARRED") ? "Gmail ★" : "Gmail",
     files: extractFiles(msg),
+    unread: labels.includes("UNREAD"),
   };
 }
 
@@ -119,8 +121,8 @@ export async function listMails(
   pageToken?: string
 ): Promise<{ mails: Mail[]; nextPageToken?: string }> {
   const p = new URLSearchParams({ maxResults: "50", format: "metadata", includeSpamTrash: "false" });
-  p.set("metadataHeaders", "From");
-  p.set("metadataHeaders", "Subject");
+  p.append("metadataHeaders", "From");
+  p.append("metadataHeaders", "Subject");
   if (q) p.set("q", q);
   if (pageToken) p.set("pageToken", pageToken);
   const res = await googleFetch(userId, `${GMAIL}/messages?${p.toString()}`);

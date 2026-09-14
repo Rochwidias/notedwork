@@ -9,12 +9,14 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        accent: "#00CFFF",
-        "accent-dark": "#0090B3",
-        ink: "#0D0D0D",
-        paper: "#F5F5F5",
-        card: "#161616",
-        muted: "#888888",
+        accent: "var(--brand)",
+        "accent-dark": "var(--brand-dark)",
+        "accent-glow": "var(--accent-glow)",
+        "accent-muted": "var(--accent-muted)",
+        ink: "var(--ink)",
+        paper: "var(--bg)",
+        card: "var(--card)",
+        muted: "var(--muted)",
       },
       fontFamily: {
         sans: ["var(--font-poppins)", "sans-serif"],

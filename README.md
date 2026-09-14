@@ -18,16 +18,17 @@
 
 ## ✨ Fitur (parity dengan preview)
 
-- 🏠 Dashboard — sapaan, prioritas tugas, 3 stat, email terbaru, tugas mendesak, agenda
-- ✉️ Email — filter Semua / Belum dibaca / ★ / Arsip / Sampah + label, search, balas/teruskan/bintang/arsip/hapus
-- 📝 Tugas — filter Semua / Aktif / Telat / Selesai, badge deadline, tambah/hapus/selesai
-- 📅 Kalender — grid bulanan, dot rutin/agenda/deadline, agenda per tanggal, jadwal rutin mingguan
-- 👤 Profil — pengaturan tema & notif, reset data, tentang
-- 🔌 MCP — halaman rencana integrasi (belum aktif)
+- 🏠 Dashboard — sapaan akun, prioritas tugas, 3 stat, email terbaru, tugas mendesak, agenda
+- ✉️ Email — Gmail asli via OAuth (list/search 50 per halaman, balas/teruskan/bintang/arsip)
+- 📝 Tugas — milik sendiri per akun, mulai kosong (filter Semua / Aktif / Telat / Selesai)
+- 📅 Kalender — Google Calendar asli + jadwal rutin mingguan milik sendiri
+- 👤 Profil — akun Google yang tersambung, pengaturan tema & notif, keluar
+- 🔌 Koneksi Google — status OAuth, login/logout
 - 🌙 Tema gelap (default) / terang, tersimpan di `localStorage`
 - 📲 PWA — manifest + service worker, bisa Add to Home Screen
 
-Data v1 lokal di perangkat (`localStorage` key `rocha.*`), tanpa backend.
+🔒 Wajib login Google — sebelum login semua view kosong + ajakan login.
+Tanpa data contoh di bundle. Token OAuth terenkripsi di server (Supabase).
 
 ---
 
@@ -82,20 +83,28 @@ Tidak perlu `.env` untuk v1 (tidak ada secret).
 ├── components/
 │   ├── RochaApp.tsx       # Shell + state + navigasi + toast
 │   ├── ThemeProvider.tsx  # Tema data-theme + localStorage rocha.theme
-│   ├── TopBar.tsx         # Header + toggle tema + avatar
+│   ├── TopBar.tsx         # Header + toggle tema + avatar akun
 │   ├── AppNav.tsx         # Sidebar (desktop) + TabBar (mobile) + FAB
-│   ├── Dashboard.tsx      # Ringkasan
-│   ├── EmailView.tsx      # Daftar + detail email
-│   ├── TasksView.tsx      # Daftar tugas
+│   ├── Dashboard.tsx      # Ringkasan akun
+│   ├── EmailView.tsx      # Daftar + detail Gmail
+│   ├── TasksView.tsx      # Daftar tugas milik sendiri
 │   ├── CalendarView.tsx   # Kalender + agenda + rutin
-│   ├── ProfileView.tsx    # Profil + pengaturan + reset
-│   ├── McpView.tsx        # Rencana MCP
+│   ├── ProfileView.tsx    # Profil akun + pengaturan
+│   ├── GoogleConnect.tsx  # Status koneksi Google + login/logout
+│   ├── LoginGate.tsx      # Empty-state ajakan login
 │   └── Sheets.tsx         # Sheet jadwal / email / tugas / rutin
 ├── lib/
 │   ├── types.ts           # Tipe Mail/Sched/Routine/Task
-│   ├── data.ts            # Data contoh + seed + LS keys
+│   ├── data.ts            # LS keys + cleanup data lama
 │   ├── dates.ts           # Helper tanggal + badge
-│   └── store.ts           # Hook useLocalStorage
+│   ├── store.ts           # Hook useLocalStorage
+│   ├── session.ts         # Sesi cookie → user
+│   ├── crypto.ts          # Enkripsi token (AES-GCM)
+│   ├── google.ts          # OAuth + token Google
+│   ├── gmail.ts           # API Gmail
+│   ├── calendar.ts        # API Google Calendar
+│   ├── remote.ts          # Client fetch /api/*
+│   └── supabaseAdmin.ts   # Supabase server-only
 └── public/
     ├── icon.svg           # Ikon R flat cyan
     ├── manifest.webmanifest
@@ -106,8 +115,11 @@ Tidak perlu `.env` untuk v1 (tidak ada secret).
 
 ## 🔐 Catatan
 
-- Token OAuth **jangan** taruh di client. Kalau nanti sambung Gmail, taruh di server (`/api/*`).
-- `dataProvider` di preview diganti prop/state React di `RochaApp` — satu pintu data tetap dijaga.
+- Token OAuth hanya di server (`/api/*`, terenkripsi AES-GCM di Supabase) — tidak pernah ke client.
+- Tugas & rutin milik masing-masing akun (`rocha.tasks:<email>`, `rocha.routine:<email>`) — mulai kosong.
+- Pengunjung dengan data contoh era lama otomatis dibersihkan sekali (`rocha.v2cleaned`).
+- Butuh env: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_TOKEN_KEY` (base64 32 byte),
+  `SUPABASE_URL_NOTEDWORK`, `SUPABASE_SERVICE_ROLE_KEY_NOTEDWORK`, `APP_URL`. Lihat `.env.example`.
 
 ---
 

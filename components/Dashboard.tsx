@@ -8,15 +8,14 @@ interface Props {
   schedules: Sched[];
   routines: Routine[];
   tasks: Task[];
-  readMail: string[];
+  email: string | null;
   go: (v: NavTarget) => void;
   onCompose: () => void;
 }
 
-export default function Dashboard({ mails, schedules, routines, tasks, readMail, go, onCompose }: Props) {
+export default function Dashboard({ mails, schedules, routines, tasks, email, go, onCompose }: Props) {
   const ts = todayStr();
-  const live = mails;
-  const unread = live.filter((m) => !readMail.includes(m.id)).length;
+  const unread = mails.filter((m) => m.unread).length;
   const todayRoutines = routines.filter((r) => r.day === weekdayOf(ts));
   const todayCount = todayRoutines.length + schedules.filter((s) => s.date === ts).length;
   const active = tasks
@@ -29,6 +28,7 @@ export default function Dashboard({ mails, schedules, routines, tasks, readMail,
     month: "long",
     year: "numeric",
   });
+  const name = email ? email.split("@")[0] : "di sana";
 
   const next = [
     ...todayRoutines.map((r) => ({
@@ -45,7 +45,7 @@ export default function Dashboard({ mails, schedules, routines, tasks, readMail,
   return (
     <section className="view active" id="v-dashboard">
       <div className="greet">
-        Halo, Rochwidias 👋<small>{todayLine}</small>
+        Halo, {name} 👋<small>{todayLine}</small>
       </div>
       <div className="hero">
         <b>🎓 Semangat kuliah hari ini!</b>
@@ -57,17 +57,17 @@ export default function Dashboard({ mails, schedules, routines, tasks, readMail,
       </div>
       <div className="stats">
         <button className="stat" onClick={() => go("email")}>
-          <span className="pill blue">Email kampus</span>
+          <span className="tag-pill">Email</span>
           <div className="num">{unread}</div>
           <div className="lbl">belum dibaca</div>
         </button>
         <button className="stat" onClick={() => go("kalender")}>
-          <span className="pill green">Kuliah hari ini</span>
+          <span className="tag-pill">Kuliah hari ini</span>
           <div className="num">{todayCount}</div>
           <div className="lbl">matkul &amp; agenda</div>
         </button>
         <button className="stat" onClick={() => go("tugas")}>
-          <span className="pill red">Tugas aktif</span>
+          <span className="tag-pill">Tugas aktif</span>
           <div className="num">{active.length}</div>
           <div className="lbl">belum selesai</div>
         </button>
@@ -75,14 +75,14 @@ export default function Dashboard({ mails, schedules, routines, tasks, readMail,
       <div className="dash-grid">
         <div>
           <div className="card">
-            <h2>📬 Email kampus terbaru</h2>
+            <h2>📬 Email terbaru</h2>
             <div>
-              {live.length === 0 && <div className="empty">📭 Kotak masuk kosong.</div>}
-              {live.slice(0, 3).map((m) => (
+              {mails.length === 0 && <div className="empty">📭 Kotak masuk kosong.</div>}
+              {mails.slice(0, 3).map((m) => (
                 <div className="row" key={m.id}>
                   <span
                     className="dot"
-                    style={{ background: readMail.includes(m.id) ? "var(--line)" : "var(--brand)" }}
+                    style={{ background: m.unread ? "var(--brand)" : "var(--line)" }}
                   />
                   <div>
                     <div className="t">{m.subj}</div>
@@ -158,9 +158,9 @@ export default function Dashboard({ mails, schedules, routines, tasks, readMail,
           <button className="banner" onClick={() => go("mcp")}>
             <span style={{ fontSize: 24 }}>🔌</span>
             <span>
-              <span className="t">Siap sambung Gmail via MCP</span>
+              <span className="t">Koneksi Google aktif</span>
               <br />
-              <span className="s">Lihat arsitektur rencananya →</span>
+              <span className="s">Gmail &amp; Kalender tersambung →</span>
             </span>
           </button>
         </div>

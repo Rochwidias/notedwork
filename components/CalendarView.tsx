@@ -163,11 +163,9 @@ export default function CalendarView({
                 </div>
                 {s.note && <div className="s">{s.note}</div>}
               </div>
-              {String(s.id).startsWith("u") && (
-                <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDeleteSched(s.id)}>
-                  Hapus
-                </button>
-              )}
+              <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDeleteSched(s.id)}>
+                Hapus
+              </button>
             </div>
           ))}
           {dayTasks.map((x) => {
@@ -215,11 +213,9 @@ export default function CalendarView({
                     {r.lect ? ` • ${r.lect}` : ""}
                   </div>
                 </div>
-                {String(r.id).startsWith("ru") && (
-                  <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDeleteRoutine(r.id)}>
-                    Hapus
-                  </button>
-                )}
+                <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDeleteRoutine(r.id)}>
+                  Hapus
+                </button>
               </div>
             ))
           ) : (

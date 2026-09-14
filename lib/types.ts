@@ -13,6 +13,8 @@ export interface Mail {
   time: string;
   tag: string;
   files: MailFile[];
+  /** Status UNREAD langsung dari label Gmail (undefined = tidak diketahui). */
+  unread?: boolean;
 }
 
 export interface Sched {

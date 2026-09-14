@@ -18,7 +18,7 @@ const jetbrainsMono = JetBrains_Mono({
 export const metadata: Metadata = {
   metadataBase: new URL("https://notedwork.vercel.app"),
   title: "Rocha — Email & Jadwal Mahasiswa",
-  description: "Dashboard email dan jadwal kuliah, siap disambung MCP Gmail & Kalender.",
+  description: "Dashboard email dan jadwal kuliah mahasiswa — login dengan Google untuk memakai.",
   applicationName: "Rocha",
   appleWebApp: {
     capable: true,
@@ -41,7 +41,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0D0D0D",
+  themeColor: "#121212",
   colorScheme: "dark light",
   viewportFit: "cover",
   width: "device-width",
