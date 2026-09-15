@@ -9,11 +9,13 @@ interface Props {
   routines: Routine[];
   tasks: Task[];
   email: string | null;
+  preview?: boolean;
+  guestName?: string;
   go: (v: NavTarget) => void;
   onCompose: () => void;
 }
 
-export default function Dashboard({ mails, schedules, routines, tasks, email, go, onCompose }: Props) {
+export default function Dashboard({ mails, schedules, routines, tasks, email, preview, guestName, go, onCompose }: Props) {
   const ts = todayStr();
   const unread = mails.filter((m) => m.unread).length;
   const todayRoutines = routines.filter((r) => r.day === weekdayOf(ts));
@@ -28,7 +30,7 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, go
     month: "long",
     year: "numeric",
   });
-  const name = email ? email.split("@")[0] : "di sana";
+  const name = email ? email.split("@")[0] : guestName?.trim() || "di sana";
 
   const next = [
     ...todayRoutines.map((r) => ({
@@ -45,7 +47,7 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, go
   return (
     <section className="view active" id="v-dashboard">
       <div className="greet">
-        Halo, {name} 👋<small>{todayLine}</small>
+        Halo, {name} 👋<small>{todayLine}{preview ? " • Mode pratinjau (data contoh)" : ""}</small>
       </div>
       <div className="hero">
         <b>🎓 Semangat kuliah hari ini!</b>
@@ -158,9 +160,9 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, go
           <button className="banner" onClick={() => go("mcp")}>
             <span style={{ fontSize: 24 }}>🔌</span>
             <span>
-              <span className="t">Koneksi Google aktif</span>
+              <span className="t">{preview ? "Mode pratinjau — data contoh" : "Koneksi Google aktif"}</span>
               <br />
-              <span className="s">Gmail &amp; Kalender tersambung →</span>
+              <span className="s">{preview ? "Login untuk Gmail & Kalender aslimu →" : "Gmail & Kalender tersambung →"}</span>
             </span>
           </button>
         </div>

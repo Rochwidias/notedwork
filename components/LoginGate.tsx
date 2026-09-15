@@ -5,7 +5,7 @@ interface Props {
   hint: string;
 }
 
-/** Empty-state untuk pengunjung yang belum login — tanpa menampilkan data apa pun. */
+/** Ajakan login — primer ke Google, sekunder cicipi preview tanpa login. */
 export default function LoginGate({ title, hint }: Props) {
   return (
     <div className="card" style={{ textAlign: "center", padding: "28px 18px" }}>

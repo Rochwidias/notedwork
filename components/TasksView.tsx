@@ -19,9 +19,10 @@ interface Props {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onAdd: () => void;
+  preview?: boolean;
 }
 
-export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd }: Props) {
+export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, preview }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
 
   const counts = useMemo(
@@ -47,7 +48,7 @@ export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd }
   return (
     <section className="view active" id="v-tugas">
       <div className="greet">
-        Tugas kuliah<small>Deadline ikut muncul di Kalender &amp; Dashboard</small>
+        Tugas kuliah<small>{preview ? "Data contoh — tersimpan lokal di perangkatmu" : "Deadline ikut muncul di Kalender & Dashboard"}</small>
       </div>
       <div className="chips" style={{ marginTop: 12 }}>
         {FILTERS.map(([v, l]) => (

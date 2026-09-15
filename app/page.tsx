@@ -1,5 +1,5 @@
-import RochaApp from "@/components/RochaApp";
+import NotedworkApp from "@/components/NotedworkApp";
 
 export default function Page() {
-  return <RochaApp />;
+  return <NotedworkApp />;
 }

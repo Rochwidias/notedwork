@@ -21,6 +21,7 @@ interface Props {
   search: string;
   onSearch: (q: string) => void;
   remote: RemoteState;
+  preview?: boolean;
 }
 
 const STATUS_LABEL: [MailStatus, (c: Counts) => string][] = [
@@ -37,7 +38,7 @@ interface Counts {
 }
 
 export default function EmailView(props: Props) {
-  const { mails, remote } = props;
+  const { mails, remote, preview } = props;
   const [status, setStatus] = useState<MailStatus>("all");
 
   const current = mails.find((m) => m.id === props.currentMail) ?? null;
@@ -63,12 +64,12 @@ export default function EmailView(props: Props) {
     });
   }, [mails, status, props.search]);
 
-  if (current) return <MailDetail m={current} {...props} />;
+  if (current) return <MailDetail m={current} preview={preview} {...props} />;
 
   return (
     <section className="view active" id="v-email">
       <div className="greet">
-        Email<small>Gmail asli — sync tiap buka tab</small>
+        Email<small>{preview ? "Data contoh — login untuk Gmail aslimu" : "Gmail asli — sync tiap buka tab"}</small>
       </div>
       <input
         className="search"
@@ -143,12 +144,13 @@ function MailDetail({
   m,
   onBack,
   onAction,
-}: { m: Mail } & Pick<Props, "onBack" | "onAction">) {
+  preview,
+}: { m: Mail; preview?: boolean } & Pick<Props, "onBack" | "onAction">) {
   const isStar = m.tag.includes("★");
   return (
     <section className="view active" id="v-email">
       <div className="greet">
-        Email<small>Gmail asli — sync tiap buka tab</small>
+        Email<small>{preview ? "Data contoh — login untuk Gmail aslimu" : "Gmail asli — sync tiap buka tab"}</small>
       </div>
       <div className="card">
         <button className="link" onClick={onBack}>

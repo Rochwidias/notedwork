@@ -1,9 +1,15 @@
-/* Rocha service worker — cache-first app shell agar online 24 jam & tahan refresh. */
-const CACHE = "rocha-v1";
-const CORE = ["/", "/manifest.webmanifest", "/icon.svg"];
+/* notedwork service worker — cache-first app shell agar online 24 jam & tahan refresh. */
+const CACHE = "notedwork-v2";
+const CORE = ["/", "/icon.svg"];
 
 self.addEventListener("install", (e) => {
-  e.waitUntil(caches.open(CACHE).then((c) => c.addAll(CORE)).then(() => self.skipWaiting()));
+  // allSettled: satu aset gagal (404/offline) tak boleh menggagalkan install.
+  e.waitUntil(
+    caches
+      .open(CACHE)
+      .then((c) => Promise.allSettled(CORE.map((u) => c.add(u))))
+      .then(() => self.skipWaiting())
+  );
 });
 
 self.addEventListener("activate", (e) => {

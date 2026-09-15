@@ -17,24 +17,24 @@ const jetbrainsMono = JetBrains_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://notedwork.vercel.app"),
-  title: "Rocha — Email & Jadwal Mahasiswa",
+  title: "notedwork — Email & Jadwal Mahasiswa",
   description: "Dashboard email dan jadwal kuliah mahasiswa — login dengan Google untuk memakai.",
-  applicationName: "Rocha",
+  applicationName: "notedwork",
   appleWebApp: {
     capable: true,
     statusBarStyle: "black-translucent",
-    title: "Rocha",
+    title: "notedwork",
   },
   openGraph: {
-    title: "Rocha — Email & Jadwal Mahasiswa",
+    title: "notedwork — Email & Jadwal Mahasiswa",
     description: "Dashboard email dan jadwal kuliah mahasiswa.",
     type: "website",
     locale: "id_ID",
-    siteName: "Rocha",
+    siteName: "notedwork",
   },
   twitter: {
     card: "summary",
-    title: "Rocha — Email & Jadwal Mahasiswa",
+    title: "notedwork — Email & Jadwal Mahasiswa",
     description: "Dashboard email dan jadwal kuliah mahasiswa.",
   },
   robots: { index: true, follow: true },

@@ -30,7 +30,7 @@ export default function NotFound() {
           marginBottom: 16,
         }}
       >
-        R
+        N
       </div>
       <h1 style={{ fontSize: 64, fontWeight: 800, lineHeight: 1 }}>404</h1>
       <p style={{ fontSize: 14, color: "#888", marginTop: 8 }}>Halaman tidak ditemukan.</p>

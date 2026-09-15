@@ -22,7 +22,7 @@ export function Sidebar({ view, go }: { view: ViewName; go: (v: NavTarget) => vo
       ))}
       <div className="cap">RENCANA</div>
       <button className={`tab${view === "mcp" ? " active" : ""}`} onClick={() => go("mcp")}>
-        <span className="ic">🔌</span>Koneksi MCP
+        <span className="ic">🔌</span>Koneksi Google
       </button>
       <button className="tab" onClick={() => go("tambah")}>
         <span className="ic">➕</span>Tambah Jadwal
