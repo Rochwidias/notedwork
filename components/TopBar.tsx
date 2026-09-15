@@ -1,6 +1,7 @@
 "use client";
 
 import { useTheme } from "./ThemeProvider";
+import { IconEye, IconUser } from "./icons";
 
 interface Props {
   connected: boolean;
@@ -45,8 +46,14 @@ export default function TopBar({ connected, email, onProfile, preview }: Props) 
               </svg>
             )}
           </button>
-          <button className="avatar" onClick={onProfile} title="Profil">
-            {connected && initial ? initial : preview ? "👀" : "👤"}
+          <button className="avatar" onClick={onProfile} title="Profil" aria-label="Profil">
+            {connected && initial ? (
+              initial
+            ) : preview ? (
+              <IconEye size={18} />
+            ) : (
+              <IconUser size={18} />
+            )}
           </button>
         </div>
       </div>

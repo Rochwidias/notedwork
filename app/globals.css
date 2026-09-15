@@ -341,13 +341,10 @@ button {
 .hero {
   background: var(--brand);
   border-radius: 20px;
-  color: #fff;
+  color: var(--on-brand, #fff);
   padding: 18px;
   margin-top: 14px;
   box-shadow: var(--shadow);
-}
-[data-theme="dark"] .hero {
-  color: #0d0d0d;
 }
 .hero b {
   font-size: 16px;
@@ -539,10 +536,7 @@ button {
 }
 .btn.primary {
   background: var(--brand);
-  color: #fff;
-}
-[data-theme="dark"] .btn.primary {
-  color: #0d0d0d;
+  color: var(--on-brand, #fff);
 }
 .btn.primary:active {
   filter: brightness(0.92);
@@ -597,11 +591,8 @@ button {
 }
 .chip.on {
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand, #fff);
   border-color: var(--brand);
-}
-[data-theme="dark"] .chip.on {
-  color: #0d0d0d;
 }
 
 /* ── Email ── */
@@ -884,6 +875,9 @@ button {
   align-items: center;
   justify-content: space-between;
   margin-bottom: 10px;
+  max-width: 440px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .cal-head b {
   font-size: 15px;
@@ -892,12 +886,14 @@ button {
   border: 1px solid var(--line);
   background: var(--card);
   border-radius: 10px;
-  width: 40px;
-  height: 40px;
+  width: 36px;
+  height: 36px;
   font-size: 16px;
   cursor: pointer;
   color: var(--ink);
   flex: none;
+  display: grid;
+  place-items: center;
 }
 .grid {
   display: grid;
@@ -905,22 +901,31 @@ button {
   gap: 4px;
   text-align: center;
   font-size: 12.5px;
+  max-width: 440px;
+  margin: 0 auto;
 }
 .dow {
   color: var(--muted);
   font-weight: 700;
   font-size: 12px;
-  padding: 6px 0;
+  padding: 4px 0;
 }
 .day {
   border: none;
   background: none;
-  aspect-ratio: 1;
-  min-height: 40px;
+  height: 38px;
+  min-height: 38px;
+  font-size: 13px;
   border-radius: 10px;
   cursor: pointer;
   position: relative;
   color: var(--ink);
+}
+@media (min-width: 1024px) {
+  .day {
+    height: 40px;
+    min-height: 40px;
+  }
 }
 .day.dim {
   color: var(--muted);
@@ -931,11 +936,8 @@ button {
 }
 .day.sel {
   background: var(--brand);
-  color: #fff;
+  color: var(--on-brand, #fff);
   font-weight: 800;
-}
-[data-theme="dark"] .day.sel {
-  color: #0d0d0d;
 }
 .day .dots {
   position: absolute;
@@ -958,6 +960,9 @@ button {
   font-size: 12px;
   color: var(--muted);
   margin-top: 10px;
+  max-width: 440px;
+  margin-left: auto;
+  margin-right: auto;
 }
 .legend span {
   display: flex;
@@ -965,7 +970,90 @@ button {
   align-items: center;
 }
 
-/* ── Profil & MCP ── */
+/* ── Ikon inline di heading, tombol, dan baris ── */
+.h-ic {
+  display: inline-flex;
+  vertical-align: -3px;
+  margin-right: 8px;
+}
+.h-ic svg {
+  display: block;
+}
+.tab .ic {
+  display: grid;
+  place-items: center;
+}
+.tab .ic svg {
+  display: block;
+}
+.btn-ic {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+.btn-ic svg {
+  flex: none;
+}
+.link-ic {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.chip-ic {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-right: 6px;
+}
+.chip-ic svg {
+  display: block;
+}
+.row-ic {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.row-ic svg {
+  flex: none;
+  color: var(--muted);
+}
+.banner-ic {
+  flex: none;
+  display: grid;
+  place-items: center;
+  color: var(--brand);
+}
+.banner-arrow {
+  display: inline-flex;
+  vertical-align: -2px;
+  margin-left: 4px;
+}
+.from-ic {
+  display: inline-flex;
+  color: var(--muted);
+}
+.from-ic svg {
+  display: block;
+}
+.empty-ic {
+  display: flex;
+  justify-content: center;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.gate-ic {
+  display: flex;
+  justify-content: center;
+  color: var(--brand);
+}
+.del-ic {
+  display: grid;
+  place-items: center;
+  min-width: 44px;
+}
+
+/* ── Profil & Koneksi ── */
 .profile-head {
   display: flex;
   gap: 14px;
@@ -1036,41 +1124,7 @@ button {
 }
 .switch[aria-checked="true"]::after {
   left: 22px;
-  background: #fff;
-}
-.flow {
-  display: grid;
-  gap: 8px;
-  margin: 12px 0;
-}
-.flow .box {
-  border: 1px solid var(--line);
-  border-radius: 12px;
-  padding: 12px;
-  background: var(--card-2);
-  font-size: 13px;
-}
-.flow .box b {
-  display: block;
-  font-size: 13.5px;
-  margin-bottom: 2px;
-}
-.flow .arrow {
-  text-align: center;
-  color: var(--muted);
-  font-size: 16px;
-  line-height: 1;
-}
-.code {
-  font-family: var(--font-jetbrains-mono), ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-  font-size: 12.5px;
-  background: var(--card-2);
-  border: 1px solid var(--line);
-  border-radius: 10px;
-  padding: 10px 12px;
-  margin-top: 8px;
-  overflow-x: auto;
-  white-space: nowrap;
+  background: var(--on-brand, #fff);
 }
 .steps {
   margin: 8px 0 0 18px;
@@ -1192,12 +1246,9 @@ button {
   border: none;
   cursor: pointer;
   font-size: 26px;
-  color: #fff;
+  color: var(--on-brand, #fff);
   background: var(--brand);
   box-shadow: var(--shadow);
-}
-[data-theme="dark"] .fab {
-  color: #0d0d0d;
 }
 .fab:active {
   transform: scale(0.96);

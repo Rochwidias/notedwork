@@ -2,6 +2,15 @@
 
 import type { Mail, NavTarget, Routine, Sched, Task } from "@/lib/types";
 import { DAYS, fmtDateID, taskBadge, todayStr, weekdayOf } from "@/lib/dates";
+import {
+  IconAlarm,
+  IconArrowRight,
+  IconCalendarDays,
+  IconInbox,
+  IconMail,
+  IconPlug,
+  IconPlus,
+} from "./icons";
 
 interface Props {
   mails: Mail[];
@@ -47,14 +56,14 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, pr
   return (
     <section className="view active" id="v-dashboard">
       <div className="greet">
-        Halo, {name} 👋<small>{todayLine}{preview ? " • Mode pratinjau (data contoh)" : ""}</small>
+        Halo, {name}<small>{todayLine}{preview ? " • Mode pratinjau (data contoh)" : ""}</small>
       </div>
       <div className="hero">
-        <b>🎓 Semangat kuliah hari ini!</b>
+        <b>Semangat kuliah hari ini!</b>
         <p>
           {urg
             ? `Prioritas: ${urg.matkul} — ${urg.title} (${taskBadge(urg).txt}).`
-            : "Tidak ada tugas aktif. Nikmati harimu! 🎉"}
+            : "Tidak ada tugas aktif. Nikmati harimu!"}
         </p>
       </div>
       <div className="stats">
@@ -77,9 +86,21 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, pr
       <div className="dash-grid">
         <div>
           <div className="card">
-            <h2>📬 Email terbaru</h2>
+            <h2>
+              <span className="h-ic">
+                <IconInbox size={15} />
+              </span>
+              Email terbaru
+            </h2>
             <div>
-              {mails.length === 0 && <div className="empty">📭 Kotak masuk kosong.</div>}
+              {mails.length === 0 && (
+                <div className="empty">
+                  <span className="empty-ic">
+                    <IconInbox size={22} />
+                  </span>
+                  Kotak masuk kosong.
+                </div>
+              )}
               {mails.slice(0, 3).map((m) => (
                 <div className="row" key={m.id}>
                   <span
@@ -100,9 +121,15 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, pr
           </div>
           <div className="card">
             <div className="card-head">
-              <h2>⏰ Tugas mendesak</h2>
-              <button className="link" onClick={() => go("tugas")}>
-                Semua →
+              <h2>
+                <span className="h-ic">
+                  <IconAlarm size={15} />
+                </span>
+                Tugas mendesak
+              </h2>
+              <button className="link link-ic" onClick={() => go("tugas")}>
+                Semua
+                <IconArrowRight size={14} />
               </button>
             </div>
             <div>
@@ -129,13 +156,18 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, pr
                   </div>
                 );
               })}
-              {active.length === 0 && <div className="empty">🎉 Semua tugas selesai!</div>}
+              {active.length === 0 && <div className="empty">Semua tugas selesai!</div>}
             </div>
           </div>
         </div>
         <div>
           <div className="card">
-            <h2>🗓️ Agenda terdekat</h2>
+            <h2>
+              <span className="h-ic">
+                <IconCalendarDays size={15} />
+              </span>
+              Agenda terdekat
+            </h2>
             <div>
               {next.map((s, i) => (
                 <div className="row" key={i}>
@@ -146,23 +178,32 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, pr
                   </div>
                 </div>
               ))}
-              {next.length === 0 && <div className="empty">Belum ada agenda. Tambahkan jadwal pertama 👇</div>}
+              {next.length === 0 && <div className="empty">Belum ada agenda. Tambahkan jadwal pertama di bawah.</div>}
             </div>
           </div>
           <div className="quick">
-            <button className="btn primary" onClick={onCompose}>
-              ✉️ Tulis Email
+            <button className="btn primary btn-ic" onClick={onCompose}>
+              <IconMail size={16} />
+              Tulis Email
             </button>
-            <button className="btn ghost" onClick={() => go("tambah")}>
-              ➕ Tambah Jadwal
+            <button className="btn ghost btn-ic" onClick={() => go("tambah")}>
+              <IconPlus size={16} />
+              Tambah Jadwal
             </button>
           </div>
-          <button className="banner" onClick={() => go("mcp")}>
-            <span style={{ fontSize: 24 }}>🔌</span>
+          <button className="banner" onClick={() => go("koneksi")}>
+            <span className="banner-ic">
+              <IconPlug size={24} />
+            </span>
             <span>
               <span className="t">{preview ? "Mode pratinjau — data contoh" : "Koneksi Google aktif"}</span>
               <br />
-              <span className="s">{preview ? "Login untuk Gmail & Kalender aslimu →" : "Gmail & Kalender tersambung →"}</span>
+              <span className="s">
+                {preview ? "Login untuk Gmail & Kalender aslimu" : "Gmail & Kalender tersambung"}
+                <span className="banner-arrow">
+                  <IconArrowRight size={14} />
+                </span>
+              </span>
             </span>
           </button>
         </div>

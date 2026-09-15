@@ -9,6 +9,7 @@ import { removeLS, useLocalStorage } from "@/lib/store";
 import ThemeProvider from "./ThemeProvider";
 import TopBar from "./TopBar";
 import { Fab, Sidebar, TabBar } from "./AppNav";
+import { IconEye } from "./icons";
 import Dashboard from "./Dashboard";
 import EmailView from "./EmailView";
 import TasksView from "./TasksView";
@@ -125,7 +126,7 @@ function Shell() {
         setUpdatedAt(nowHMID());
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("⚠️ Gagal sync Google");
+        else toastMsg("Gagal sync Google");
       } finally {
         setMailLoading(false);
       }
@@ -141,7 +142,7 @@ function Shell() {
     const auth = q.get("auth");
     if (auth === "ok" || auth === "gagal") {
       // Tunda ke microtask agar bukan setState sinkron di dalam effect.
-      const msg = auth === "ok" ? "✅ Terhubung ke Google" : "⚠️ Login Google gagal, coba lagi";
+      const msg = auth === "ok" ? "Terhubung ke Google" : "Login Google gagal, coba lagi";
       queueMicrotask(() => toastMsg(msg));
       q.delete("auth");
       q.delete("pesan");
@@ -244,15 +245,13 @@ function Shell() {
         toastMsg(PREVIEW_LOGIN_HINT);
         return;
       }
-      const isStar = (remoteMails.find((m) => m.id === id)?.tag ?? "").includes("★");
+      const isStar = !!remoteMails.find((m) => m.id === id)?.starred;
       try {
         await apiLabelMail(id, isStar ? "unstar" : "star");
-        setRemoteMails((prev) =>
-          prev.map((m) => (m.id === id ? { ...m, tag: isStar ? "Gmail" : "Gmail ★" } : m))
-        );
+        setRemoteMails((prev) => prev.map((m) => (m.id === id ? { ...m, starred: !isStar } : m)));
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("⚠️ Gagal ubah bintang");
+        else toastMsg("Gagal ubah bintang");
       }
     },
     [connected, remoteMails, markDisconnected, toastMsg]
@@ -286,22 +285,22 @@ function Shell() {
           await apiLabelMail(m.id, "archive");
           setRemoteMails((prev) => prev.filter((x) => x.id !== m.id));
           setCurrentMail(null);
-          toastMsg("📦 Diarsipkan");
+          toastMsg("Diarsipkan");
         } else if (act === "unread") {
           await apiLabelMail(m.id, "unread");
           setRemoteMails((prev) => prev.map((x) => (x.id === m.id ? { ...x, unread: true } : x)));
           setCurrentMail(null);
-          toastMsg("👁️ Ditandai belum dibaca");
+          toastMsg("Ditandai belum dibaca");
         } else if (act === "del") {
           // Tanpa hapus permanen — tombol hapus = arsip.
           await apiLabelMail(m.id, "archive");
           setRemoteMails((prev) => prev.filter((x) => x.id !== m.id));
           setCurrentMail(null);
-          toastMsg("📦 Diarsipkan");
+          toastMsg("Diarsipkan");
         }
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("⚠️ Aksi Gmail gagal");
+        else toastMsg("Aksi Gmail gagal");
       }
     },
     [currentMail, remoteMails, connected, openCompose, toggleStar, toastMsg, markDisconnected]
@@ -312,7 +311,7 @@ function Shell() {
     (id: string) => {
       setTasks((prev) => {
         const t = prev.find((x) => x.id === id);
-        if (t) toastMsg(t.done ? "↩️ Dibuka lagi" : "✅ Tugas selesai!");
+        if (t) toastMsg(t.done ? "Dibuka lagi" : "Tugas selesai!");
         return prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x));
       });
     },
@@ -322,7 +321,7 @@ function Shell() {
   const delTask = useCallback(
     (id: string) => {
       setTasks((prev) => prev.filter((x) => x.id !== id));
-      toastMsg("🗑️ Tugas dihapus");
+      toastMsg("Tugas dihapus");
     },
     [setTasks, toastMsg]
   );
@@ -338,10 +337,10 @@ function Shell() {
       try {
         await apiDeleteEvent(gid);
         setRemoteEvents((prev) => prev.filter((s) => s.id !== id && s.id !== gid));
-        toastMsg("🗑️ Event Google dihapus");
+        toastMsg("Event Google dihapus");
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("⚠️ Gagal hapus event");
+        else toastMsg("Gagal hapus event");
       }
     },
     [connected, toastMsg, markDisconnected]
@@ -356,10 +355,10 @@ function Shell() {
       try {
         const ev = await apiCreateEvent(v);
         setRemoteEvents((prev) => [...prev, ev].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
-        toastMsg("✅ Jadwal tersimpan ke Google Calendar");
+        toastMsg("Jadwal tersimpan ke Google Calendar");
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("⚠️ Gagal simpan ke Google");
+        else toastMsg("Gagal simpan ke Google");
         return;
       }
       setSelDate(v.date);
@@ -377,10 +376,10 @@ function Shell() {
       }
       try {
         await apiSendMail(to, subj, body);
-        toastMsg("✅ Email terkirim via Gmail");
+        toastMsg("Email terkirim via Gmail");
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg(`⚠️ ${e instanceof Error ? e.message : "Gagal kirim"}`);
+        else toastMsg(`Gagal kirim: ${e instanceof Error ? e.message : "unknown"}`);
         return;
       }
       setSheet(null);
@@ -391,8 +390,8 @@ function Shell() {
   const logoutGoogle = useCallback(async () => {
     await apiLogout();
     markDisconnected();
-    setView("mcp");
-    toastMsg("👋 Keluar dari Google");
+    setView("koneksi");
+    toastMsg("Keluar dari Google");
   }, [markDisconnected, toastMsg]);
 
   /** Keluar preview: hapus data tamu lokal, kembali ke kondisi contoh segar. */
@@ -404,13 +403,13 @@ function Shell() {
     setPreviewMails(SAMPLE_MAILS);
     setCurrentMail(null);
     setView("dashboard");
-    toastMsg("👋 Keluar dari mode pratinjau");
+    toastMsg("Keluar dari mode pratinjau");
   }, [setTasks, setRoutines, toastMsg]);
 
   const delRoutine = useCallback(
     (id: string) => {
       setRoutines((prev) => prev.filter((r) => r.id !== id));
-      toastMsg("🗑️ Jadwal rutin dihapus");
+      toastMsg("Jadwal rutin dihapus");
     },
     [setRoutines, toastMsg]
   );
@@ -430,7 +429,9 @@ function Shell() {
           <main>
             {preview && (view === "dashboard" || view === "email" || view === "tugas" || view === "kalender") && (
               <div className="banner" role="status">
-                <span style={{ fontSize: 24 }}>👀</span>
+                <span className="banner-ic">
+                  <IconEye size={24} />
+                </span>
                 <span style={{ flex: 1 }}>
                   <span className="t">Mode pratinjau — data contoh</span>
                   <br />
@@ -510,19 +511,19 @@ function Shell() {
                 notif={notif}
                 onToggleNotif={() => {
                   setNotif((v) => {
-                    toastMsg(!v ? "🔔 Pengingat dinyalakan" : "🔕 Pengingat dimatikan");
+                    toastMsg(!v ? "Pengingat dinyalakan" : "Pengingat dimatikan");
                     return !v;
                   });
                 }}
                 onLogout={logoutGoogle}
-                onMcp={() => go("mcp")}
+                onKoneksi={() => go("koneksi")}
                 preview={preview}
                 guestName={guestName}
                 onGuestName={(v) => setGuestName(v)}
                 onExitPreview={exitPreview}
               />
             )}
-            {view === "mcp" && (
+            {view === "koneksi" && (
               <GoogleConnect
                 connected={connected}
                 email={connEmail}
@@ -560,7 +561,7 @@ function Shell() {
             onSave={(v) => {
               setTasks((prev) => [...prev, { id: "u" + Date.now(), ...v, done: false }]);
               setSheet(null);
-              toastMsg("✅ Tugas tersimpan");
+              toastMsg("Tugas tersimpan");
               go("tugas");
             }}
           />
@@ -573,7 +574,7 @@ function Shell() {
                 ...prev,
                 { id: "ru" + Date.now(), ...v, color: RCOL[prev.length % RCOL.length] },
               ]);
-              toastMsg("✅ Jadwal rutin tersimpan");
+              toastMsg("Jadwal rutin tersimpan");
             }}
             onDelete={delRoutine}
           />

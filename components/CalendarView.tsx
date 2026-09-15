@@ -3,6 +3,17 @@
 import { useMemo, useState } from "react";
 import type { Routine, Sched, Task } from "@/lib/types";
 import { DAYS, MONTHS, fmtDateID, taskBadge, todayStr, weekdayOf } from "@/lib/dates";
+import {
+  IconAlarm,
+  IconBook,
+  IconCalendarDays,
+  IconCheck,
+  IconChevronLeft,
+  IconChevronRight,
+  IconGear,
+  IconPlus,
+  IconTrash,
+} from "./icons";
 
 interface Props {
   schedules: Sched[];
@@ -64,6 +75,16 @@ export default function CalendarView({
     .sort((a, b) => a.start.localeCompare(b.start));
   const daySched = schedules.filter((s) => s.date === selDate);
   const dayTasks = tasks.filter((x) => x.date === selDate);
+
+  // Agenda hari ini — selalu todayStr, terpisah dari tanggal yang dipilih.
+  const ts = todayStr();
+  const todayWd = weekdayOf(ts);
+  const todayRoutines = routines
+    .filter((x) => x.day === todayWd)
+    .sort((a, b) => a.start.localeCompare(b.start));
+  const todaySched = schedules.filter((s) => s.date === ts);
+  const todayTasks = tasks.filter((x) => x.date === ts);
+
   const routineList = routines.slice().sort((a, b) => a.day - b.day || a.start.localeCompare(b.start));
 
   return (
@@ -75,18 +96,20 @@ export default function CalendarView({
         <div className="cal-head">
           <button
             className="nav-btn"
+            aria-label="Bulan sebelumnya"
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}
           >
-            ‹
+            <IconChevronLeft size={16} />
           </button>
           <b>
             {MONTHS[mo]} {y}
           </b>
           <button
             className="nav-btn"
+            aria-label="Bulan berikutnya"
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))}
           >
-            ›
+            <IconChevronRight size={16} />
           </button>
         </div>
         <div className="grid">
@@ -103,7 +126,7 @@ export default function CalendarView({
                 </button>
               );
             const cls = ["day"];
-            if (c.iso === todayStr()) cls.push("today");
+            if (c.iso === ts) cls.push("today");
             if (c.iso === selDate) cls.push("sel");
             const dots: string[] = [];
             if (rDays.has(weekdayOf(c.iso))) dots.push("#00cfff");
@@ -139,6 +162,69 @@ export default function CalendarView({
         </div>
       </div>
       <div className="card">
+        <h2>
+          <span className="h-ic">
+            <IconCalendarDays size={15} />
+          </span>
+          Agenda hari ini • {fmtDateID(ts)}
+        </h2>
+        <div>
+          {todayRoutines.map((x) => (
+            <div className="row" key={x.id}>
+              <span className="dot" style={{ background: x.color || "#00cfff" }} />
+              <div>
+                <div className="t">
+                  {x.course} <span className="pill blue" style={{ margin: 0 }}>Rutin</span>
+                </div>
+                <div className="s">
+                  {x.start}–{x.end}
+                  {x.room ? ` • Ruang ${x.room}` : ""}
+                  {x.lect ? ` • ${x.lect}` : ""}
+                </div>
+              </div>
+            </div>
+          ))}
+          {todaySched.map((s) => (
+            <div className="row" key={s.id}>
+              <span className="dot" style={{ background: s.color || "#22c55e" }} />
+              <div>
+                <div className="t">
+                  {s.title} <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {s.time}</span>
+                </div>
+                {s.note && <div className="s">{s.note}</div>}
+              </div>
+              <button className="del del-ic" aria-label={`Hapus ${s.title}`} onClick={() => onDeleteSched(s.id)}>
+                <IconTrash size={15} />
+              </button>
+            </div>
+          ))}
+          {todayTasks.map((x) => {
+            const b = taskBadge(x);
+            return (
+              <div className="row" key={x.id}>
+                <span className="dot" style={{ background: "#ef4444" }} />
+                <div>
+                  <div className="t row-ic">
+                    <IconAlarm size={14} />
+                    {x.title} {x.done && <IconCheck size={14} />} <span className={`tag ${b.cls}`}>{b.txt}</span>
+                  </div>
+                  <div className="s">
+                    {x.matkul} • deadline {x.time}
+                  </div>
+                </div>
+              </div>
+            );
+          })}
+          {todayRoutines.length + todaySched.length + todayTasks.length === 0 && (
+            <div className="empty">
+              Tidak ada agenda hari ini.
+              <br />
+              Nikmati harimu!
+            </div>
+          )}
+        </div>
+      </div>
+      <div className="card">
         <h2>Agenda • {fmtDateID(selDate)}</h2>
         <div>
           {dayRoutines.map((x) => (
@@ -165,8 +251,8 @@ export default function CalendarView({
                 </div>
                 {s.note && <div className="s">{s.note}</div>}
               </div>
-              <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDeleteSched(s.id)}>
-                Hapus
+              <button className="del del-ic" aria-label={`Hapus ${s.title}`} onClick={() => onDeleteSched(s.id)}>
+                <IconTrash size={15} />
               </button>
             </div>
           ))}
@@ -176,8 +262,9 @@ export default function CalendarView({
               <div className="row" key={x.id}>
                 <span className="dot" style={{ background: "#ef4444" }} />
                 <div>
-                  <div className="t">
-                    ⏰ {x.title} {x.done ? "✅" : ""} <span className={`tag ${b.cls}`}>{b.txt}</span>
+                  <div className="t row-ic">
+                    <IconAlarm size={14} />
+                    {x.title} {x.done && <IconCheck size={14} />} <span className={`tag ${b.cls}`}>{b.txt}</span>
                   </div>
                   <div className="s">
                     {x.matkul} • deadline {x.time}
@@ -188,19 +275,25 @@ export default function CalendarView({
           })}
           {dayRoutines.length + daySched.length + dayTasks.length === 0 && (
             <div className="empty">
-              🎉 Tidak ada agenda di tanggal ini.
+              Tidak ada agenda di tanggal ini.
               <br />
               Nikmati harimu!
             </div>
           )}
         </div>
-        <button className="btn primary block" onClick={onAddSched} style={{ marginTop: 10 }}>
-          ➕ Tambah jadwal di tanggal ini
+        <button className="btn primary block btn-ic" onClick={onAddSched} style={{ marginTop: 10 }}>
+          <IconPlus size={16} />
+          Tambah jadwal di tanggal ini
         </button>
       </div>
       <div className="card">
         <div className="card-head">
-          <h2>📚 Jadwal rutin mingguan</h2>
+          <h2>
+            <span className="h-ic">
+              <IconBook size={15} />
+            </span>
+            Jadwal rutin mingguan
+          </h2>
         </div>
         <div>
           {routineList.length ? (
@@ -215,8 +308,8 @@ export default function CalendarView({
                     {r.lect ? ` • ${r.lect}` : ""}
                   </div>
                 </div>
-                <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDeleteRoutine(r.id)}>
-                  Hapus
+                <button className="del del-ic" aria-label={`Hapus ${r.course}`} onClick={() => onDeleteRoutine(r.id)}>
+                  <IconTrash size={15} />
                 </button>
               </div>
             ))
@@ -224,8 +317,9 @@ export default function CalendarView({
             <div className="empty">Belum ada jadwal rutin.</div>
           )}
         </div>
-        <button className="btn ghost block" onClick={onManageRoutine} style={{ marginTop: 10 }}>
-          ⚙️ Kelola jadwal rutin
+        <button className="btn ghost block btn-ic" onClick={onManageRoutine} style={{ marginTop: 10 }}>
+          <IconGear size={15} />
+          Kelola jadwal rutin
         </button>
       </div>
     </section>

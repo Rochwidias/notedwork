@@ -1,5 +1,7 @@
 "use client";
 
+import { IconLock } from "./icons";
+
 interface Props {
   title: string;
   hint: string;
@@ -9,7 +11,9 @@ interface Props {
 export default function LoginGate({ title, hint }: Props) {
   return (
     <div className="card" style={{ textAlign: "center", padding: "28px 18px" }}>
-      <div style={{ fontSize: 40 }}>🔒</div>
+      <div className="gate-ic">
+        <IconLock size={40} />
+      </div>
       <div style={{ fontWeight: 800, fontSize: 16, marginTop: 8 }}>{title}</div>
       <div style={{ fontSize: 13, color: "var(--muted)", marginTop: 4, lineHeight: 1.6 }}>{hint}</div>
       <a

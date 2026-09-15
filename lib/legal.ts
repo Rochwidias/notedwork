@@ -8,7 +8,7 @@ export interface LegalDoc {
 
 export const LEGAL: Record<LegalId, LegalDoc> = {
   credit: {
-    title: "⭐ Kredit",
+    title: "Kredit",
     updated: "notedwork • 2026",
     body: [
       "notedwork adalah dashboard email, tugas & kalender untuk mahasiswa — dibuat sebagai proyek pribadi oleh Rochwidias.",
@@ -18,7 +18,7 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
     ],
   },
   privacy: {
-    title: "🔏 Privasi",
+    title: "Privasi",
     updated: "Diperbarui September 2026",
     body: [
       "Local-first: tugas, jadwal rutin, tema, warna, nama tamu & preferensi notifikasi tersimpan HANYA di browser perangkatmu (localStorage). notedwork tidak punya database untuk data tersebut dan tidak menjual data apa pun.",
@@ -29,7 +29,7 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
     ],
   },
   terms: {
-    title: "📜 Syarat Penggunaan",
+    title: "Syarat Penggunaan",
     updated: "Diperbarui September 2026",
     body: [
       "notedwork disediakan apa adanya (as-is) untuk pemakaian studi pribadi. Tidak ada jaminan uptime, dan fitur Google mengikuti kuota & kebijakan Google.",

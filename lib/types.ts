@@ -15,6 +15,8 @@ export interface Mail {
   files: MailFile[];
   /** Status UNREAD langsung dari label Gmail (undefined = tidak diketahui). */
   unread?: boolean;
+  /** Bintang Gmail (label STARRED) — boolean, bukan substring di tag. */
+  starred?: boolean;
 }
 
 export interface Sched {
@@ -50,7 +52,7 @@ export interface Task {
   done: boolean;
 }
 
-export type ViewName = "dashboard" | "email" | "tugas" | "kalender" | "profil" | "mcp";
+export type ViewName = "dashboard" | "email" | "tugas" | "kalender" | "profil" | "koneksi";
 
 /** Target navigasi: pindah view, atau buka sheet tambah jadwal. */
 export type NavTarget = ViewName | "tambah";

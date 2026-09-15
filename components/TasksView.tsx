@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Routine, Task } from "@/lib/types";
 import { PRIO, fmtDateID, isOverdue, taskBadge } from "@/lib/dates";
+import { IconCheck, IconPlus, IconX } from "./icons";
 
 type Filter = "all" | "active" | "late" | "done";
 
@@ -72,12 +73,13 @@ export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, 
                 <button
                   className="check"
                   title="Tandai selesai"
+                  aria-label={t.done ? "Buka lagi" : "Tandai selesai"}
                   onClick={(e) => {
                     e.stopPropagation();
                     onToggle(t.id);
                   }}
                 >
-                  {t.done ? "✓" : ""}
+                  {t.done ? <IconCheck size={15} /> : ""}
                 </button>
                 <div style={{ flex: 1 }}>
                   <div className="tt">{t.title}</div>
@@ -91,24 +93,26 @@ export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, 
                   </div>
                 </div>
                 <button
-                  className="del"
+                  className="del del-ic"
                   title="Hapus"
+                  aria-label={`Hapus ${t.title}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     onDelete(t.id);
                   }}
                 >
-                  ✕
+                  <IconX size={14} />
                 </button>
               </div>
             );
           })
         ) : (
-          <div className="empty">🎉 Tidak ada tugas di sini.</div>
+          <div className="empty">Tidak ada tugas di sini.</div>
         )}
       </div>
-      <button className="btn primary block" onClick={onAdd} style={{ marginTop: 6 }}>
-        ➕ Tambah tugas
+      <button className="btn primary block btn-ic" onClick={onAdd} style={{ marginTop: 6 }}>
+        <IconPlus size={16} />
+        Tambah tugas
       </button>
     </section>
   );

@@ -7,7 +7,7 @@ import { RCOL, todayStr } from "./dates";
 export const PREVIEW_EMAIL = "tamu@contoh.id";
 
 /** Satu string prompt login untuk semua aksi tulis yang diblokir di preview. */
-export const PREVIEW_LOGIN_HINT = "🔒 Login dengan Google untuk memakai data aslimu";
+export const PREVIEW_LOGIN_HINT = "Login dengan Google untuk memakai data aslimu";
 
 function isoPlus(days: number): string {
   const d = new Date();
@@ -36,9 +36,10 @@ export const SAMPLE_MAILS: Mail[] = [
     prev: "Jangan lupa laporan modul 6 beserta screenshot hasil query…",
     body: "Halo semua,\n\nJangan lupa laporan modul 6 (JOIN + subquery) dikumpulkan Jumat pukul 23.59. Sertakan screenshot hasil query dan kesimpulan.\n\nSalam.",
     time: "Kemarin",
-    tag: "Contoh ★",
+    tag: "Contoh",
     files: [{ name: "panduan-laporan.pdf", size: "240 KB" }],
     unread: true,
+    starred: true,
   },
   {
     id: "pv-mail-3",
@@ -72,9 +73,10 @@ export const SAMPLE_MAILS: Mail[] = [
     prev: "Fokus ke konsep pointer dan struktur data, latihan soal tahun lalu…",
     body: "Halo dek,\n\nSedikit tips buat asistensi praktikum minggu depan: fokus ke pointer + struktur data, kerjakan soal tahun lalu, dan jangan begadang H-1.\n\nSemangat!",
     time: "2 minggu lalu",
-    tag: "Contoh ★",
+    tag: "Contoh",
     files: [{ name: "kumpulan-soal.zip", size: "1,2 MB" }],
     unread: false,
+    starred: true,
   },
 ];
 

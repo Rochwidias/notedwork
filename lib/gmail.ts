@@ -109,9 +109,10 @@ function toMail(msg: GmailMessage, internalDate?: string): Mail {
     prev: msg.snippet ?? "",
     body: extractBody(msg),
     time: prettyDate(internalDate),
-    tag: labels.includes("STARRED") ? "Gmail ★" : "Gmail",
+    tag: "Gmail",
     files: extractFiles(msg),
     unread: labels.includes("UNREAD"),
+    starred: labels.includes("STARRED"),
   };
 }
 
