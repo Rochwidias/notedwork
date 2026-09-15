@@ -1,6 +1,7 @@
 "use client";
 
 import type { Mail, NavTarget, Routine, Sched, Task } from "@/lib/types";
+import { fmtSchedRange } from "@/lib/dates";
 import { DAYS, fmtDateID, taskBadge, todayStr, weekdayOf } from "@/lib/dates";
 import {
   IconAlarm,
@@ -50,13 +51,13 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, pr
     ...schedules
       .filter((s) => s.date >= ts)
       .slice(0, 4)
-      .map((s) => ({ title: s.title, sub: `${fmtDateID(s.date)} • ${s.time}`, color: s.color || "#22c55e" })),
+      .map((s) => ({ title: s.title, sub: `${fmtDateID(s.date)} • ${fmtSchedRange(s)}`, color: s.color || "#22c55e" })),
   ].slice(0, 4);
 
   return (
     <section className="view active" id="v-dashboard">
       <div className="greet">
-        Halo, {name}<small>{todayLine}{preview ? " • Mode pratinjau (data contoh)" : ""}</small>
+        Halo, {name}<small>{todayLine}{preview ? " — Mode pratinjau (data contoh)" : ""}</small>
       </div>
       <div className="hero">
         <b>Semangat kuliah hari ini!</b>
@@ -191,21 +192,25 @@ export default function Dashboard({ mails, schedules, routines, tasks, email, pr
               Tambah Jadwal
             </button>
           </div>
+          {/* Banner global NotedworkApp sudah tampil saat preview — di sini
+              hanya tampilkan kartu status koneksi saat login. */}
+          {!preview && (
           <button className="banner" onClick={() => go("koneksi")}>
             <span className="banner-ic">
               <IconPlug size={24} />
             </span>
             <span>
-              <span className="t">{preview ? "Mode pratinjau — data contoh" : "Koneksi Google aktif"}</span>
+              <span className="t">Koneksi Google aktif</span>
               <br />
               <span className="s">
-                {preview ? "Login untuk Gmail & Kalender aslimu" : "Gmail & Kalender tersambung"}
+                Gmail &amp; Kalender tersambung
                 <span className="banner-arrow">
                   <IconArrowRight size={14} />
                 </span>
               </span>
             </span>
           </button>
+          )}
         </div>
       </div>
     </section>

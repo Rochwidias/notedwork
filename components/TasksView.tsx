@@ -49,7 +49,7 @@ export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, 
   return (
     <section className="view active" id="v-tugas">
       <div className="greet">
-        Tugas kuliah<small>{preview ? "Data contoh — tersimpan lokal di perangkatmu" : "Deadline ikut muncul di Kalender & Dashboard"}</small>
+        Tugas<small>{preview ? "Mode pratinjau — data contoh, tersimpan lokal di perangkatmu" : "Gmail & Kalender asli — deadline ikut muncul di Kalender & Dashboard"}</small>
       </div>
       <div className="chips" style={{ marginTop: 12 }}>
         {FILTERS.map(([v, l]) => (

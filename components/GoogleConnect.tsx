@@ -14,7 +14,7 @@ export default function GoogleConnect({ connected, email, updatedAt, onLogout, o
   return (
     <section className="view active" id="v-koneksi">
       <div className="greet">
-        Koneksi Google<small>Gmail &amp; Kalender asli — {connected ? "terhubung" : "belum tersambung"}</small>
+        Koneksi Google<small>{connected ? "Gmail & Kalender asli — terhubung" : "Mode pratinjau — data contoh. Bukan data aslimu."}</small>
       </div>
       <div className="card">
         <h2>

@@ -7,16 +7,18 @@ import {
   IconArchive,
   IconArrowLeft,
   IconClip,
+  IconDots,
   IconEyeOff,
   IconFile,
   IconForward,
   IconInbox,
   IconReply,
+  IconSearch,
   IconStar,
-  IconTrash,
+  IconX,
 } from "./icons";
 
-export type MailStatus = "all" | "unread" | "star" | "arch";
+export type MailStatus = "all" | "unread" | "star";
 
 interface RemoteState {
   loading: boolean;
@@ -35,19 +37,47 @@ interface Props {
   onSearch: (q: string) => void;
   remote: RemoteState;
   preview?: boolean;
+  /** Jam sync terakhir dari NotedworkApp (HH:MM), tampil bila login. */
+  updatedAt?: string | null;
 }
 
-const STATUS_LABEL: [MailStatus, (c: Counts) => string][] = [
-  ["all", () => "Semua"],
-  ["unread", (c) => `Belum dibaca (${c.unread})`],
-  ["star", (c) => `Bintang (${c.star})`],
-  ["arch", (c) => `Arsip (${c.arch})`],
+const STATUS_DEF: { id: MailStatus; label: string; star?: boolean }[] = [
+  { id: "all", label: "Semua" },
+  { id: "unread", label: "Belum dibaca" },
+  { id: "star", label: "Bintang", star: true },
+  // Tanpa chip Arsip: arsip Gmail keluar dari hasil list server sehingga
+  // filter arsip selalu kosong (dead-end). Aksi arsip tetap ada di detail.
 ];
 
-interface Counts {
-  unread: number;
-  star: number;
-  arch: number;
+/** Warna avatar pengirim — hash dari nama/email agar beda tiap pengirim. */
+export function senderColor(key: string): string {
+  const cols = ["#00cfff", "#22c55e", "#f59e0b", "#7c5cff", "#ec4899", "#ef4444"];
+  let h = 0;
+  for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
+  return cols[h % cols.length];
+}
+
+/** Varian warna tag-pill berdasar tag email. */
+function tagVariant(tag: string): string {
+  const t = (tag || "").toLowerCase();
+  if (t.includes("contoh") || t.includes("preview")) return "blue";
+  if (t.includes("promo") || t.includes("sosial")) return "pink";
+  if (t.includes("tugas") || t.includes("penting") || t.includes("spam")) return "amber";
+  if (t.includes("kampus") || t.includes("akademik") || t.includes("kerja")) return "green";
+  return "";
+}
+
+function EmailHead({ preview, updatedAt, total }: { preview?: boolean; updatedAt?: string | null; total?: number }) {
+  return (
+    <div className="greet">
+      Email
+      <small>
+        {preview
+          ? "Mode pratinjau — data contoh. Bukan data aslimu."
+          : `Gmail & Kalender asli${updatedAt ? ` • update ${updatedAt}` : ""}${total != null ? ` • ${total} email` : ""}`}
+      </small>
+    </div>
+  );
 }
 
 export default function EmailView(props: Props) {
@@ -56,11 +86,11 @@ export default function EmailView(props: Props) {
 
   const current = mails.find((m) => m.id === props.currentMail) ?? null;
 
-  const counts: Counts = useMemo(
+  const counts = useMemo(
     () => ({
+      all: mails.length,
       unread: mails.filter((m) => m.unread).length,
       star: mails.filter((m) => !!m.starred).length,
-      arch: 0, // mode Gmail: arsip keluar dari hasil list server
     }),
     [mails]
   );
@@ -68,58 +98,91 @@ export default function EmailView(props: Props) {
   const list = useMemo(() => {
     const q = props.search.toLowerCase();
     return mails.filter((m) => {
-      // Arsip di Gmail = hilang dari inbox; tampilkan semua yang dikembalikan server,
-      // filter status hanya mengandalkan label yang masih ada di hasil.
       if (status === "unread" && !m.unread) return false;
       if (status === "star" && !m.starred) return false;
-      if (status === "arch") return false;
       return (m.from + m.subj + m.prev + m.tag).toLowerCase().includes(q);
     });
   }, [mails, status, props.search]);
+
+  const filtering = props.search.trim() !== "" || status !== "all";
 
   if (current) return <MailDetail m={current} preview={preview} {...props} />;
 
   return (
     <section className="view active" id="v-email">
-      <div className="greet">
-        Email<small>{preview ? "Data contoh — login untuk Gmail aslimu" : "Gmail asli — sync tiap buka tab"}</small>
+      <EmailHead preview={preview} updatedAt={props.updatedAt} total={preview ? undefined : mails.length} />
+      <div className="search-wrap" role="search">
+        <span className="search-ic" aria-hidden>
+          <IconSearch size={16} />
+        </span>
+        <input
+          className="search"
+          type="search"
+          placeholder="Cari email…"
+          aria-label="Cari email"
+          value={props.search}
+          onChange={(e) => props.onSearch(e.target.value)}
+        />
+        {props.search && (
+          <button type="button" className="search-clear" aria-label="Bersihkan pencarian" onClick={() => props.onSearch("")}>
+            <IconX size={15} />
+          </button>
+        )}
       </div>
-      <input
-        className="search"
-        type="search"
-        placeholder="Cari email…"
-        value={props.search}
-        onChange={(e) => props.onSearch(e.target.value)}
-      />
+      {filtering && (
+        <div className="search-count" role="status">
+          {list.length} hasil{props.search.trim() ? ` untuk “${props.search.trim()}”` : ""}
+        </div>
+      )}
       <div className="chips">
-        {STATUS_LABEL.map(([v, l]) => (
-          <button key={v} className={`chip${status === v ? " on" : ""}`} onClick={() => setStatus(v)}>
-            {v === "star" && (
+        {STATUS_DEF.map((s) => (
+          <button
+            key={s.id}
+            className={`chip${status === s.id ? " on" : ""}`}
+            aria-pressed={status === s.id}
+            aria-label={`Tampilkan email ${s.label.toLowerCase()}${counts[s.id] ? `, ${counts[s.id]} email` : ""}`}
+            onClick={() => setStatus(s.id)}
+          >
+            {s.star && (
               <span className="chip-ic">
-                <IconStar size={13} filled={status === "star"} />
+                <IconStar size={13} filled={status === s.id} />
               </span>
             )}
-            {l(counts)}
+            {s.label}
+            <span className="chip-count">{counts[s.id]}</span>
           </button>
         ))}
       </div>
       <div style={{ marginTop: 4 }}>
         {remote.loading && list.length === 0 ? (
-          <>
+          <div aria-busy="true" aria-label="Memuat email">
             <div className="skeleton">
-              <div className="sk" style={{ width: "60%" }} />
-              <div className="sk" style={{ width: "90%" }} />
-              <div className="sk" style={{ width: "40%" }} />
+              <div className="sk w-60" />
+              <div className="sk w-90" />
+              <div className="sk w-40" />
             </div>
             <div className="skeleton">
-              <div className="sk" style={{ width: "50%" }} />
-              <div className="sk" style={{ width: "85%" }} />
-              <div className="sk" style={{ width: "35%" }} />
+              <div className="sk w-50" />
+              <div className="sk w-85" />
+              <div className="sk w-35" />
             </div>
-          </>
+          </div>
         ) : list.length ? (
           list.map((m) => (
-            <div key={m.id} className={`mail${m.unread ? "" : " read"}`} onClick={() => props.onOpen(m.id)}>
+            <article
+              key={m.id}
+              className={`mail${m.unread ? "" : " read"}`}
+              role="button"
+              tabIndex={0}
+              aria-label={`${m.subj} — ${m.from}${m.unread ? ", belum dibaca" : ""}`}
+              onClick={() => props.onOpen(m.id)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  props.onOpen(m.id);
+                }
+              }}
+            >
               <div className="from">
                 {m.unread && <span className="unread-dot" />}
                 <span className="from-name">{m.from}</span>
@@ -128,7 +191,6 @@ export default function EmailView(props: Props) {
                     <IconClip size={13} />
                   </span>
                 )}
-                {m.unread && <span className="badge">Baru</span>}
                 <button
                   className={`star${m.starred ? " lit" : ""}`}
                   title="Bintang"
@@ -144,18 +206,23 @@ export default function EmailView(props: Props) {
               <div className="subj">{m.subj}</div>
               <div className="prev">{m.prev}</div>
               <div className="meta">
-                <span># {m.tag}</span>
-                <span>•</span>
-                <span>{m.time}</span>
+                <span className="meta-tag">{m.tag ? `#${m.tag}` : "Tanpa label"}</span>
+                <span aria-hidden>•</span>
+                <span className="meta-time">{m.time}</span>
               </div>
-            </div>
+            </article>
           ))
         ) : (
           <div className="empty">
             <span className="empty-ic">
               <IconInbox size={22} />
             </span>
-            Tidak ada email di sini.
+            {filtering ? "Tidak ada hasil. Coba kata kunci atau filter lain." : "Tidak ada email di sini."}
+          </div>
+        )}
+        {remote.loading && list.length > 0 && (
+          <div className="more-loading" role="status">
+            Memuat…
           </div>
         )}
         {remote.hasMore && list.length > 0 && (
@@ -173,28 +240,41 @@ function MailDetail({
   onBack,
   onAction,
   preview,
-}: { m: Mail; preview?: boolean } & Pick<Props, "onBack" | "onAction">) {
+  updatedAt,
+}: { m: Mail; preview?: boolean } & Pick<Props, "onBack" | "onAction" | "updatedAt">) {
   const isStar = !!m.starred;
+  const [moreOpen, setMoreOpen] = useState(false);
+  const totalBytes = useMemo(() => {
+    // Jumlahkan ukuran hanya bila satuannya sama (tanpa sok konversi).
+    const units = new Set((m.files ?? []).map((f) => f.size.trim().split(/\s+/).pop()));
+    if (units.size === 1) {
+      const sum = (m.files ?? []).reduce((a, f) => a + (parseFloat(f.size.replace(",", ".")) || 0), 0);
+      const unit = [...units][0] ?? "";
+      const pretty = Number.isInteger(sum) ? String(sum) : sum.toFixed(1).replace(".", ",");
+      return `${pretty} ${unit}`.trim();
+    }
+    return null;
+  }, [m.files]);
   return (
     <section className="view active" id="v-email">
-      <div className="greet">
-        Email<small>{preview ? "Data contoh — login untuk Gmail aslimu" : "Gmail asli — sync tiap buka tab"}</small>
-      </div>
+      <EmailHead preview={preview} updatedAt={updatedAt} />
       <div className="card">
-        <button className="link link-ic" onClick={onBack}>
-          <IconArrowLeft size={15} />
-          Kembali ke daftar
-        </button>
+        <div className="backbar">
+          <button className="link link-ic" onClick={onBack} aria-label="Kembali ke daftar email">
+            <IconArrowLeft size={15} />
+            Kembali ke daftar
+          </button>
+        </div>
         <div className="mail-detail" style={{ border: "none", boxShadow: "none", padding: "8px 0 0" }}>
-          <span className="tag-pill">{m.tag}</span>
+          <span className={`tag-pill${tagVariant(m.tag) ? ` ${tagVariant(m.tag)}` : ""}`}>{m.tag}</span>
           <h2>{m.subj}</h2>
           <div className="mhead">
-            <span className="mava" aria-hidden>
+            <span className="mava" aria-hidden style={{ background: senderColor(m.email || m.from) }}>
               {(m.from || "?").trim().charAt(0).toUpperCase() || "?"}
             </span>
             <div className="mhead-tx">
               <div className="who">
-                {m.from}
+                <span className="who-name">{m.from}</span>
                 {m.unread && <span className="badge">Baru</span>}
               </div>
               <div className="sub">
@@ -208,11 +288,11 @@ function MailDetail({
           </div>
           {m.files && m.files.length > 0 && (
             <div>
-              <div style={{ fontSize: 12.5, fontWeight: 800, margin: "14px 0 2px", color: "var(--muted)" }}>
+              <div className="attach-head">
                 <span className="h-ic">
                   <IconClip size={14} />
                 </span>
-                LAMPIRAN ({m.files.length})
+                LAMPIRAN ({m.files.length}){totalBytes ? ` • ${totalBytes}` : ""}
               </div>
               {m.files.map((f) => (
                 <div className="file" key={f.name}>
@@ -226,7 +306,7 @@ function MailDetail({
             </div>
           )}
           <div className="mactions">
-            <button className="btn soft sm btn-ic" onClick={() => onAction("reply")}>
+            <button className="btn primary sm btn-ic" onClick={() => onAction("reply")}>
               <IconReply size={15} />
               Balas
             </button>
@@ -234,22 +314,59 @@ function MailDetail({
               <IconForward size={15} />
               Teruskan
             </button>
-            <button className="btn ghost sm btn-ic" onClick={() => onAction("star")}>
-              <IconStar size={15} filled={isStar} />
-              {isStar ? "Hapus bintang" : "Bintang"}
-            </button>
-            <button className="btn ghost sm btn-ic" onClick={() => onAction("arch")}>
-              <IconArchive size={15} />
-              Arsip
-            </button>
-            <button className="btn ghost sm btn-ic" onClick={() => onAction("unread")}>
-              <IconEyeOff size={15} />
-              Belum dibaca
-            </button>
-            <button className="btn danger sm btn-ic" onClick={() => onAction("del")}>
-              <IconTrash size={15} />
-              Arsipkan
-            </button>
+            <div className="more-wrap">
+              <button
+                type="button"
+                className="btn ghost sm btn-ic"
+                aria-expanded={moreOpen}
+                aria-haspopup="menu"
+                aria-label="Aksi email lainnya"
+                onClick={() => setMoreOpen((v) => !v)}
+              >
+                <IconDots size={15} />
+                Lainnya
+              </button>
+              {moreOpen && (
+                <div className="more-menu" role="menu">
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="more-item"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      onAction("star");
+                    }}
+                  >
+                    <IconStar size={15} filled={isStar} />
+                    {isStar ? "Hapus bintang" : "Beri bintang"}
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="more-item"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      onAction("arch");
+                    }}
+                  >
+                    <IconArchive size={15} />
+                    Arsipkan
+                  </button>
+                  <button
+                    type="button"
+                    role="menuitem"
+                    className="more-item"
+                    onClick={() => {
+                      setMoreOpen(false);
+                      onAction("unread");
+                    }}
+                  >
+                    <IconEyeOff size={15} />
+                    Tandai belum dibaca
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

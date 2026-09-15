@@ -25,11 +25,18 @@ function toSched(e: GEvent, i: number): Sched | null {
   if (!startIso || !e.id) return null;
   const { date, time } = splitDateTime(startIso);
   const allDay = !!e.start?.date && !e.start?.dateTime;
+  // endTime hanya bila beda tanggal-jam mulai (same-day); end == start/all-day → undefined.
+  let endTime: string | undefined;
+  if (e.end?.dateTime) {
+    const e2 = splitDateTime(e.end.dateTime);
+    if (e2.date === date && e2.time && e2.time !== (allDay ? "00:00" : time)) endTime = e2.time;
+  }
   return {
     id: `g:${e.id}`,
     title: e.summary || "(tanpa judul)",
     date,
     time: allDay ? "00:00" : time || "00:00",
+    ...(endTime ? { endTime } : {}),
     note: [e.location, e.description].filter(Boolean).join(" • ").slice(0, 140),
     color: COLORS[i % COLORS.length],
   };
@@ -49,46 +56,55 @@ export async function listEvents(userId: string, timeMin: string, timeMax: strin
   return (j.items ?? []).map(toSched).filter((s): s is Sched => s !== null);
 }
 
+export interface EventInput {
+  title: string;
+  date: string;
+  time: string;
+  /** hh:mm selesai same-day, opsional — kosong = sekilas (end == start). */
+  endTime?: string;
+  note: string;
+}
+
+function eventPayload(v: EventInput) {
+  const end = v.endTime && /^\d{2}:\d{2}$/.test(v.endTime) && v.endTime > v.time ? v.endTime : v.time;
+  return {
+    summary: v.title,
+    description: v.note || undefined,
+    start: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
+    end: { dateTime: `${v.date}T${end}:00+07:00`, timeZone: "Asia/Jakarta" },
+  };
+}
+
 export async function createEvent(
   userId: string,
-  v: { title: string; date: string; time: string; note: string }
+  v: EventInput
 ): Promise<Sched> {
   const res = await googleFetch(userId, `${CAL}/events`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      summary: v.title,
-      description: v.note || undefined,
-      start: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
-      end: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
-    }),
+    body: JSON.stringify(eventPayload(v)),
   });
   if (!res.ok) throw new Error("Calendar create gagal: " + res.status);
   const e = (await res.json()) as GEvent;
   return (
-    toSched(e, 0) ?? { id: `g:${e.id ?? Date.now()}`, title: v.title, date: v.date, time: v.time, note: v.note, color: COLORS[0] }
+    toSched(e, 0) ?? { id: `g:${e.id ?? Date.now()}`, title: v.title, date: v.date, time: v.time, ...(v.endTime ? { endTime: v.endTime } : {}), note: v.note, color: COLORS[0] }
   );
 }
 
 export async function updateEvent(
   userId: string,
   eventId: string,
-  v: { title: string; date: string; time: string; note: string }
+  v: EventInput
 ): Promise<Sched> {
   const res = await googleFetch(userId, `${CAL}/events/${encodeURIComponent(eventId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      summary: v.title,
-      description: v.note || undefined,
-      start: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
-      end: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
-    }),
+    body: JSON.stringify(eventPayload(v)),
   });
   if (!res.ok) throw new Error("Calendar update gagal: " + res.status);
   const e = (await res.json()) as GEvent;
   return (
-    toSched(e, 0) ?? { id: `g:${eventId}`, title: v.title, date: v.date, time: v.time, note: v.note, color: COLORS[0] }
+    toSched(e, 0) ?? { id: `g:${eventId}`, title: v.title, date: v.date, time: v.time, ...(v.endTime ? { endTime: v.endTime } : {}), note: v.note, color: COLORS[0] }
   );
 }
 

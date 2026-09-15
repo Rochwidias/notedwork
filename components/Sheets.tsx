@@ -83,11 +83,13 @@ export function SchedSheet({
   selDate: string;
   initial?: Sched | null;
   onClose: () => void;
-  onSave: (v: { title: string; date: string; time: string; note: string }) => void;
+  onSave: (v: { title: string; date: string; time: string; endTime?: string; note: string }) => void;
 }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selDate);
   const [time, setTime] = useState("09:00");
+  const [endTime, setEndTime] = useState("");
+  const [endErr, setEndErr] = useState("");
   const [note, setNote] = useState("");
 
   useEffect(() => {
@@ -97,6 +99,8 @@ export function SchedSheet({
       setTitle(initial?.title ?? "");
       setDate(initial?.date ?? selDate);
       setTime(initial?.time ?? "09:00");
+      setEndTime(initial?.endTime ?? "");
+      setEndErr("");
       setNote(initial?.note ?? "");
     }
   }, [open, selDate, initial]);
@@ -111,10 +115,21 @@ export function SchedSheet({
         onSubmit={(e) => {
           e.preventDefault();
           if (!title.trim()) return;
-          onSave({ title: title.trim(), date, time: time || "09:00", note: note.trim() });
+          const t = time || "09:00";
+          const end = endTime.trim();
+          // Jam selesai opsional same-day: kosong = sekilas (end == start).
+          if (end) {
+            if (!/^\d{2}:\d{2}$/.test(end) || end <= t) {
+              setEndErr("Jam selesai harus setelah jam mulai");
+              return;
+            }
+          }
+          setEndErr("");
+          onSave({ title: title.trim(), date, time: t, ...(end ? { endTime: end } : {}), note: note.trim() });
           setTitle("");
           setNote("");
           setTime("09:00");
+          setEndTime("");
         }}
       >
         <label className="f" htmlFor="fTitle">Judul</label>
@@ -133,10 +148,29 @@ export function SchedSheet({
             <input className="f" id="fDate" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div>
-            <label className="f" htmlFor="fTime">Jam</label>
+            <label className="f" htmlFor="fTime">Jam mulai</label>
             <input className="f" id="fTime" type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
         </div>
+        <label className="f" htmlFor="fEnd">Jam selesai <span style={{ fontWeight: 500, color: "var(--muted)" }}>(opsional)</span></label>
+        <input
+          className="f"
+          id="fEnd"
+          type="time"
+          value={endTime}
+          onChange={(e) => {
+            setEndTime(e.target.value);
+            if (endErr) setEndErr("");
+          }}
+          aria-invalid={!!endErr}
+          aria-describedby={endErr ? "fEndErr" : undefined}
+        />
+        {endErr && (
+          <p id="fEndErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5, marginTop: 4 }}>
+            {endErr}
+          </p>
+        )}
+        <p className="hint" style={{ marginTop: 4 }}>Kosongkan bila sekilas. Untuk event multi-hari, buat via Google Calendar langsung.</p>
         <label className="f" htmlFor="fNote">Keterangan</label>
         <input className="f" id="fNote" placeholder="Ruang, dosen, link meeting…" value={note} onChange={(e) => setNote(e.target.value)} />
         <div className="actions">
@@ -152,20 +186,27 @@ export function SchedSheet({
   );
 }
 
+export type MailMode = "tulis" | "balas" | "teruskan";
+
 export function MailSheet({
   open,
   preset,
+  mode,
   onClose,
   onSave,
 }: {
   open: boolean;
   preset: ComposePreset | null;
+  /** Ditentukan pemanggil (openCompose): "tulis" | "balas" | "teruskan". Compose minimal — tanpa Cc/Bcc/lampiran/draft. */
+  mode?: MailMode;
   onClose: () => void;
-  onSave: (to: string, subj: string, body: string) => void;
+  onSave: (to: string, subj: string, body: string) => Promise<void> | void;
 }) {
   const [to, setTo] = useState("");
   const [subj, setSubj] = useState("");
   const [body, setBody] = useState("");
+  const [toErr, setToErr] = useState("");
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -173,26 +214,68 @@ export function MailSheet({
       setTo(preset?.to ?? "");
       setSubj(preset?.subj ?? "");
       setBody(preset?.body ?? "");
+      setToErr("");
+      setSending(false);
     }
   }, [open, preset]);
 
-  const isReply = !!preset?.to;
+  // Judul eksplisit dari mode pemanggil (jangan tebak dari preset.to:
+  // forward dengan to="" akan salah terbaca sebagai reply).
+  const effMode: MailMode = mode ?? (preset ? (preset.to ? "balas" : "teruskan") : "tulis");
+  const head =
+    effMode === "balas"
+      ? { icon: <IconReply size={15} />, title: "Balas Email" }
+      : effMode === "teruskan"
+        ? { icon: <IconForward size={15} />, title: "Teruskan Email" }
+        : { icon: <IconMail size={15} />, title: "Tulis Email" };
   return (
     <Shell id="ovMail" open={open} onClose={onClose}>
-      <h2><span className="h-ic">{preset ? (isReply ? <IconReply size={15} /> : <IconForward size={15} />) : <IconMail size={15} />}</span>{preset ? (isReply ? "Balas Email" : "Teruskan Email") : "Tulis Email"}</h2>
+      <h2><span className="h-ic">{head.icon}</span>{head.title}</h2>
       <p className="hint">Terkirim langsung via Gmail.</p>
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
-          onSave(to, subj, body);
+          if (sending) return;
+          const dest = to.trim();
+          if (!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(dest)) {
+            setToErr("Format email tujuan tidak valid");
+            return;
+          }
+          setToErr("");
+          setSending(true);
+          try {
+            await onSave(dest, subj, body);
+          } finally {
+            setSending(false);
+          }
           setTo("");
           setSubj("");
           setBody("");
         }}
       >
         <label className="f" htmlFor="mTo">Kepada</label>
-        <input className="f" id="mTo" type="email" required placeholder="dosen@univ.ac.id" value={to} onChange={(e) => setTo(e.target.value)} />
-        <label className="f" htmlFor="mSubj">Subjek</label>
+        <input
+          className="f"
+          id="mTo"
+          type="email"
+          required
+          placeholder="dosen@univ.ac.id"
+          value={to}
+          onChange={(e) => {
+            setTo(e.target.value);
+            if (toErr) setToErr("");
+          }}
+          aria-invalid={!!toErr}
+          aria-describedby={toErr ? "mToErr" : undefined}
+        />
+        {toErr && (
+          <p id="mToErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5, marginTop: 4 }}>
+            {toErr}
+          </p>
+        )}
+        <label className="f" htmlFor="mSubj">
+          Subjek <span style={{ fontWeight: 500, color: "var(--muted)", float: "right" }}>{subj.length}/100</span>
+        </label>
         <input
           className="f"
           id="mSubj"
@@ -203,13 +286,21 @@ export function MailSheet({
           onChange={(e) => setSubj(e.target.value)}
         />
         <label className="f" htmlFor="mBody">Isi</label>
-        <textarea className="f" id="mBody" required placeholder="Tulis pesan…" value={body} onChange={(e) => setBody(e.target.value)} />
+        <textarea
+          className="f compose-body"
+          id="mBody"
+          required
+          rows={7}
+          placeholder="Tulis pesan…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
         <div className="actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
+          <button type="button" className="btn ghost" onClick={onClose} disabled={sending}>
             Tutup
           </button>
-          <button type="submit" className="btn primary">
-            Kirim
+          <button type="submit" className="btn primary" disabled={sending} aria-busy={sending}>
+            {sending ? "Mengirim…" : "Kirim"}
           </button>
         </div>
       </form>

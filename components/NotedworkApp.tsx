@@ -43,6 +43,8 @@ function Shell() {
   const [view, setView] = useState<ViewName>("dashboard");
   const [sheet, setSheet] = useState<SheetId>(null);
   const [compose, setCompose] = useState<ComposePreset | null>(null);
+  /** Mode sheet email — ditentukan pemanggil openCompose, bukan ditebak dari preset. */
+  const [composeMode, setComposeMode] = useState<"tulis" | "balas" | "teruskan">("tulis");
   const [toast, setToastMsg] = useState("");
   const toastT = useRef<ReturnType<typeof setTimeout> | null>(null);
   const toastMsg = useCallback((msg: string) => {
@@ -207,12 +209,13 @@ function Shell() {
   );
 
   const openCompose = useCallback(
-    (p?: ComposePreset) => {
+    (p?: ComposePreset, mode: "tulis" | "balas" | "teruskan" = "tulis") => {
       if (!connected) {
         toastMsg(PREVIEW_LOGIN_HINT);
         return;
       }
       setCompose(p ?? null);
+      setComposeMode(mode);
       setSheet("mail");
     },
     [connected, toastMsg]
@@ -274,17 +277,23 @@ function Shell() {
       const stripRe = (s: string) => s.replace(/^re:\s+/i, "");
       try {
         if (act === "reply") {
-          openCompose({
-            to: m.email,
-            subj: "Re: " + stripRe(m.subj),
-            body: `\n\n— — —\nPada ${m.time}, ${m.from} menulis:\n${m.body}`,
-          });
+          openCompose(
+            {
+              to: m.email,
+              subj: "Re: " + stripRe(m.subj),
+              body: `\n\n— — —\nPada ${m.time}, ${m.from} menulis:\n${m.body}`,
+            },
+            "balas"
+          );
         } else if (act === "fwd") {
-          openCompose({
-            to: "",
-            subj: "Fwd: " + stripRe(m.subj).replace(/^fwd:\s+/i, ""),
-            body: `\n\n— Diteruskan dari ${m.from} <${m.email}> —\n${m.body}`,
-          });
+          openCompose(
+            {
+              to: "",
+              subj: "Fwd: " + stripRe(m.subj).replace(/^fwd:\s+/i, ""),
+              body: `\n\n— Diteruskan dari ${m.from} <${m.email}> —\n${m.body}`,
+            },
+            "teruskan"
+          );
         } else if (act === "star") {
           await toggleStar(m.id);
         } else if (act === "arch") {
@@ -353,7 +362,7 @@ function Shell() {
   );
 
   const saveSched = useCallback(
-    async (v: { title: string; date: string; time: string; note: string }) => {
+    async (v: { title: string; date: string; time: string; endTime?: string; note: string }) => {
       if (!connected) {
         toastMsg(PREVIEW_LOGIN_HINT);
         return;
@@ -392,7 +401,7 @@ function Shell() {
   );
 
   const saveEditSched = useCallback(
-    async (v: { title: string; date: string; time: string; note: string }) => {
+    async (v: { title: string; date: string; time: string; endTime?: string; note: string }) => {
       if (!connected || !editingSched) {
         toastMsg(PREVIEW_LOGIN_HINT);
         return;
@@ -472,7 +481,8 @@ function Shell() {
 
   return (
     <>
-      <TopBar connected={connected} email={connEmail} onProfile={() => go("profil")} preview={preview} />
+      {/* Avatar: preview → koneksi (jalan pintas login), connected → profil. */}
+      <TopBar connected={connected} email={connEmail} onProfile={() => go(preview ? "koneksi" : "profil")} preview={preview} />
       <div className="shell">
         <div className="app">
           <Sidebar view={view} go={go} />
@@ -528,6 +538,7 @@ function Shell() {
                   onMore: () => refreshRemote({ mails: true, events: false, query: search, append: true }),
                 }}
                 preview={preview}
+                updatedAt={updatedAt}
               />
             )}
             {view === "tugas" && (
@@ -594,15 +605,8 @@ function Shell() {
         </div>
       </div>
       <TabBar view={view} go={go} />
-      {/* Fab: tambah event saat login, tambah tugas lokal saat preview. */}
-      <Fab
-        onAdd={() => {
-          if (connected) {
-            setEditingSched(null);
-            setSheet("sched");
-          } else setSheet("task");
-        }}
-      />
+      {/* Fab satu jalur via go("tambah"): login→sheet sched, preview→sheet task. */}
+      <Fab onAdd={() => go("tambah")} />
 
       {/* Sched/Mail = tulis ke Google (saat login saja). Task/Routine = lokal (jalan juga di preview). */}
       {connected && (
@@ -620,6 +624,7 @@ function Shell() {
           <MailSheet
             open={sheet === "mail"}
             preset={compose}
+            mode={composeMode}
             onClose={() => setSheet(null)}
             onSave={(to, subj, body) => saveMail(to, subj, body)}
           />

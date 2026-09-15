@@ -23,7 +23,9 @@ export interface Sched {
   id: string;
   title: string;
   date: string; // yyyy-mm-dd
-  time: string; // hh:mm
+  time: string; // hh:mm mulai
+  /** hh:mm selesai, same-day, opsional — kosong = sekilas (end == start). */
+  endTime?: string;
   note: string;
   color: string;
 }

@@ -1,4 +1,4 @@
-import type { Prio, Task } from "./types";
+import type { Prio, Sched, Task } from "./types";
 
 export const DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 
@@ -47,6 +47,14 @@ export function weekdayOf(iso: string): number {
 export function fmtDateID(iso: string): string {
   const d = new Date(iso + "T00:00:00");
   return d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+}
+
+/** Rentang jam agenda: "10:00–11:30" bila ada endTime, "10:00" bila sekilas. */
+export function fmtSchedRange(s: Sched): string {
+  if (s.endTime && /^\d{2}:\d{2}$/.test(s.endTime) && s.endTime !== s.time) {
+    return `${s.time}–${s.endTime}`;
+  }
+  return s.time;
 }
 
 export function isOverdue(t: Task): boolean {

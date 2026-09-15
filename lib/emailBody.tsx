@@ -2,7 +2,7 @@
 
 import { Fragment, type ReactNode } from "react";
 
-const URL_RE = /https?:\/\/[^\s<>"')\]]+/g;
+const URL_RE = /https?:\/\/[^\s<>"')\]]+|www\.[^\s<>"')\]]+|[\w.+-]+@[\w-]+\.[\w.]+/g;
 const TRAIL_PUNCT = /[.,;:!?)\]}"'»”’]+$/;
 
 function isSafeUrl(u: string): boolean {
@@ -12,6 +12,15 @@ function isSafeUrl(u: string): boolean {
   } catch {
     return false;
   }
+}
+
+/** Normalisasi temuan link: www. → https, email → mailto, http(s) apa adanya. */
+function toHref(raw: string): string | null {
+  if (raw.includes("@") && !/^https?:\/\//i.test(raw) && !raw.startsWith("www.")) {
+    return /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(raw) ? `mailto:${raw}` : null;
+  }
+  const url = raw.startsWith("www.") ? `https://${raw}` : raw;
+  return isSafeUrl(url) ? url : null;
 }
 
 /** Pecah teks jadi potongan teks/tautan — linkify aman tanpa HTML mentah. */
@@ -24,9 +33,10 @@ function linkifyText(text: string): ReactNode[] {
     const url = m[0].replace(TRAIL_PUNCT, "");
     if (!url) continue;
     if (idx > last) out.push(text.slice(last, idx));
-    if (isSafeUrl(url)) {
+    const href = toHref(url);
+    if (href) {
       out.push(
-        <a key={`${i}-${idx}`} href={url} target="_blank" rel="noopener noreferrer" className="mail-link">
+        <a key={`${i}-${idx}`} href={href} target="_blank" rel="noopener noreferrer" className="mail-link">
           {url}
         </a>
       );
@@ -41,7 +51,6 @@ function linkifyText(text: string): ReactNode[] {
 }
 
 const FOOTER_MARKS = [
-  "©",
   "anda menerima email ini",
   "email ini dikirim otomatis",
   "email ini adalah pemberitahuan otomatis",
@@ -49,7 +58,16 @@ const FOOTER_MARKS = [
   "berhenti berlangganan",
   "kelola preferensi email",
   "lihat kebijakan privasi",
+  "all rights reserved",
+  "hak cipta dilindungi",
 ];
+
+/** Baris penanda copyright: © + tahun atau kata copyright. */
+function isCopyrightLine(l: string): boolean {
+  const low = l.toLowerCase();
+  if (low.includes("copyright")) return true;
+  return /©.*\b(19|20)\d{2}\b/.test(l);
+}
 
 /** Pisahkan isi utama vs footer legalese (footer tetap tampil, dikecilkan). */
 export function splitFooter(text: string): { main: string; footer: string | null } {
@@ -62,7 +80,7 @@ export function splitFooter(text: string): { main: string; footer: string | null
       return { main: lines.slice(0, i).join("\n").trimEnd(), footer: lines.slice(i + 1).join("\n").trim() || null };
     }
     const low = l.toLowerCase();
-    if (FOOTER_MARKS.some((mk) => low.includes(mk))) {
+    if (isCopyrightLine(l) || FOOTER_MARKS.some((mk) => low.includes(mk))) {
       if (i / Math.max(lines.length, 1) < 0.3) continue;
       return { main: lines.slice(0, i).join("\n").trimEnd(), footer: lines.slice(i).join("\n").trim() || null };
     }

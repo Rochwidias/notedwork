@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   const userId = await getSessionUser();
   if (!userId) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
-  let v: { title?: string; date?: string; time?: string; note?: string };
+  let v: { title?: string; date?: string; time?: string; endTime?: string; note?: string };
   try {
     v = (await req.json()) as typeof v;
   } catch {
@@ -37,11 +37,18 @@ export async function POST(req: Request) {
   }
   if (!v.title?.trim() || !/^\d{4}-\d{2}-\d{2}$/.test(v.date ?? "") || !/^\d{2}:\d{2}$/.test(v.time ?? ""))
     return Response.json({ error: "Judul/tanggal/jam tidak valid" }, { status: 400 });
+  // endTime opsional same-day: bila diisi wajib hh:mm dan setelah jam mulai.
+  const endTime = (v.endTime ?? "").trim();
+  if (endTime) {
+    if (!/^\d{2}:\d{2}$/.test(endTime) || endTime <= (v.time as string))
+      return Response.json({ error: "Jam selesai harus setelah jam mulai" }, { status: 400 });
+  }
   try {
     const event = await createEvent(userId, {
       title: v.title.trim().slice(0, 80),
       date: v.date as string,
       time: v.time as string,
+      ...(endTime ? { endTime } : {}),
       note: (v.note ?? "").slice(0, 140),
     });
     return Response.json({ event });

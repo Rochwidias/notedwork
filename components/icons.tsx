@@ -226,6 +226,16 @@ export function IconTrash(p: IconProps) {
   );
 }
 
+export function IconDots(p: IconProps) {
+  return (
+    <svg {...base(p)} fill="currentColor" stroke="none">
+      <circle cx="5" cy="12" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="19" cy="12" r="1.8" />
+    </svg>
+  );
+}
+
 export function IconPencil(p: IconProps) {
   return (
     <svg {...base(p)}>

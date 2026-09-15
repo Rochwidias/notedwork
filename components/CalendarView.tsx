@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Routine, Sched, Task } from "@/lib/types";
-import { DAYS, MONTHS, fmtDateID, taskBadge, todayStr, weekdayOf } from "@/lib/dates";
+import { DAYS, MONTHS, fmtDateID, fmtSchedRange, taskBadge, todayStr, weekdayOf } from "@/lib/dates";
 import {
   IconAlarm,
   IconBook,
@@ -93,7 +93,7 @@ export default function CalendarView({
   return (
     <section className="view active" id="v-kalender">
       <div className="greet">
-        Kalender kuliah<small>{preview ? "Data contoh — login untuk Google Calendar aslimu" : "Ketuk tanggal untuk melihat matkul, agenda & deadline"}</small>
+        Kalender<small>{preview ? "Mode pratinjau — data contoh. Bukan data aslimu." : "Gmail & Kalender asli — ketuk tanggal untuk melihat agenda"}</small>
       </div>
       <div className="cal">
         <div className="cal-head">
@@ -192,7 +192,7 @@ export default function CalendarView({
               <span className="dot" style={{ background: s.color || "#22c55e" }} />
               <div>
                 <div className="t">
-                  {s.title} <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {s.time}</span>
+                  {s.title} <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {fmtSchedRange(s)}</span>
                 </div>
                 {s.note && <div className="s">{s.note}</div>}
               </div>
@@ -253,7 +253,7 @@ export default function CalendarView({
               <span className="dot" style={{ background: s.color || "#22c55e" }} />
               <div>
                 <div className="t">
-                  {s.title} <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {s.time}</span>
+                  {s.title} <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {fmtSchedRange(s)}</span>
                 </div>
                 {s.note && <div className="s">{s.note}</div>}
               </div>
@@ -292,7 +292,7 @@ export default function CalendarView({
         </div>
         <button className="btn primary block btn-ic" onClick={onAddSched} style={{ marginTop: 10 }}>
           <IconPlus size={16} />
-          Tambah jadwal di tanggal ini
+          Tambah Jadwal
         </button>
       </div>
       <div className="card">

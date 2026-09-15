@@ -44,11 +44,19 @@ export function Sidebar({ view, go }: { view: ViewName; go: (v: NavTarget) => vo
 }
 
 export function TabBar({ view, go }: { view: ViewName; go: (v: NavTarget) => void }) {
+  // view "koneksi" tak punya tab sendiri di mobile (grid fix 5 kolom):
+  // sorot Profil sebagai proxy karena koneksi diakses via profil.
+  const eff = view === "koneksi" ? "profil" : view;
   return (
-    <nav className="tabbar">
+    <nav className="tabbar" aria-label="Navigasi utama">
       <div className="tabbar-inner">
         {TABS.map((t) => (
-          <button key={t.id} className={`tab${view === t.id ? " active" : ""}`} onClick={() => go(t.id)}>
+          <button
+            key={t.id}
+            className={`tab${eff === t.id ? " active" : ""}`}
+            aria-current={eff === t.id ? "page" : undefined}
+            onClick={() => go(t.id)}
+          >
             <span className="ic">
               <t.Icon size={20} />
             </span>
