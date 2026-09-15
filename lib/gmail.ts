@@ -74,6 +74,13 @@ function decodeEntities(s: string): string {
 /** HTML → teks ber-token: link [label](url), tabel [TABLE]/[R]/[H], code [PRE], <img> dibuang. */
 function htmlToText(html: string): string {
   let t = html;
+  // Komentar HTML (termasuk kondisional MSO <!--[if mso]>…<![endif]--> yang
+  // menyembunyikan <table> hantu) + <head>/<style>/<script> dibuang dulu —
+  // kalau tidak, CSS mentah MJML bocor jadi teks terlihat.
+  t = t.replace(/<!--[\s\S]*?-->/g, " ");
+  t = t.replace(/<head\b[^>]*>[\s\S]*?<\/head\s*>/gi, " ");
+  t = t.replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, " ");
+  t = t.replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, " ");
   // <pre> diekstrak dulu agar indentasi kode utuh (verbatim, tanpa collapse spasi).
   const pres: string[] = [];
   t = t.replace(/<pre\b[^>]*>([\s\S]*?)<\/pre>/gi, (_m: string, inner: string) => {
@@ -96,8 +103,15 @@ function htmlToText(html: string): string {
       return ` [${label}](${u}) `;
     }
   );
+  // Sel wrapper yang hanya membungkus satu blok (kolom tunggal / sel penampung)
+  // tak menambah makna → dibuka agar tak jadi baris ">" kosong di teks.
+  // Kolom MJML (div .mj-column-*) dipertahankan (isi kolom tetap terpisah rapi).
+  for (let k = 0; k < 3; k++) {
+    const before = t;
+    t = t.replace(/<(div|center|span)\b((?![^>]*mj-column-)[^>]*)>([^<>]*?)<\/\1\s*>/gi, " $3 ");
+    if (t === before) break;
+  }
   // Tabel → token struktur (dirender jadi <table> beneran di EmailBody).
-  t = t.replace(/<table\b[^>]*>/gi, "\n\n[TABLE]\n");
   t = t.replace(/<\/table\s*>/gi, "\n[/TABLE]\n");
   t = t.replace(/<tr\b[^>]*>/gi, "[R]");
   t = t.replace(/<\/tr\s*>/gi, "\n");
@@ -121,9 +135,26 @@ function htmlToText(html: string): string {
     if (!lab || lab === u) return ` ${u} `;
     return ` [${lab}](${u}) `;
   });
+  // Atribut HTML yatim (style="…", class="…") tanpa tag pembuka — sisa dari
+  // <div …> yang tag-nya terpotong/terbuang — dibuang agar tak tampil mentah.
+  t = t.replace(/\s[a-zA-Z-]+="[^"]*"/g, " ");
+  t = t.replace(/\s[a-zA-Z-]+='[^']*'/g, " ");
   // Sisa tag → spasi agar kata tidak menempel.
   t = t.replace(/<[^>]*>/g, " ");
   t = decodeEntities(t);
+  // Baris sisa token/atribut: ">" penutup tag yatim, "|" sisa <td>, token
+  // struktur yatim ([TABLE]/[/TABLE]/[R]/[H] tanpa baris sel), sisa atribut.
+  t = t
+    .split("\n")
+    .map((l) => {
+      let x = l.trim();
+      if (/^[>|]+$/.test(x)) return "";
+      if (/^\[(TABLE|\/TABLE|PRE|\/PRE|R|H)\]$/.test(x)) return "";
+      x = x.replace(/^[>|]+\s*/, "").replace(/\s*[|]\s*$/, "").trim();
+      if (/^\[(TABLE|\/TABLE|PRE|\/PRE|R|H)\]$/.test(x)) return "";
+      return x;
+    })
+    .join("\n");
   const lines = t.split("\n").map((l) => {
     if (l.includes("[R]") || l.includes(" | ") || l.includes("[H]")) {
       // Baris tabel: rapikan trailing " | " tapi jangan collapse interior.
