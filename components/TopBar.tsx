@@ -6,17 +6,18 @@ interface Props {
   connected: boolean;
   email: string | null;
   onProfile: () => void;
+  preview?: boolean;
 }
 
-export default function TopBar({ connected, email, onProfile }: Props) {
+export default function TopBar({ connected, email, onProfile, preview }: Props) {
   const { theme, toggle } = useTheme();
   const initial = (email?.trim()?.[0] ?? "").toUpperCase();
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <div className="logo-badge">R</div>
+        <div className="logo-badge">N</div>
         <div>
-          <div className="brand-name">Rocha</div>
+          <div className="brand-name">notedwork</div>
           <div className="brand-sub">Email &amp; Jadwal mahasiswa</div>
         </div>
         <div className="top-actions">
@@ -45,7 +46,7 @@ export default function TopBar({ connected, email, onProfile }: Props) {
             )}
           </button>
           <button className="avatar" onClick={onProfile} title="Profil">
-            {connected && initial ? initial : "👤"}
+            {connected && initial ? initial : preview ? "👀" : "👤"}
           </button>
         </div>
       </div>

@@ -18,17 +18,17 @@ export default function GoogleConnect({ connected, email, updatedAt, onLogout, o
         <h2>📡 Status</h2>
         <div className="row">
           <span className="dot" style={{ background: connected ? "var(--green)" : "var(--amber)" }} />
-          <div>
-            <div className="t">{connected ? `Terhubung sebagai ${email}` : "Belum tersambung"}</div>
+          <div style={{ minWidth: 0, flex: 1 }}>
+            <div className="t" style={{ overflowWrap: "anywhere" }}>{connected ? `Terhubung sebagai ${email}` : "Belum tersambung (mode pratinjau)"}</div>
             <div className="s">
               {connected
                 ? `Sync diam-diam tiap buka tab${updatedAt ? ` • diperbarui ${updatedAt}` : ""}`
-                : "Login sekali — email & jadwal asli langsung tampil di aplikasi."}
+                : "Kamu melihat data contoh. Login sekali — email & jadwal asli langsung tampil di aplikasi."}
             </div>
           </div>
         </div>
         {connected ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+          <div className="btn-pair">
             <button className="btn ghost" onClick={onLogout}>
               Keluar
             </button>

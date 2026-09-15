@@ -24,9 +24,9 @@ export default function Loading() {
             margin: "0 auto 12px",
           }}
         >
-          R
+          N
         </div>
-        <p style={{ fontSize: 14, color: "#888" }}>Memuat Rocha…</p>
+        <p style={{ fontSize: 14, color: "#888" }}>Memuat notedwork…</p>
       </div>
     </main>
   );

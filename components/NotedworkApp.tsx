@@ -2,9 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComposePreset, Mail, NavTarget, Routine, Sched, Task, ViewName } from "@/lib/types";
-import { LS, clearLegacyLocalData } from "@/lib/data";
+import { GUEST_NAME_KEY, GUEST_SUFFIX, LS, migrateRochaKeys } from "@/lib/data";
 import { RCOL, todayStr } from "@/lib/dates";
-import { useLocalStorage } from "@/lib/store";
+import { PREVIEW_LOGIN_HINT, sampleRoutines, sampleScheds, sampleTasks, SAMPLE_MAILS } from "@/lib/preview";
+import { removeLS, useLocalStorage } from "@/lib/store";
 import ThemeProvider from "./ThemeProvider";
 import TopBar from "./TopBar";
 import { Fab, Sidebar, TabBar } from "./AppNav";
@@ -14,7 +15,6 @@ import TasksView from "./TasksView";
 import CalendarView from "./CalendarView";
 import ProfileView from "./ProfileView";
 import GoogleConnect from "./GoogleConnect";
-import LoginGate from "./LoginGate";
 import { MailSheet, RoutineSheet, SchedSheet, TaskSheet, type SheetId } from "./Sheets";
 import {
   NOT_CONNECTED,
@@ -29,7 +29,7 @@ import {
   apiStatus,
 } from "@/lib/remote";
 
-export default function RochaApp() {
+export default function NotedworkApp() {
   return (
     <ThemeProvider>
       <Shell />
@@ -52,17 +52,34 @@ function Shell() {
   /* ---- koneksi Google ---- */
   const [connected, setConnected] = useState(false);
   const [connEmail, setConnEmail] = useState<string | null>(null);
+  const preview = !connected;
   const [updatedAt, setUpdatedAt] = useState<string | null>(null);
   const [remoteMails, setRemoteMails] = useState<Mail[]>([]);
   const [mailPage, setMailPage] = useState<string | null>(null);
   const [mailLoading, setMailLoading] = useState(false);
   const [remoteEvents, setRemoteEvents] = useState<Sched[]>([]);
+  // Mail preview: state lokal agar buka/bintang/baca jalan in-memory tanpa API.
+  const [previewMails, setPreviewMails] = useState<Mail[]>(() => SAMPLE_MAILS);
 
-  // Tugas & rutin milik masing-masing akun (key per email). Mulai kosong.
-  const userSuffix = connected && connEmail ? `:${connEmail.toLowerCase()}` : "";
+  // Tugas & rutin: per email saat login, kunci :preview saat tamu (terisolasi & persist lokal).
+  // Seed [] — sampel preview diisi sekali via efek di bawah (hanya bila kunci tamu belum ada),
+  // agar akun login baru tidak ikut dapat sampel.
+  const userSuffix = connected && connEmail ? `:${connEmail.toLowerCase()}` : GUEST_SUFFIX;
   const [tasks, setTasks] = useLocalStorage<Task[]>(`${LS.tasks}${userSuffix}`, []);
   const [routines, setRoutines] = useLocalStorage<Routine[]>(`${LS.routine}${userSuffix}`, []);
   const [notif, setNotif] = useLocalStorage<boolean>(LS.notif, true);
+  const [guestName, setGuestName] = useLocalStorage<string>(GUEST_NAME_KEY, "Tamu");
+
+  // Seed sampel preview sekali: tamu segar lihat contoh, tamu kembali pertahankan editannya.
+  useEffect(() => {
+    try {
+      if (localStorage.getItem(`${LS.tasks}${GUEST_SUFFIX}`) == null) setTasks(sampleTasks());
+      if (localStorage.getItem(`${LS.routine}${GUEST_SUFFIX}`) == null) setRoutines(sampleRoutines());
+    } catch {
+      /* abaikan: mode privat */
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sekali saat mount
+  }, []);
 
   const [currentMail, setCurrentMail] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -116,9 +133,9 @@ function Shell() {
     [mailPage, markDisconnected, nowHMID, toastMsg]
   );
 
-  // Hapus sisa data contoh era lama (sekali per browser) + hasil login OAuth.
+  // Migrasi kunci lama rocha.* → notedwork.* (sekali per browser) + hasil login OAuth.
   useEffect(() => {
-    clearLegacyLocalData();
+    migrateRochaKeys();
     if (typeof window === "undefined") return;
     const q = new URLSearchParams(window.location.search);
     const auth = q.get("auth");
@@ -158,22 +175,22 @@ function Shell() {
     };
   }, []);
 
+  // Data tampil: Gmail/Calendar asli saat login, contoh statis saat preview.
+  const mails = connected ? remoteMails : previewMails;
+  const previewScheds = useMemo(() => sampleScheds(), []);
   const schedules = useMemo(
     () =>
       connected
         ? remoteEvents.slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-        : [],
-    [connected, remoteEvents]
+        : previewScheds.slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)),
+    [connected, remoteEvents, previewScheds]
   );
 
   const go = useCallback(
     (v: NavTarget) => {
       if (v === "tambah") {
-        if (!connected) {
-          setView("mcp");
-          return;
-        }
-        setSheet("sched");
+        // Tamu preview: arahkan ke sheet tugas lokal (ramah tamu, tanpa login).
+        setSheet(connected ? "sched" : "task");
         return;
       }
       setView(v);
@@ -185,19 +202,24 @@ function Shell() {
   const openCompose = useCallback(
     (p?: ComposePreset) => {
       if (!connected) {
-        setView("mcp");
+        toastMsg(PREVIEW_LOGIN_HINT);
         return;
       }
       setCompose(p ?? null);
       setSheet("mail");
     },
-    [connected]
+    [connected, toastMsg]
   );
 
-  /* ---- email Gmail ---- */
+  /* ---- email: Gmail asli saat login, contoh lokal saat preview ---- */
   const openMail = useCallback(
     async (id: string) => {
-      if (!connected) return;
+      if (!connected) {
+        // Preview: buka dari state lokal + tandai dibaca in-memory, tanpa API.
+        setCurrentMail(id);
+        setPreviewMails((prev) => prev.map((m) => (m.id === id ? { ...m, unread: false } : m)));
+        return;
+      }
       setCurrentMail(id);
       // Tandai dibaca di Gmail + ambil isi penuh.
       try {
@@ -218,7 +240,10 @@ function Shell() {
 
   const toggleStar = useCallback(
     async (id: string) => {
-      if (!connected) return;
+      if (!connected) {
+        toastMsg(PREVIEW_LOGIN_HINT);
+        return;
+      }
       const isStar = (remoteMails.find((m) => m.id === id)?.tag ?? "").includes("★");
       try {
         await apiLabelMail(id, isStar ? "unstar" : "star");
@@ -235,7 +260,10 @@ function Shell() {
 
   const mailAction = useCallback(
     async (act: string) => {
-      if (!connected) return;
+      if (!connected) {
+        toastMsg(PREVIEW_LOGIN_HINT);
+        return;
+      }
       const m = remoteMails.find((x) => x.id === currentMail);
       if (!m) return;
       const stripRe = (s: string) => s.replace(/^re:\s+/i, "");
@@ -299,10 +327,13 @@ function Shell() {
     [setTasks, toastMsg]
   );
 
-  /* ---- jadwal Google Calendar ---- */
+  /* ---- jadwal: Google Calendar saat login, prompt login saat preview ---- */
   const delSched = useCallback(
     async (id: string) => {
-      if (!connected) return;
+      if (!connected) {
+        toastMsg(PREVIEW_LOGIN_HINT);
+        return;
+      }
       const gid = id.startsWith("g:") ? id : `g:${id}`;
       try {
         await apiDeleteEvent(gid);
@@ -318,7 +349,10 @@ function Shell() {
 
   const saveSched = useCallback(
     async (v: { title: string; date: string; time: string; note: string }) => {
-      if (!connected) return;
+      if (!connected) {
+        toastMsg(PREVIEW_LOGIN_HINT);
+        return;
+      }
       try {
         const ev = await apiCreateEvent(v);
         setRemoteEvents((prev) => [...prev, ev].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
@@ -337,7 +371,10 @@ function Shell() {
 
   const saveMail = useCallback(
     async (to: string, subj: string, body: string) => {
-      if (!connected) return;
+      if (!connected) {
+        toastMsg(PREVIEW_LOGIN_HINT);
+        return;
+      }
       try {
         await apiSendMail(to, subj, body);
         toastMsg("✅ Email terkirim via Gmail");
@@ -358,6 +395,18 @@ function Shell() {
     toastMsg("👋 Keluar dari Google");
   }, [markDisconnected, toastMsg]);
 
+  /** Keluar preview: hapus data tamu lokal, kembali ke kondisi contoh segar. */
+  const exitPreview = useCallback(() => {
+    removeLS(`${LS.tasks}${GUEST_SUFFIX}`);
+    removeLS(`${LS.routine}${GUEST_SUFFIX}`);
+    setTasks([]);
+    setRoutines([]);
+    setPreviewMails(SAMPLE_MAILS);
+    setCurrentMail(null);
+    setView("dashboard");
+    toastMsg("👋 Keluar dari mode pratinjau");
+  }, [setTasks, setRoutines, toastMsg]);
+
   const delRoutine = useCallback(
     (id: string) => {
       setRoutines((prev) => prev.filter((r) => r.id !== id));
@@ -374,88 +423,86 @@ function Shell() {
 
   return (
     <>
-      <TopBar connected={connected} email={connEmail} onProfile={() => go("profil")} />
+      <TopBar connected={connected} email={connEmail} onProfile={() => go("profil")} preview={preview} />
       <div className="shell">
         <div className="app">
           <Sidebar view={view} go={go} />
           <main>
-            {view === "dashboard" &&
-              (connected ? (
-                <Dashboard
-                  mails={remoteMails}
-                  schedules={schedules}
-                  routines={routines}
-                  tasks={tasks}
-                  email={connEmail}
-                  go={go}
-                  onCompose={() => openCompose()}
-                />
-              ) : (
-                <LoginGate
-                  title="Login dulu untuk melihat dashboard"
-                  hint="Dashboard, email, tugas & kalendermu muncul setelah login dengan Google."
-                />
-              ))}
-            {view === "email" &&
-              (connected ? (
-                <EmailView
-                  mails={remoteMails}
-                  onOpen={openMail}
-                  onToggleStar={toggleStar}
-                  onAction={mailAction}
-                  currentMail={currentMail}
-                  onBack={() => setCurrentMail(null)}
-                  search={search}
-                  onSearch={(q) => {
-                    setSearch(q);
-                    refreshRemote({ mails: true, events: false, query: q });
-                  }}
-                  remote={{
-                    loading: mailLoading,
-                    hasMore: !!mailPage,
-                    onMore: () => refreshRemote({ mails: true, events: false, query: search, append: true }),
-                  }}
-                />
-              ) : (
-                <LoginGate
-                  title="Email terkunci"
-                  hint="Login dengan Google untuk membaca & mengirim email aslimu."
-                />
-              ))}
-            {view === "tugas" &&
-              (connected ? (
-                <TasksView
-                  tasks={tasks}
-                  routines={routines}
-                  onToggle={toggleTask}
-                  onDelete={delTask}
-                  onAdd={() => setSheet("task")}
-                />
-              ) : (
-                <LoginGate
-                  title="Tugas terkunci"
-                  hint="Login dengan Google untuk mencatat & melacak tugasmu."
-                />
-              ))}
-            {view === "kalender" &&
-              (connected ? (
-                <CalendarView
-                  schedules={schedules}
-                  routines={routines}
-                  tasks={tasks}
-                  selDate={selDate}
-                  onSelectDate={(iso) => setSelDate(iso)}
-                  onDeleteSched={delSched}
-                  onDeleteRoutine={delRoutine}
-                  onAddSched={() => setSheet("sched")}
-                  onManageRoutine={() => setSheet("routine")}
-                />
-              ) : (
-                <LoginGate
-                  title="Kalender terkunci"
-                  hint="Login dengan Google untuk melihat event Google Calendar-mu."
-                />
-              ))}
+            {preview && (view === "dashboard" || view === "email" || view === "tugas" || view === "kalender") && (
+              <div className="banner" role="status">
+                <span style={{ fontSize: 24 }}>👀</span>
+                <span style={{ flex: 1 }}>
+                  <span className="t">Mode pratinjau — data contoh</span>
+                  <br />
+                  <span className="s">Bukan data aslimu. Login untuk Gmail &amp; Kalender asli.</span>
+                </span>
+                <a
+                  className="btn primary sm"
+                  href="/api/auth/login"
+                  style={{ textDecoration: "none", flex: "none" }}
+                >
+                  Login dengan Google
+                </a>
+              </div>
+            )}
+            {view === "dashboard" && (
+              <Dashboard
+                mails={mails}
+                schedules={schedules}
+                routines={routines}
+                tasks={tasks}
+                email={connEmail}
+                preview={preview}
+                guestName={guestName}
+                go={go}
+                onCompose={() => openCompose()}
+              />
+            )}
+            {view === "email" && (
+              <EmailView
+                mails={mails}
+                onOpen={openMail}
+                onToggleStar={toggleStar}
+                onAction={mailAction}
+                currentMail={currentMail}
+                onBack={() => setCurrentMail(null)}
+                search={search}
+                onSearch={(q) => {
+                  setSearch(q);
+                  if (connected) refreshRemote({ mails: true, events: false, query: q });
+                }}
+                remote={{
+                  loading: mailLoading,
+                  hasMore: connected && !!mailPage,
+                  onMore: () => refreshRemote({ mails: true, events: false, query: search, append: true }),
+                }}
+                preview={preview}
+              />
+            )}
+            {view === "tugas" && (
+              <TasksView
+                tasks={tasks}
+                routines={routines}
+                onToggle={toggleTask}
+                onDelete={delTask}
+                onAdd={() => setSheet("task")}
+                preview={preview}
+              />
+            )}
+            {view === "kalender" && (
+              <CalendarView
+                schedules={schedules}
+                routines={routines}
+                tasks={tasks}
+                selDate={selDate}
+                onSelectDate={(iso) => setSelDate(iso)}
+                onDeleteSched={delSched}
+                onDeleteRoutine={delRoutine}
+                onAddSched={() => (connected ? setSheet("sched") : toastMsg(PREVIEW_LOGIN_HINT))}
+                onManageRoutine={() => setSheet("routine")}
+                preview={preview}
+              />
+            )}
             {view === "profil" && (
               <ProfileView
                 connected={connected}
@@ -469,6 +516,10 @@ function Shell() {
                 }}
                 onLogout={logoutGoogle}
                 onMcp={() => go("mcp")}
+                preview={preview}
+                guestName={guestName}
+                onGuestName={(v) => setGuestName(v)}
+                onExitPreview={exitPreview}
               />
             )}
             {view === "mcp" && (
@@ -484,8 +535,10 @@ function Shell() {
         </div>
       </div>
       <TabBar view={view} go={go} />
-      {connected && <Fab onAdd={() => setSheet("sched")} />}
+      {/* Fab: tambah event saat login, tambah tugas lokal saat preview. */}
+      <Fab onAdd={() => (connected ? setSheet("sched") : setSheet("task"))} />
 
+      {/* Sched/Mail = tulis ke Google (saat login saja). Task/Routine = lokal (jalan juga di preview). */}
       {connected && (
         <>
           <SchedSheet open={sheet === "sched"} selDate={selDate} onClose={() => setSheet(null)} onSave={saveSched} />
@@ -495,6 +548,10 @@ function Shell() {
             onClose={() => setSheet(null)}
             onSave={(to, subj, body) => saveMail(to, subj, body)}
           />
+        </>
+      )}
+      {(connected || preview) && (
+        <>
           <TaskSheet
             open={sheet === "task"}
             selDate={selDate}

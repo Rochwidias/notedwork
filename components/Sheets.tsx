@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import type { ComposePreset, Prio, Routine } from "@/lib/types";
+import { LEGAL, type LegalId } from "@/lib/legal";
 
 export type SheetId = "sched" | "mail" | "task" | "routine" | null;
+export type InfoSheetId = LegalId | null;
 
 function Shell({
   id,
@@ -16,13 +18,56 @@ function Shell({
   onClose: () => void;
   children: React.ReactNode;
 }) {
+  useEffect(() => {
+    if (!open) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [open, onClose]);
+
   return (
-    <div className={`overlay${open ? " open" : ""}`} id={id} onClick={(e) => e.target === e.currentTarget && onClose()}>
+    <div
+      className={`overlay${open ? " open" : ""}`}
+      id={id}
+      role="dialog"
+      aria-modal="true"
+      onClick={(e) => e.target === e.currentTarget && onClose()}
+    >
       <div className="sheet">
         <div className="grab" />
         {children}
       </div>
     </div>
+  );
+}
+
+/** Sheet info statis (Kredit/Privasi/Syarat) — reuse Shell, tanpa route. */
+export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => void }) {
+  if (id == null) return null;
+  const doc = LEGAL[id];
+  return (
+    <Shell id="ovInfo" open onClose={onClose}>
+      <h2>{doc.title}</h2>
+      <p className="hint">{doc.updated}</p>
+      <div style={{ fontSize: 13.5, lineHeight: 1.75, display: "grid", gap: 10 }}>
+        {doc.body.map((p, i) => (
+          <p key={i} style={{ color: "var(--ink)" }}>{p}</p>
+        ))}
+      </div>
+      <div className="actions">
+        <span />
+        <button type="button" className="btn primary" onClick={onClose}>
+          Tutup
+        </button>
+      </div>
+    </Shell>
   );
 }
 

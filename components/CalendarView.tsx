@@ -14,6 +14,7 @@ interface Props {
   onDeleteRoutine: (id: string) => void;
   onAddSched: () => void;
   onManageRoutine: () => void;
+  preview?: boolean;
 }
 
 export default function CalendarView({
@@ -26,6 +27,7 @@ export default function CalendarView({
   onDeleteRoutine,
   onAddSched,
   onManageRoutine,
+  preview,
 }: Props) {
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -67,7 +69,7 @@ export default function CalendarView({
   return (
     <section className="view active" id="v-kalender">
       <div className="greet">
-        Kalender kuliah<small>Ketuk tanggal untuk melihat matkul, agenda &amp; deadline</small>
+        Kalender kuliah<small>{preview ? "Data contoh — login untuk Google Calendar aslimu" : "Ketuk tanggal untuk melihat matkul, agenda & deadline"}</small>
       </div>
       <div className="cal">
         <div className="cal-head">

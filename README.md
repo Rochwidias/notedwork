@@ -1,8 +1,8 @@
 <div align="center">
 
-# 📝 notedwork — Rocha
+# 📝 notedwork
 
-**Dashboard email & jadwal kuliah mahasiswa. Rewrite React dari preview `index.html`.**
+**Dashboard email & jadwal kuliah mahasiswa. Coba tanpa login (mode pratinjau) atau hubungkan Google untuk data asli.**
 
 [![Next.js](https://img.shields.io/badge/Next.js-16-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
 [![React](https://img.shields.io/badge/React-19-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev)
@@ -16,19 +16,20 @@
 
 ---
 
-## ✨ Fitur (parity dengan preview)
+## ✨ Fitur
 
 - 🏠 Dashboard — sapaan akun, prioritas tugas, 3 stat, email terbaru, tugas mendesak, agenda
 - ✉️ Email — Gmail asli via OAuth (list/search 50 per halaman, balas/teruskan/bintang/arsip)
-- 📝 Tugas — milik sendiri per akun, mulai kosong (filter Semua / Aktif / Telat / Selesai)
+- 📝 Tugas — milik sendiri per akun (filter Semua / Aktif / Telat / Selesai)
 - 📅 Kalender — Google Calendar asli + jadwal rutin mingguan milik sendiri
-- 👤 Profil — akun Google yang tersambung, pengaturan tema & notif, keluar
+- 👤 Profil — akun Google/tamu, pengaturan tema + warna + notif, Kredit/Privasi/Syarat, keluar
 - 🔌 Koneksi Google — status OAuth, login/logout
-- 🌙 Tema gelap (default) / terang, tersimpan di `localStorage`
+- 🌙 Tema gelap (default) / terang + warna aksen pilihan user, tersimpan di `localStorage`
 - 📲 PWA — manifest + service worker, bisa Add to Home Screen
 
-🔒 Wajib login Google — sebelum login semua view kosong + ajakan login.
-Tanpa data contoh di bundle. Token OAuth terenkripsi di server (Supabase).
+👀 Mode pratinjau — tanpa login semua tab bisa dibuka dengan data contoh berlabel jelas; tombol login tetap menonjol. Tugas/rutin tamu tersimpan lokal (`notedwork.tasks:preview`) dan terhapus saat keluar preview.
+🔒 Login Google — ganti data contoh dengan Gmail & Kalender aslimu.
+Token OAuth terenkripsi di server (Supabase).
 
 ---
 
@@ -61,7 +62,7 @@ npm run start    # jalankan production build
 npm run lint     # cek lint
 ```
 
-Tidak perlu `.env` untuk v1 (tidak ada secret).
+Tidak perlu `.env` untuk mode pratinjau (tanpa login). Untuk data Google asli, isi secret berikut.
 
 ---
 
@@ -70,32 +71,34 @@ Tidak perlu `.env` untuk v1 (tidak ada secret).
 ```
 ├── app/
 │   ├── layout.tsx         # RootLayout + font + metadata + viewport
-│   ├── globals.css        # Tailwind + design token Rocha (flat, tanpa gradient)
-│   ├── page.tsx           # Entry → <RochaApp/>
+│   ├── globals.css        # Tailwind + design token notedwork
+│   ├── page.tsx           # Entry → <NotedworkApp/>
 │   ├── loading.tsx        # Loading spinner
 │   ├── not-found.tsx      # 404
-│   ├── icon.tsx           # Favicon R flat cyan
-│   ├── apple-icon.tsx     # Apple touch icon flat cyan
+│   ├── icon.tsx           # Favicon N (ikut warna default cyan)
+│   ├── apple-icon.tsx     # Apple touch icon
 │   ├── manifest.ts        # PWA manifest
 │   ├── robots.ts          # robots + sitemap ref
 │   ├── sitemap.ts         # sitemap (/)
-│   └── api/health/        # GET health check
+│   └── api/               # Route handlers: auth/*, gmail/*, calendar/*, health
 ├── components/
-│   ├── RochaApp.tsx       # Shell + state + navigasi + toast
-│   ├── ThemeProvider.tsx  # Tema data-theme + localStorage rocha.theme
+│   ├── NotedworkApp.tsx   # Shell + state + navigasi + toast + preview
+│   ├── ThemeProvider.tsx  # Tema data-theme + accent + localStorage notedwork.theme
 │   ├── TopBar.tsx         # Header + toggle tema + avatar akun
 │   ├── AppNav.tsx         # Sidebar (desktop) + TabBar (mobile) + FAB
 │   ├── Dashboard.tsx      # Ringkasan akun
 │   ├── EmailView.tsx      # Daftar + detail Gmail
 │   ├── TasksView.tsx      # Daftar tugas milik sendiri
 │   ├── CalendarView.tsx   # Kalender + agenda + rutin
-│   ├── ProfileView.tsx    # Profil akun + pengaturan
+│   ├── ProfileView.tsx    # Akun + pengaturan + Kredit/Privasi/Syarat
 │   ├── GoogleConnect.tsx  # Status koneksi Google + login/logout
-│   ├── LoginGate.tsx      # Empty-state ajakan login
-│   └── Sheets.tsx         # Sheet jadwal / email / tugas / rutin
+│   ├── LoginGate.tsx      # Ajakan login (+ tombol preview)
+│   └── Sheets.tsx         # Sheet jadwal / email / tugas / rutin / info
 ├── lib/
 │   ├── types.ts           # Tipe Mail/Sched/Routine/Task
-│   ├── data.ts            # LS keys + cleanup data lama
+│   ├── data.ts            # LS keys notedwork.* + migrasi rocha.* + kunci preview/accent
+│   ├── preview.ts         # Data contoh mode pratinjau
+│   ├── legal.ts           # Teks Kredit/Privasi/Syarat (ID)
 │   ├── dates.ts           # Helper tanggal + badge
 │   ├── store.ts           # Hook useLocalStorage
 │   ├── session.ts         # Sesi cookie → user
@@ -106,8 +109,7 @@ Tidak perlu `.env` untuk v1 (tidak ada secret).
 │   ├── remote.ts          # Client fetch /api/*
 │   └── supabaseAdmin.ts   # Supabase server-only
 └── public/
-    ├── icon.svg           # Ikon R flat cyan
-    ├── manifest.webmanifest
+    ├── icon.svg           # Ikon N
     └── sw.js              # Service worker app-shell
 ```
 
@@ -116,8 +118,8 @@ Tidak perlu `.env` untuk v1 (tidak ada secret).
 ## 🔐 Catatan
 
 - Token OAuth hanya di server (`/api/*`, terenkripsi AES-GCM di Supabase) — tidak pernah ke client.
-- Tugas & rutin milik masing-masing akun (`rocha.tasks:<email>`, `rocha.routine:<email>`) — mulai kosong.
-- Pengunjung dengan data contoh era lama otomatis dibersihkan sekali (`rocha.v2cleaned`).
+- Tugas & rutin milik masing-masing akun (`notedwork.tasks:<email>`, `notedwork.routine:<email>`) — mulai kosong; tamu preview pakai `notedwork.tasks:preview`.
+- Kunci lama `rocha.*` otomatis dimigrasi sekali ke `notedwork.*` (`notedwork.v3migrated`).
 - Butuh env: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `GOOGLE_TOKEN_KEY` (base64 32 byte),
   `SUPABASE_URL_NOTEDWORK`, `SUPABASE_SERVICE_ROLE_KEY_NOTEDWORK`, `APP_URL`. Lihat `.env.example`.
 
