@@ -162,10 +162,18 @@ function linkifyText(text: string): ReactNode[] {
         const restored = restoreBalancedTail(m[0], after);
         const url = trimBareTail(restored);
         if (!url) continue;
-        if (idx > last) out.push(plain.slice(last, idx));
+        // Autolink Markdown <URL> / Label<URL> (khas body text/plain — jalur HTML
+        // sudah dikupas htmlToText): telan kurung sudutnya agar tak tampil mentah.
+        let start = idx;
+        let end = idx + restored.length;
+        if (start > last && plain[start - 1] === "<" && plain[end] === ">") {
+          start -= 1;
+          end += 1;
+        }
+        if (start > last) out.push(plain.slice(last, start));
         const href = toHref(url);
         out.push(href ? linkNode(url, href, `b${i}-${idx}`) : url);
-        last = idx + restored.length;
+        last = end;
         i++;
       }
       if (last < plain.length) out.push(plain.slice(last));
