@@ -635,6 +635,13 @@ button {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.mail .from-name {
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 .mail .subj {
   font-size: 13.5px;
   font-weight: 600;
@@ -676,8 +683,10 @@ button {
   font-weight: 800;
   border-radius: 999px;
   padding: 2px 8px;
-  margin-left: auto;
   flex: none;
+}
+.mail .badge {
+  margin-left: auto;
 }
 .star {
   background: none;
@@ -686,10 +695,15 @@ button {
   font-size: 17px;
   color: var(--muted);
   padding: 8px;
-  margin-left: auto;
   flex: none;
   min-width: 44px;
   min-height: 44px;
+}
+.mail .star {
+  margin-left: 0;
+}
+.mail .badge + .star {
+  margin-left: -4px;
 }
 .star.lit {
   color: var(--amber);
@@ -711,6 +725,80 @@ button {
   margin-top: 12px;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+  max-width: 65ch;
+}
+.mail-detail .body .body-para {
+  margin: 0 0 10px;
+}
+.mail-detail .body .body-para:last-child {
+  margin-bottom: 0;
+}
+.mail-detail .body a.mail-link {
+  color: var(--brand);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  word-break: break-all;
+}
+.mail-detail .body .body-footer {
+  font-size: 12px;
+  color: var(--muted);
+  border-top: 1px solid var(--line);
+  margin-top: 14px;
+  padding-top: 10px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.mail-detail .body .body-footer a.mail-link {
+  color: var(--muted);
+}
+/* ── Header detail email: avatar + nama + meta ── */
+.mhead {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  margin-top: 10px;
+}
+.mava {
+  width: 38px;
+  height: 38px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  font-weight: 800;
+  font-size: 16px;
+  color: var(--on-brand, #fff);
+  background: var(--brand);
+  flex: none;
+}
+.mhead-tx {
+  min-width: 0;
+  flex: 1;
+}
+.mhead .who {
+  font-size: 14px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mhead .who .badge {
+  margin-left: 0;
+}
+.mhead .sub {
+  font-size: 12.5px;
+  color: var(--muted);
+  margin-top: 2px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.mdiv {
+  border-top: 1px solid var(--line);
+  margin: 12px 0 0;
 }
 .link {
   background: none;

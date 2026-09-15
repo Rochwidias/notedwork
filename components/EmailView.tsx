@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import type { Mail } from "@/lib/types";
+import { EmailBody } from "@/lib/emailBody";
 import {
   IconArchive,
   IconArrowLeft,
@@ -121,7 +122,7 @@ export default function EmailView(props: Props) {
             <div key={m.id} className={`mail${m.unread ? "" : " read"}`} onClick={() => props.onOpen(m.id)}>
               <div className="from">
                 {m.unread && <span className="unread-dot" />}
-                {m.from}
+                <span className="from-name">{m.from}</span>
                 {m.files && m.files.length > 0 && (
                   <span className="from-ic">
                     <IconClip size={13} />
@@ -187,10 +188,24 @@ function MailDetail({
         <div className="mail-detail" style={{ border: "none", boxShadow: "none", padding: "8px 0 0" }}>
           <span className="tag-pill">{m.tag}</span>
           <h2>{m.subj}</h2>
-          <div style={{ fontSize: 13, color: "var(--muted)" }}>
-            {m.from} {m.email ? `<${m.email}>` : ""} • {m.time}
+          <div className="mhead">
+            <span className="mava" aria-hidden>
+              {(m.from || "?").trim().charAt(0).toUpperCase() || "?"}
+            </span>
+            <div className="mhead-tx">
+              <div className="who">
+                {m.from}
+                {m.unread && <span className="badge">Baru</span>}
+              </div>
+              <div className="sub">
+                {[m.email ? `<${m.email}>` : null, m.time, `#${m.tag}`].filter(Boolean).join(" • ")}
+              </div>
+            </div>
           </div>
-          <div className="body">{m.body}</div>
+          <div className="mdiv" />
+          <div className="body">
+            <EmailBody text={m.body} />
+          </div>
           {m.files && m.files.length > 0 && (
             <div>
               <div style={{ fontSize: 12.5, fontWeight: 800, margin: "14px 0 2px", color: "var(--muted)" }}>
