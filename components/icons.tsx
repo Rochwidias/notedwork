@@ -364,3 +364,33 @@ export function IconSearch(p: IconProps) {
     </svg>
   );
 }
+
+export function IconCalendarPlus(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="3" y="4.5" width="18" height="16" rx="2" />
+      <path d="M8 2.5v4M16 2.5v4M3 10h18" />
+      <path d="M12 13.2v5M9.5 15.7h5" />
+    </svg>
+  );
+}
+
+export function IconMailPlus(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="3" y="5" width="18" height="14" rx="2" />
+      <path d="m3 7 9 6 9-6" />
+      <path d="M12 14v4M10 16h4" />
+    </svg>
+  );
+}
+
+export function IconSearchPlus(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <circle cx="11" cy="11" r="7" />
+      <path d="m20 20-3.8-3.8" />
+      <path d="M11 8.5v5M8.5 11h5" />
+    </svg>
+  );
+}

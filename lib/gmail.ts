@@ -513,7 +513,7 @@ export async function listMails(
 }
 
 export async function getMail(userId: string, id: string): Promise<Mail> {
-  const res = await googleFetch(userId, `${GMAIL}/messages/${id}?format=full`);
+  const res = await googleFetch(userId, `${GMAIL}/messages/${encodeURIComponent(id)}?format=full`);
   if (!res.ok) throw new Error("Gmail detail gagal: " + res.status);
   const full = (await res.json()) as GmailMessage & { internalDate?: string };
   return toMail(full, full.internalDate);
@@ -551,7 +551,7 @@ export async function labelMail(userId: string, id: string, act: LabelAction): P
   if (act === "read") remove.push("UNREAD");
   if (act === "unread") add.push("UNREAD");
   if (act === "archive") remove.push("INBOX"); // arsip = keluar inbox, tanpa hapus permanen
-  const res = await googleFetch(userId, `${GMAIL}/messages/${id}/modify`, {
+  const res = await googleFetch(userId, `${GMAIL}/messages/${encodeURIComponent(id)}/modify`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ addLabelIds: add, removeLabelIds: remove }),

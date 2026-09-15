@@ -86,20 +86,19 @@ Tidak perlu `.env` untuk mode pratinjau (tanpa login). Untuk data Google asli, i
 │   ├── ThemeProvider.tsx  # Tema data-theme + accent + localStorage notedwork.theme
 │   ├── TopBar.tsx         # Header + toggle tema + avatar akun
 │   ├── AppNav.tsx         # Sidebar (desktop) + TabBar (mobile) + FAB
-│   ├── Dashboard.tsx      # Ringkasan akun
+│   ├── HariIni.tsx        # Layar utama Hari Ini (pengingat + 3 terpenting + strip minggu)
 │   ├── EmailView.tsx      # Daftar + detail Gmail
 │   ├── TasksView.tsx      # Daftar tugas milik sendiri
 │   ├── CalendarView.tsx   # Kalender + agenda + rutin
-│   ├── ProfileView.tsx    # Akun + pengaturan + Kredit/Privasi/Syarat
-│   ├── GoogleConnect.tsx  # Status koneksi Google + login/logout
-│   ├── LoginGate.tsx      # Ajakan login (+ tombol preview)
-│   └── Sheets.tsx         # Sheet jadwal / email / tugas / rutin / info
+│   ├── ProfileView.tsx    # Akun + Galeri Tema + Kredit/Privasi/Syarat
+│   └── Sheets.tsx         # TambahSheet + sheet email / tugas / jadwal / rutin / info
 ├── lib/
 │   ├── types.ts           # Tipe Mail/Sched/Routine/Task
 │   ├── data.ts            # LS keys notedwork.* + migrasi rocha.* + kunci preview/accent
 │   ├── preview.ts         # Data contoh mode pratinjau
 │   ├── legal.ts           # Teks Kredit/Privasi/Syarat (ID)
-│   ├── dates.ts           # Helper tanggal + badge
+│   ├── dates.ts           # Helper tanggal + badge + monthWindow/uid
+│   ├── reminders.ts       # Pengingat murni (nextReminder/formatCountdown/dueReminders)
 │   ├── store.ts           # Hook useLocalStorage
 │   ├── session.ts         # Sesi cookie → user
 │   ├── crypto.ts          # Enkripsi token (AES-GCM)

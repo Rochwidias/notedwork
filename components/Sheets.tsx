@@ -5,7 +5,7 @@ import type { ComposePreset, Prio, Routine, Sched } from "@/lib/types";
 import { IconBook, IconForward, IconMail, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 
-export type SheetId = "sched" | "mail" | "task" | "routine" | null;
+export type SheetId = "sched" | "mail" | "task" | "routine" | "tambah" | null;
 export type InfoSheetId = LegalId | null;
 
 function Shell({
@@ -72,6 +72,42 @@ export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => voi
   );
 }
 
+export const REMINDER_OPTIONS: { value: number; label: string }[] = [
+  { value: 0, label: "Mati" },
+  { value: 5, label: "5 mnt" },
+  { value: 15, label: "15 mnt" },
+  { value: 30, label: "30 mnt" },
+  { value: 60, label: "60 mnt" },
+];
+
+/** Pemilih pengingat chips [Mati,5,15,30,60 mnt] — dipakai SchedSheet + TaskSheet. */
+export function ReminderChips({
+  value,
+  onChange,
+  idPrefix,
+}: {
+  value: number;
+  onChange: (v: number) => void;
+  idPrefix: string;
+}) {
+  return (
+    <div className="chips" role="group" aria-label="Pengingat" style={{ paddingBottom: 4 }}>
+      {REMINDER_OPTIONS.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          id={`${idPrefix}-${o.value}`}
+          className={`chip${value === o.value ? " on" : ""}`}
+          aria-pressed={value === o.value}
+          onClick={() => onChange(o.value)}
+        >
+          {o.label}
+        </button>
+      ))}
+    </div>
+  );
+}
+
 export function SchedSheet({
   open,
   selDate,
@@ -83,14 +119,15 @@ export function SchedSheet({
   selDate: string;
   initial?: Sched | null;
   onClose: () => void;
-  onSave: (v: { title: string; date: string; time: string; endTime?: string; note: string }) => void;
+  /** false = gagal: sheet tetap terbuka, draf utuh (tidak di-clear). */
+  onSave: (v: { title: string; date: string; time: string; endTime?: string; note: string; reminderMin?: number }) => Promise<boolean | void> | boolean | void;
 }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selDate);
   const [time, setTime] = useState("09:00");
   const [endTime, setEndTime] = useState("");
-  const [endErr, setEndErr] = useState("");
   const [note, setNote] = useState("");
+  const [reminderMin, setReminderMin] = useState(15);
 
   useEffect(() => {
     if (open) {
@@ -100,8 +137,8 @@ export function SchedSheet({
       setDate(initial?.date ?? selDate);
       setTime(initial?.time ?? "09:00");
       setEndTime(initial?.endTime ?? "");
-      setEndErr("");
       setNote(initial?.note ?? "");
+      setReminderMin(initial?.reminderMin ?? 15);
     }
   }, [open, selDate, initial]);
 
@@ -112,24 +149,28 @@ export function SchedSheet({
       <h2><span className="h-ic"><IconPlus size={15} /></span>{editing ? "Ubah Jadwal" : "Tambah Jadwal"}</h2>
       <p className="hint">Agenda sekali saja. Untuk matkul tiap minggu, pakai jadwal rutin.</p>
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           if (!title.trim()) return;
           const t = time || "09:00";
           const end = endTime.trim();
-          // Jam selesai opsional same-day: kosong = sekilas (end == start).
-          if (end) {
-            if (!/^\d{2}:\d{2}$/.test(end) || end <= t) {
-              setEndErr("Jam selesai harus setelah jam mulai");
-              return;
-            }
-          }
-          setEndErr("");
-          onSave({ title: title.trim(), date, time: t, ...(end ? { endTime: end } : {}), note: note.trim() });
+          // end<=start = lintas-hari (lewat tengah malam, besok): diterima, bukan ditolak.
+          if (end && !/^\d{2}:\d{2}$/.test(end)) return;
+          const ok = await onSave({
+            title: title.trim(),
+            date,
+            time: t,
+            ...(end ? { endTime: end } : {}),
+            note: note.trim(),
+            reminderMin,
+          });
+          // Form tetap utuh bila simpan gagal (false): jangan clear draf.
+          if (ok === false) return;
           setTitle("");
           setNote("");
           setTime("09:00");
           setEndTime("");
+          setReminderMin(15);
         }}
       >
         <label className="f" htmlFor="fTitle">Judul</label>
@@ -158,19 +199,11 @@ export function SchedSheet({
           id="fEnd"
           type="time"
           value={endTime}
-          onChange={(e) => {
-            setEndTime(e.target.value);
-            if (endErr) setEndErr("");
-          }}
-          aria-invalid={!!endErr}
-          aria-describedby={endErr ? "fEndErr" : undefined}
+          onChange={(e) => setEndTime(e.target.value)}
         />
-        {endErr && (
-          <p id="fEndErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5, marginTop: 4 }}>
-            {endErr}
-          </p>
-        )}
-        <p className="hint" style={{ marginTop: 4 }}>Kosongkan bila sekilas. Untuk event multi-hari, buat via Google Calendar langsung.</p>
+        <p className="hint" style={{ marginTop: 4 }}>Kosongkan bila sekilas. Jam selesai lebih kecil = lewat tengah malam (besok).</p>
+        <label className="f">Pengingat</label>
+        <ReminderChips value={reminderMin} onChange={setReminderMin} idPrefix="sRem" />
         <label className="f" htmlFor="fNote">Keterangan</label>
         <input className="f" id="fNote" placeholder="Ruang, dosen, link meeting…" value={note} onChange={(e) => setNote(e.target.value)} />
         <div className="actions">
@@ -188,6 +221,68 @@ export function SchedSheet({
 
 export type MailMode = "tulis" | "balas" | "teruskan";
 
+/** Sheet pilihan tambah: Email / Tugas / Jadwal — satu pintu agar tombol ＋ konsisten. */
+export function TambahSheet({
+  open,
+  onClose,
+  onPick,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onPick: (kind: "mail" | "task" | "sched") => void;
+}) {
+  const pick = (kind: "mail" | "task" | "sched", label: string) => ({
+    onClick: () => onPick(kind),
+    onKeyDown: (e: React.KeyboardEvent) => {
+      if (e.key === "Enter" || e.key === " ") {
+        e.preventDefault();
+        onPick(kind);
+      }
+    },
+    role: "button" as const,
+    tabIndex: 0,
+    "aria-label": label,
+  });
+  return (
+    <Shell id="ovTambah" open={open} onClose={onClose}>
+      <h2><span className="h-ic"><IconPlus size={15} /></span>Tambah Baru</h2>
+      <p className="hint">Pilih yang mau dibuat.</p>
+      <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("mail", "Tulis email baru")}>
+          <span className="h-ic"><IconMail size={18} /></span>
+          <div>
+            <div className="t">Tulis Email</div>
+            <div className="s">Terkirim via Gmail</div>
+          </div>
+          <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
+        </div>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("task", "Tambah tugas baru")}>
+          <span className="h-ic"><IconTask size={18} /></span>
+          <div>
+            <div className="t">Tambah Tugas</div>
+            <div className="s">Deadline muncul di Kalender</div>
+          </div>
+          <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
+        </div>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("sched", "Tambah jadwal baru")}>
+          <span className="h-ic"><IconPlus size={18} /></span>
+          <div>
+            <div className="t">Tambah Jadwal</div>
+            <div className="s">Agenda sekali saja</div>
+          </div>
+          <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
+        </div>
+      </div>
+      <div className="actions">
+        <span />
+        <button type="button" className="btn ghost" onClick={onClose}>
+          Tutup
+        </button>
+      </div>
+    </Shell>
+  );
+}
+
 export function MailSheet({
   open,
   preset,
@@ -200,7 +295,8 @@ export function MailSheet({
   /** Ditentukan pemanggil (openCompose): "tulis" | "balas" | "teruskan". Compose minimal — tanpa Cc/Bcc/lampiran/draft. */
   mode?: MailMode;
   onClose: () => void;
-  onSave: (to: string, subj: string, body: string) => Promise<void> | void;
+  /** false = gagal: draf dipertahankan, sheet tetap terbuka. */
+  onSave: (to: string, subj: string, body: string) => Promise<boolean | void> | boolean | void;
 }) {
   const [to, setTo] = useState("");
   const [subj, setSubj] = useState("");
@@ -243,11 +339,10 @@ export function MailSheet({
           }
           setToErr("");
           setSending(true);
-          try {
-            await onSave(dest, subj, body);
-          } finally {
-            setSending(false);
-          }
+          // Draf dipertahankan bila kirim gagal (return false): jangan clear.
+          const ok = await onSave(dest, subj, body);
+          setSending(false);
+          if (ok === false) return;
           setTo("");
           setSubj("");
           setBody("");
@@ -319,7 +414,7 @@ export function TaskSheet({
   selDate: string;
   courses: string[];
   onClose: () => void;
-  onSave: (v: { matkul: string; title: string; date: string; time: string; prio: Prio; note: string }) => void;
+  onSave: (v: { matkul: string; title: string; date: string; time: string; prio: Prio; note: string; reminderMin?: number }) => Promise<boolean | void> | boolean | void;
 }) {
   const [matkul, setMatkul] = useState("");
   const [title, setTitle] = useState("");
@@ -327,11 +422,18 @@ export function TaskSheet({
   const [time, setTime] = useState("23:59");
   const [prio, setPrio] = useState<Prio>("sedang");
   const [note, setNote] = useState("");
+  const [reminderMin, setReminderMin] = useState(15);
 
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form default saat sheet dibuka
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset SEMUA field saat sheet dibuka
+      setMatkul("");
+      setTitle("");
       setDate(selDate);
+      setTime("23:59");
+      setPrio("sedang");
+      setNote("");
+      setReminderMin(15);
     }
   }, [open, selDate]);
 
@@ -340,22 +442,25 @@ export function TaskSheet({
       <h2><span className="h-ic"><IconTask size={15} /></span>Tambah Tugas</h2>
       <p className="hint">Deadline otomatis muncul di Kalender &amp; Dashboard.</p>
       <form
-        onSubmit={(e) => {
+        onSubmit={async (e) => {
           e.preventDefault();
           if (!title.trim()) return;
-          onSave({
+          const ok = await onSave({
             matkul: matkul.trim() || "Umum",
             title: title.trim(),
             date,
             time: time || "23:59",
             prio,
             note: note.trim(),
+            reminderMin,
           });
+          if (ok === false) return;
           setMatkul("");
           setTitle("");
           setNote("");
           setPrio("sedang");
           setTime("23:59");
+          setReminderMin(15);
         }}
       >
         <label className="f" htmlFor="tMatkul">Mata kuliah</label>
@@ -402,6 +507,8 @@ export function TaskSheet({
         </select>
         <label className="f" htmlFor="tNote">Catatan</label>
         <input className="f" id="tNote" maxLength={140} placeholder="Cara kumpul, link, dsb…" value={note} onChange={(e) => setNote(e.target.value)} />
+        <label className="f">Pengingat</label>
+        <ReminderChips value={reminderMin} onChange={setReminderMin} idPrefix="tRem" />
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onClose}>
             Tutup
@@ -478,6 +585,7 @@ export function RoutineSheet({
               <option value="4">Kamis</option>
               <option value="5">Jumat</option>
               <option value="6">Sabtu</option>
+              <option value="7">Minggu</option>
             </select>
           </div>
           <div>

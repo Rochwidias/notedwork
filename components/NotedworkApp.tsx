@@ -6,18 +6,18 @@ import { GUEST_NAME_KEY, GUEST_SUFFIX, LS, migrateRochaKeys } from "@/lib/data";
 import { RCOL, todayStr } from "@/lib/dates";
 import { PREVIEW_LOGIN_HINT, sampleRoutines, sampleScheds, sampleTasks, SAMPLE_MAILS } from "@/lib/preview";
 import { stripMailTokens } from "@/lib/emailBody";
-import { removeLS, useLocalStorage } from "@/lib/store";
+import { useLocalStorage } from "@/lib/store";
+import { DEFAULT_REMINDER_MIN, dueReminders, type ReminderItem } from "@/lib/reminders";
 import ThemeProvider from "./ThemeProvider";
 import TopBar from "./TopBar";
 import { Fab, Sidebar, TabBar } from "./AppNav";
 import { IconEye } from "./icons";
-import Dashboard from "./Dashboard";
+import HariIni from "./HariIni";
 import EmailView from "./EmailView";
 import TasksView from "./TasksView";
 import CalendarView from "./CalendarView";
 import ProfileView from "./ProfileView";
-import GoogleConnect from "./GoogleConnect";
-import { MailSheet, RoutineSheet, SchedSheet, TaskSheet, type SheetId } from "./Sheets";
+import { MailSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type SheetId } from "./Sheets";
 import {
   NOT_CONNECTED,
   apiCreateEvent,
@@ -32,6 +32,22 @@ import {
   apiUpdateEvent,
 } from "@/lib/remote";
 
+/** ID unik lokal — anti-kembar Date.now() (bug lama): prefix + base36 waktu + acak. */
+function genId(p: string): string {
+  return p + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+type SchedInput = {
+  title: string;
+  date: string;
+  time: string;
+  endTime?: string;
+  note: string;
+  reminderMin?: number;
+};
+
+const sortSched = (a: Sched, b: Sched) => (a.date + a.time).localeCompare(b.date + b.time);
+
 export default function NotedworkApp() {
   return (
     <ThemeProvider>
@@ -41,7 +57,7 @@ export default function NotedworkApp() {
 }
 
 function Shell() {
-  const [view, setView] = useState<ViewName>("dashboard");
+  const [view, setView] = useState<ViewName>("beranda");
   const [sheet, setSheet] = useState<SheetId>(null);
   const [compose, setCompose] = useState<ComposePreset | null>(null);
   /** Mode sheet email — ditentukan pemanggil openCompose, bukan ditebak dari preset. */
@@ -65,6 +81,8 @@ function Shell() {
   const [remoteEvents, setRemoteEvents] = useState<Sched[]>([]);
   // Mail preview: state lokal agar buka/bintang/baca jalan in-memory tanpa API.
   const [previewMails, setPreviewMails] = useState<Mail[]>(() => SAMPLE_MAILS);
+  // Jadwal preview: persist lokal terisolasi (:preview), fully-interactive.
+  const [previewScheds, setPreviewScheds] = useLocalStorage<Sched[]>(`${LS.sched}${GUEST_SUFFIX}`, []);
 
   // Tugas & rutin: per email saat login, kunci :preview saat tamu (terisolasi & persist lokal).
   // Seed [] — sampel preview diisi sekali via efek di bawah (hanya bila kunci tamu belum ada),
@@ -75,11 +93,34 @@ function Shell() {
   const [notif, setNotif] = useLocalStorage<boolean>(LS.notif, true);
   const [guestName, setGuestName] = useLocalStorage<string>(GUEST_NAME_KEY, "Tamu");
 
+  /* ---- ref cermin & penjaga race ---- */
+  const searchT = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const mailPageRef = useRef<string | null>(null);
+  const mailLoadingRef = useRef(false);
+  const tasksRef = useRef<Task[]>([]);
+  /** Nomor urut fetch — respons basi (seq lama) diabaikan. */
+  const fetchSeq = useRef(0);
+  /** Anti-race bintang: id yang sedang di-POST tak bisa diklik ulang. */
+  const starPending = useRef(new Map<string, boolean>());
+  /** Pengingat yang sudah dibunyikan: kunci id|date|time (maks 200). */
+  const firedRef = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    mailPageRef.current = mailPage;
+  }, [mailPage]);
+  useEffect(() => {
+    mailLoadingRef.current = mailLoading;
+  }, [mailLoading]);
+  useEffect(() => {
+    tasksRef.current = tasks;
+  }, [tasks]);
+
   // Seed sampel preview sekali: tamu segar lihat contoh, tamu kembali pertahankan editannya.
   useEffect(() => {
     try {
       if (localStorage.getItem(`${LS.tasks}${GUEST_SUFFIX}`) == null) setTasks(sampleTasks());
       if (localStorage.getItem(`${LS.routine}${GUEST_SUFFIX}`) == null) setRoutines(sampleRoutines());
+      if (localStorage.getItem(`${LS.sched}${GUEST_SUFFIX}`) == null) setPreviewScheds(sampleScheds());
     } catch {
       /* abaikan: mode privat */
     }
@@ -102,6 +143,8 @@ function Shell() {
     setRemoteEvents([]);
     setCurrentMail(null);
     setEditingSched(null);
+    setSheet(null);
+    setCompose(null);
   }, []);
 
   const nowHMID = useCallback(() => {
@@ -113,34 +156,44 @@ function Shell() {
     async (opts?: { mails?: boolean; events?: boolean; query?: string; append?: boolean }) => {
       const wantMails = opts?.mails ?? true;
       const wantEvents = opts?.events ?? true;
+      const seq = ++fetchSeq.current;
+      const stale = () => fetchSeq.current !== seq;
       try {
         if (wantMails) {
           setMailLoading(true);
           const { mails, nextPageToken } = await apiListMails(
             opts?.query ?? "",
-            opts?.append ? (mailPage ?? undefined) : undefined
+            opts?.append ? (mailPageRef.current ?? undefined) : undefined
           );
-          setRemoteMails((prev) => (opts?.append ? [...prev, ...mails] : mails));
+          if (stale()) return;
+          setRemoteMails((prev) => {
+            if (!opts?.append) return mails;
+            const seen = new Set(prev.map((m) => m.id));
+            return [...prev, ...mails.filter((m) => !seen.has(m.id))];
+          });
           setMailPage(nextPageToken);
         }
         if (wantEvents) {
-          const from = new Date();
-          from.setMonth(from.getMonth() - 1);
-          const to = new Date();
-          to.setMonth(to.getMonth() + 2);
+          // Hari 1 & 0 agar aritmetika bulan anti-overflow (29–31 → Feb tak hilang).
+          const now = new Date();
+          const from = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+          const to = new Date(now.getFullYear(), now.getMonth() + 3, 0);
           const iso = (d: Date) =>
             `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-          setRemoteEvents(await apiListEvents(iso(from), iso(to)));
+          const events = await apiListEvents(iso(from), iso(to));
+          if (stale()) return;
+          setRemoteEvents(events);
         }
-        setUpdatedAt(nowHMID());
+        if (!stale()) setUpdatedAt(nowHMID());
       } catch (e) {
+        if (stale()) return;
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
         else toastMsg("Gagal sync Google");
       } finally {
-        setMailLoading(false);
+        if (!stale()) setMailLoading(false);
       }
     },
-    [mailPage, markDisconnected, nowHMID, toastMsg]
+    [markDisconnected, nowHMID, toastMsg]
   );
 
   // Migrasi kunci lama rocha.* → notedwork.* (sekali per browser) + hasil login OAuth.
@@ -182,44 +235,44 @@ function Shell() {
   useEffect(() => {
     return () => {
       if (toastT.current) clearTimeout(toastT.current);
+      if (searchT.current) clearTimeout(searchT.current);
     };
   }, []);
 
-  // Data tampil: Gmail/Calendar asli saat login, contoh statis saat preview.
+  // Data tampil: Gmail/Calendar asli saat login, contoh lokal saat preview.
   const mails = connected ? remoteMails : previewMails;
-  const previewScheds = useMemo(() => sampleScheds(), []);
   const schedules = useMemo(
-    () =>
-      connected
-        ? remoteEvents.slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-        : previewScheds.slice().sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)),
+    () => (connected ? remoteEvents : previewScheds).slice().sort(sortSched),
     [connected, remoteEvents, previewScheds]
   );
 
-  const go = useCallback(
-    (v: NavTarget) => {
-      if (v === "tambah") {
-        // Tamu preview: arahkan ke sheet tugas lokal (ramah tamu, tanpa login).
-        setSheet(connected ? "sched" : "task");
-        return;
-      }
-      setView(v);
-      if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-    },
-    [connected]
-  );
+  const go = useCallback((v: NavTarget) => {
+    if (v === "tambah") {
+      setSheet("tambah");
+      return;
+    }
+    setView(v);
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  }, []);
 
-  const openCompose = useCallback(
-    (p?: ComposePreset, mode: "tulis" | "balas" | "teruskan" = "tulis") => {
-      if (!connected) {
-        toastMsg(PREVIEW_LOGIN_HINT);
-        return;
-      }
-      setCompose(p ?? null);
-      setComposeMode(mode);
-      setSheet("mail");
+  // Sheet email selalu boleh dibuka (termasuk tamu) — penolakan jujur terjadi
+  // saat Kirim via saveMail, bukan via tombol mati.
+  const openCompose = useCallback((p?: ComposePreset, mode: "tulis" | "balas" | "teruskan" = "tulis") => {
+    setCompose(p ?? null);
+    setComposeMode(mode);
+    setSheet("mail");
+  }, []);
+
+  /** Cari email: debounce 400ms sebelum request agar tak spam/balap tiap huruf. */
+  const handleSearch = useCallback(
+    (q: string) => {
+      setSearch(q);
+      if (searchT.current) clearTimeout(searchT.current);
+      searchT.current = setTimeout(() => {
+        if (connected) void refreshRemote({ mails: true, events: false, query: q });
+      }, 400);
     },
-    [connected, toastMsg]
+    [connected, refreshRemote]
   );
 
   /* ---- email: Gmail asli saat login, contoh lokal saat preview ---- */
@@ -244,24 +297,32 @@ function Shell() {
         setRemoteMails((prev) => prev.map((m) => (m.id === id ? { ...full, unread: false } : m)));
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
+        else toastMsg("Gagal memuat isi email");
       }
     },
-    [connected, markDisconnected]
+    [connected, markDisconnected, toastMsg]
   );
 
   const toggleStar = useCallback(
     async (id: string) => {
       if (!connected) {
-        toastMsg(PREVIEW_LOGIN_HINT);
+        // Preview: flip bintang di state lokal.
+        setPreviewMails((prev) => prev.map((m) => (m.id === id ? { ...m, starred: !m.starred } : m)));
         return;
       }
+      if (starPending.current.get(id)) return;
+      starPending.current.set(id, true);
       const isStar = !!remoteMails.find((m) => m.id === id)?.starred;
+      // Optimistic flip + rollback bila POST gagal.
+      setRemoteMails((prev) => prev.map((m) => (m.id === id ? { ...m, starred: !isStar } : m)));
       try {
         await apiLabelMail(id, isStar ? "unstar" : "star");
-        setRemoteMails((prev) => prev.map((m) => (m.id === id ? { ...m, starred: !isStar } : m)));
       } catch (e) {
+        setRemoteMails((prev) => prev.map((m) => (m.id === id ? { ...m, starred: isStar } : m)));
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
         else toastMsg("Gagal ubah bintang");
+      } finally {
+        starPending.current.delete(id);
       }
     },
     [connected, remoteMails, markDisconnected, toastMsg]
@@ -269,13 +330,46 @@ function Shell() {
 
   const mailAction = useCallback(
     async (act: string) => {
+      const stripRe = (s: string) => s.replace(/^re:\s+/i, "");
       if (!connected) {
-        toastMsg(PREVIEW_LOGIN_HINT);
+        // Preview fully-interactive: reply/fwd = draf compose dari mail contoh,
+        // bintang = flip, arsip/hapus = buang dari list, unread = tandai.
+        const m = previewMails.find((x) => x.id === currentMail);
+        if (!m) return;
+        const quoted = stripMailTokens(m.body);
+        if (act === "reply") {
+          openCompose(
+            {
+              to: m.email,
+              subj: "Re: " + stripRe(m.subj),
+              body: `\n\n— — —\nPada ${m.time}, ${m.from} menulis:\n${quoted}`,
+            },
+            "balas"
+          );
+        } else if (act === "fwd") {
+          openCompose(
+            {
+              to: "",
+              subj: "Fwd: " + stripRe(m.subj).replace(/^fwd:\s+/i, ""),
+              body: `\n\n— Diteruskan dari ${m.from} <${m.email}> —\n${quoted}`,
+            },
+            "teruskan"
+          );
+        } else if (act === "star") {
+          setPreviewMails((prev) => prev.map((x) => (x.id === m.id ? { ...x, starred: !x.starred } : x)));
+        } else if (act === "arch" || act === "del") {
+          setPreviewMails((prev) => prev.filter((x) => x.id !== m.id));
+          setCurrentMail(null);
+          toastMsg("Diarsipkan");
+        } else if (act === "unread") {
+          setPreviewMails((prev) => prev.map((x) => (x.id === m.id ? { ...x, unread: true } : x)));
+          setCurrentMail(null);
+          toastMsg("Ditandai belum dibaca");
+        }
         return;
       }
       const m = remoteMails.find((x) => x.id === currentMail);
       if (!m) return;
-      const stripRe = (s: string) => s.replace(/^re:\s+/i, "");
       // Draf reply/fwd = teks polos: token [label](url)/[TABLE]/[PRE] dikembalikan
       // jadi "label (url)" / "a | b" agar markup tak bocor ke email terkirim.
       const quoted = stripMailTokens(m.body);
@@ -322,17 +416,16 @@ function Shell() {
         else toastMsg("Aksi Gmail gagal");
       }
     },
-    [currentMail, remoteMails, connected, openCompose, toggleStar, toastMsg, markDisconnected]
+    [currentMail, previewMails, remoteMails, connected, openCompose, toggleStar, toastMsg, markDisconnected]
   );
 
   /* ---- tugas (milik sendiri, mulai kosong) ---- */
   const toggleTask = useCallback(
     (id: string) => {
-      setTasks((prev) => {
-        const t = prev.find((x) => x.id === id);
-        if (t) toastMsg(t.done ? "Dibuka lagi" : "Tugas selesai!");
-        return prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x));
-      });
+      // Toast di LUAR updater (side-effect di dalam updater = bug lama).
+      const t = tasksRef.current.find((x) => x.id === id);
+      setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
+      toastMsg(t ? (t.done ? "Dibuka lagi" : "Tugas selesai!") : "Tugas selesai!");
     },
     [setTasks, toastMsg]
   );
@@ -345,11 +438,12 @@ function Shell() {
     [setTasks, toastMsg]
   );
 
-  /* ---- jadwal: Google Calendar saat login, prompt login saat preview ---- */
+  /* ---- jadwal: Google Calendar saat login, lokal saat preview ---- */
   const delSched = useCallback(
     async (id: string) => {
       if (!connected) {
-        toastMsg(PREVIEW_LOGIN_HINT);
+        setPreviewScheds((prev) => prev.filter((s) => s.id !== id));
+        toastMsg("Jadwal dihapus");
         return;
       }
       const gid = id.startsWith("g:") ? id : `g:${id}`;
@@ -362,38 +456,57 @@ function Shell() {
         else toastMsg("Gagal hapus event");
       }
     },
-    [connected, toastMsg, markDisconnected]
+    [connected, toastMsg, markDisconnected, setPreviewScheds]
   );
 
   const saveSched = useCallback(
-    async (v: { title: string; date: string; time: string; endTime?: string; note: string }) => {
+    async (v: SchedInput): Promise<boolean> => {
       if (!connected) {
-        toastMsg(PREVIEW_LOGIN_HINT);
-        return;
+        const start = v.time || "09:00";
+        const end = v.endTime && v.endTime.trim() ? v.endTime : undefined;
+        const overnight = end != null && end <= start;
+        setPreviewScheds((prev) =>
+          [
+            ...prev,
+            {
+              id: genId("s"),
+              title: v.title,
+              date: v.date,
+              time: start,
+              ...(end ? { endTime: end } : {}),
+              note: v.note ?? "",
+              color: RCOL[prev.length % RCOL.length],
+              reminderMin: v.reminderMin,
+              ...(overnight ? { overnight: true } : {}),
+            } as Sched,
+          ].sort(sortSched)
+        );
+        toastMsg("Jadwal tersimpan");
+        setSelDate(v.date);
+        setSheet(null);
+        go("kalender");
+        return true;
       }
       try {
         const ev = await apiCreateEvent(v);
-        setRemoteEvents((prev) => [...prev, ev].sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time)));
+        setRemoteEvents((prev) => [...prev, ev].sort(sortSched));
         toastMsg("Jadwal tersimpan ke Google Calendar");
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
         else toastMsg("Gagal simpan ke Google");
-        return;
+        return false;
       }
       setSelDate(v.date);
       setSheet(null);
       go("kalender");
+      return true;
     },
-    [connected, toastMsg, markDisconnected, go]
+    [connected, toastMsg, markDisconnected, go, setPreviewScheds]
   );
 
   const startEditSched = useCallback(
     (id: string) => {
-      if (!connected) {
-        toastMsg(PREVIEW_LOGIN_HINT);
-        return;
-      }
-      const s = remoteEvents.find((x) => x.id === id);
+      const s = (connected ? remoteEvents : previewScheds).find((x) => x.id === id);
       if (!s) {
         toastMsg("Jadwal tidak ditemukan");
         return;
@@ -401,41 +514,69 @@ function Shell() {
       setEditingSched(s);
       setSheet("sched");
     },
-    [connected, remoteEvents, toastMsg]
+    [connected, remoteEvents, previewScheds, toastMsg]
   );
 
   const saveEditSched = useCallback(
-    async (v: { title: string; date: string; time: string; endTime?: string; note: string }) => {
-      if (!connected || !editingSched) {
-        toastMsg(PREVIEW_LOGIN_HINT);
-        return;
+    async (v: SchedInput): Promise<boolean> => {
+      if (!editingSched) {
+        toastMsg("Jadwal tidak ditemukan");
+        return false;
+      }
+      if (!connected) {
+        const start = v.time || "09:00";
+        const end = v.endTime && v.endTime.trim() ? v.endTime : undefined;
+        const overnight = end != null && end <= start;
+        const id = editingSched.id;
+        setPreviewScheds((prev) =>
+          prev
+            .map((s) =>
+              s.id === id
+                ? ({
+                    ...s,
+                    title: v.title,
+                    date: v.date,
+                    time: start,
+                    ...(end ? { endTime: end } : { endTime: undefined }),
+                    note: v.note ?? "",
+                    reminderMin: v.reminderMin,
+                    ...(overnight ? { overnight: true } : {}),
+                  } as Sched)
+                : s
+            )
+            .sort(sortSched)
+        );
+        toastMsg("Jadwal diperbarui");
+        setEditingSched(null);
+        setSelDate(v.date);
+        setSheet(null);
+        go("kalender");
+        return true;
       }
       try {
         const ev = await apiUpdateEvent(editingSched.id, v);
-        setRemoteEvents((prev) =>
-          prev
-            .map((s) => (s.id === editingSched.id ? ev : s))
-            .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-        );
+        setRemoteEvents((prev) => prev.map((s) => (s.id === editingSched.id ? ev : s)).sort(sortSched));
         toastMsg("Jadwal diperbarui di Google Calendar");
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
         else toastMsg(`Gagal ubah: ${e instanceof Error ? e.message : "unknown"}`);
-        return;
+        return false;
       }
       setEditingSched(null);
       setSelDate(v.date);
       setSheet(null);
       go("kalender");
+      return true;
     },
-    [connected, editingSched, toastMsg, markDisconnected, go]
+    [connected, editingSched, toastMsg, markDisconnected, go, setPreviewScheds]
   );
 
   const saveMail = useCallback(
-    async (to: string, subj: string, body: string) => {
+    async (to: string, subj: string, body: string): Promise<boolean> => {
       if (!connected) {
+        // Satu-satunya guard login yang tersisa: sheet tetap terbuka, draf utuh.
         toastMsg(PREVIEW_LOGIN_HINT);
-        return;
+        return false;
       }
       try {
         await apiSendMail(to, subj, body);
@@ -443,9 +584,10 @@ function Shell() {
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
         else toastMsg(`Gagal kirim: ${e instanceof Error ? e.message : "unknown"}`);
-        return;
+        return false;
       }
       setSheet(null);
+      return true;
     },
     [connected, toastMsg, markDisconnected]
   );
@@ -453,21 +595,21 @@ function Shell() {
   const logoutGoogle = useCallback(async () => {
     await apiLogout();
     markDisconnected();
-    setView("koneksi");
+    setView("profil");
     toastMsg("Keluar dari Google");
   }, [markDisconnected, toastMsg]);
 
-  /** Keluar preview: hapus data tamu lokal, kembali ke kondisi contoh segar. */
+  /** Keluar preview: kembalikan kondisi contoh segar (tanpa hapus-then-kosong ala bug lama). */
   const exitPreview = useCallback(() => {
-    removeLS(`${LS.tasks}${GUEST_SUFFIX}`);
-    removeLS(`${LS.routine}${GUEST_SUFFIX}`);
-    setTasks([]);
-    setRoutines([]);
+    setTasks(sampleTasks());
+    setRoutines(sampleRoutines());
+    setPreviewScheds(sampleScheds());
     setPreviewMails(SAMPLE_MAILS);
     setCurrentMail(null);
-    setView("dashboard");
+    setSearch("");
+    setView("beranda");
     toastMsg("Keluar dari mode pratinjau");
-  }, [setTasks, setRoutines, toastMsg]);
+  }, [setTasks, setRoutines, setPreviewScheds, toastMsg]);
 
   const delRoutine = useCallback(
     (id: string) => {
@@ -477,6 +619,84 @@ function Shell() {
     [setRoutines, toastMsg]
   );
 
+  /* ---- pengingat in-app: bunyi + getar + banner tiap 30 detik ---- */
+  useEffect(() => {
+    if (!notif) return;
+    const tick = () => {
+      const items: ReminderItem[] = [
+        ...schedules.map(
+          (s): ReminderItem => ({
+            id: s.id,
+            title: s.title,
+            date: s.date,
+            time: s.time,
+            kind: "sched",
+            reminderMin: s.reminderMin ?? DEFAULT_REMINDER_MIN,
+          })
+        ),
+        ...tasks
+          .filter((t) => !t.done)
+          .map(
+            (t): ReminderItem => ({
+              id: t.id,
+              title: t.title,
+              date: t.date,
+              time: t.time,
+              kind: "task",
+              reminderMin: t.reminderMin ?? DEFAULT_REMINDER_MIN,
+            })
+          ),
+      ];
+      let due: ReminderItem[];
+      try {
+        due = dueReminders(items, new Date());
+      } catch {
+        return;
+      }
+      for (const d of due) {
+        const key = `${d.id}|${d.date}|${d.time}`;
+        if (firedRef.current.has(key)) continue;
+        firedRef.current.add(key);
+        if (firedRef.current.size > 200) {
+          const first = firedRef.current.values().next().value as string | undefined;
+          if (first !== undefined) firedRef.current.delete(first);
+        }
+        toastMsg("Pengingat: " + d.title);
+        try {
+          navigator.vibrate?.(200);
+        } catch {
+          /* abaikan: browser tanpa vibrate */
+        }
+        try {
+          const AC =
+            window.AudioContext ??
+            (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (!AC) continue;
+          const ctx = new AC();
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.connect(g);
+          g.connect(ctx.destination);
+          o.frequency.value = 880;
+          const t0 = ctx.currentTime;
+          g.gain.setValueAtTime(0.0001, t0);
+          g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.02);
+          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+          o.start(t0);
+          o.stop(t0 + 0.32);
+          o.onended = () => {
+            void ctx.close().catch(() => null);
+          };
+        } catch {
+          /* abaikan: autoplay policy / tanpa WebAudio */
+        }
+      }
+    };
+    tick();
+    const iv = setInterval(tick, 30_000);
+    return () => clearInterval(iv);
+  }, [schedules, tasks, notif, toastMsg]);
+
   const courses = useMemo(() => [...new Set(routines.map((r) => r.course))], [routines]);
   const myRoutines = useMemo(
     () => routines.slice().sort((a, b) => a.day - b.day || a.start.localeCompare(b.start)),
@@ -485,13 +705,12 @@ function Shell() {
 
   return (
     <>
-      {/* Avatar: preview → koneksi (jalan pintas login), connected → profil. */}
-      <TopBar connected={connected} email={connEmail} onProfile={() => go(preview ? "koneksi" : "profil")} preview={preview} />
+      <TopBar connected={connected} email={connEmail} onProfile={() => go("profil")} preview={preview} />
       <div className="shell">
         <div className="app">
           <Sidebar view={view} go={go} />
           <main>
-            {preview && (view === "dashboard" || view === "email" || view === "tugas" || view === "kalender") && (
+            {preview && (view === "beranda" || view === "email" || view === "tugas" || view === "kalender") && (
               <div className="banner" role="status">
                 <span className="banner-ic">
                   <IconEye size={24} />
@@ -510,8 +729,8 @@ function Shell() {
                 </a>
               </div>
             )}
-            {view === "dashboard" && (
-              <Dashboard
+            {view === "beranda" && (
+              <HariIni
                 mails={mails}
                 schedules={schedules}
                 routines={routines}
@@ -520,7 +739,11 @@ function Shell() {
                 preview={preview}
                 guestName={guestName}
                 go={go}
-                onCompose={() => openCompose()}
+                onOpenMail={openMail}
+                onToggleTask={toggleTask}
+                onSelectDate={setSelDate}
+                todayStr={todayStr()}
+                onAdd={() => setSheet("tambah")}
               />
             )}
             {view === "email" && (
@@ -532,14 +755,14 @@ function Shell() {
                 currentMail={currentMail}
                 onBack={() => setCurrentMail(null)}
                 search={search}
-                onSearch={(q) => {
-                  setSearch(q);
-                  if (connected) refreshRemote({ mails: true, events: false, query: q });
-                }}
+                onSearch={handleSearch}
                 remote={{
                   loading: mailLoading,
                   hasMore: connected && !!mailPage,
-                  onMore: () => refreshRemote({ mails: true, events: false, query: search, append: true }),
+                  onMore: () => {
+                    if (mailLoadingRef.current) return;
+                    void refreshRemote({ mails: true, events: false, query: search, append: true });
+                  },
                 }}
                 preview={preview}
                 updatedAt={updatedAt}
@@ -566,15 +789,12 @@ function Shell() {
                 onDeleteSched={delSched}
                 onDeleteRoutine={delRoutine}
                 onAddSched={() => {
-                  if (!connected) {
-                    toastMsg(PREVIEW_LOGIN_HINT);
-                    return;
-                  }
                   setEditingSched(null);
                   setSheet("sched");
                 }}
                 onManageRoutine={() => setSheet("routine")}
                 preview={preview}
+                onToggleTask={toggleTask}
               />
             )}
             {view === "profil" && (
@@ -583,88 +803,84 @@ function Shell() {
                 email={connEmail}
                 notif={notif}
                 onToggleNotif={() => {
-                  setNotif((v) => {
-                    toastMsg(!v ? "Pengingat dinyalakan" : "Pengingat dimatikan");
-                    return !v;
-                  });
+                  toastMsg(notif ? "Pengingat dimatikan" : "Pengingat dinyalakan");
+                  setNotif(!notif);
                 }}
                 onLogout={logoutGoogle}
-                onKoneksi={() => go("koneksi")}
                 preview={preview}
                 guestName={guestName}
                 onGuestName={(v) => setGuestName(v)}
                 onExitPreview={exitPreview}
               />
             )}
-            {view === "koneksi" && (
-              <GoogleConnect
-                connected={connected}
-                email={connEmail}
-                updatedAt={updatedAt}
-                onLogout={logoutGoogle}
-                onProfile={() => go("profil")}
-              />
-            )}
           </main>
         </div>
       </div>
       <TabBar view={view} go={go} />
-      {/* Fab satu jalur via go("tambah"): login→sheet sched, preview→sheet task. */}
+      {/* Fab satu jalur via go("tambah"): sheet pilihan Email/Tugas/Jadwal. */}
       <Fab onAdd={() => go("tambah")} />
 
-      {/* Sched/Mail = tulis ke Google (saat login saja). Task/Routine = lokal (jalan juga di preview). */}
-      {connected && (
-        <>
-          <SchedSheet
-            open={sheet === "sched"}
-            selDate={selDate}
-            initial={editingSched}
-            onClose={() => {
-              setEditingSched(null);
-              setSheet(null);
-            }}
-            onSave={(v) => (editingSched ? saveEditSched(v) : saveSched(v))}
-          />
-          <MailSheet
-            open={sheet === "mail"}
-            preset={compose}
-            mode={composeMode}
-            onClose={() => setSheet(null)}
-            onSave={(to, subj, body) => saveMail(to, subj, body)}
-          />
-        </>
-      )}
-      {(connected || preview) && (
-        <>
-          <TaskSheet
-            open={sheet === "task"}
-            selDate={selDate}
-            courses={courses}
-            onClose={() => setSheet(null)}
-            onSave={(v) => {
-              setTasks((prev) => [...prev, { id: "u" + Date.now(), ...v, done: false }]);
-              setSheet(null);
-              toastMsg("Tugas tersimpan");
-              go("tugas");
-            }}
-          />
-          <RoutineSheet
-            open={sheet === "routine"}
-            mine={myRoutines}
-            onClose={() => setSheet(null)}
-            onSave={(v) => {
-              setRoutines((prev) => [
-                ...prev,
-                { id: "ru" + Date.now(), ...v, color: RCOL[prev.length % RCOL.length] },
-              ]);
-              toastMsg("Jadwal rutin tersimpan");
-            }}
-            onDelete={delRoutine}
-          />
-        </>
-      )}
+      {/* Semua sheet selalu dirender (login maupun preview); isi yang menentukan sumber data. */}
+      <TambahSheet
+        open={sheet === "tambah"}
+        onClose={() => setSheet(null)}
+        onPick={(kind) => {
+          if (kind === "mail") openCompose();
+          else if (kind === "task") setSheet("task");
+          else {
+            setEditingSched(null);
+            setSheet("sched");
+          }
+        }}
+      />
+      <SchedSheet
+        open={sheet === "sched"}
+        selDate={selDate}
+        initial={editingSched}
+        onClose={() => {
+          setEditingSched(null);
+          setSheet(null);
+        }}
+        onSave={(v) => (editingSched ? saveEditSched(v) : saveSched(v))}
+      />
+      <MailSheet
+        open={sheet === "mail"}
+        preset={compose}
+        mode={composeMode}
+        onClose={() => setSheet(null)}
+        onSave={saveMail}
+      />
+      <TaskSheet
+        open={sheet === "task"}
+        selDate={selDate}
+        courses={courses}
+        onClose={() => setSheet(null)}
+        onSave={(v) => {
+          const reminderMin =
+            (v as { reminderMin?: number }).reminderMin ?? DEFAULT_REMINDER_MIN;
+          setTasks((prev) => [...prev, { id: genId("t"), ...v, reminderMin, done: false }]);
+          setSheet(null);
+          toastMsg("Tugas tersimpan");
+          go("tugas");
+        }}
+      />
+      <RoutineSheet
+        open={sheet === "routine"}
+        mine={myRoutines}
+        onClose={() => setSheet(null)}
+        onSave={(v) => {
+          setRoutines((prev) => [
+            ...prev,
+            { id: genId("r"), ...v, color: RCOL[prev.length % RCOL.length] },
+          ]);
+          toastMsg("Jadwal rutin tersimpan");
+        }}
+        onDelete={delRoutine}
+      />
 
-      <div className={`toast${toast ? " show" : ""}`}>{toast}</div>
+      <div className={`toast${toast ? " show" : ""}`} role="status" aria-live="polite">
+        {toast}
+      </div>
     </>
   );
 }

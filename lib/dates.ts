@@ -49,8 +49,12 @@ export function fmtDateID(iso: string): string {
   return d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
-/** Rentang jam agenda: "10:00–11:30" bila ada endTime, "10:00" bila sekilas. */
+/** Rentang jam agenda: "Seharian" (all-day) · "10:00–11:30 · besok" (overnight) · "10:00–11:30" · "10:00". */
 export function fmtSchedRange(s: Sched): string {
+  if (s.allDay) return "Seharian";
+  if (s.overnight && s.endTime && /^\d{2}:\d{2}$/.test(s.endTime)) {
+    return `${s.time}–${s.endTime} · besok`;
+  }
   if (s.endTime && /^\d{2}:\d{2}$/.test(s.endTime) && s.endTime !== s.time) {
     return `${s.time}–${s.endTime}`;
   }
@@ -59,7 +63,10 @@ export function fmtSchedRange(s: Sched): string {
 
 export function isOverdue(t: Task): boolean {
   if (t.done) return false;
-  return t.date + t.time < todayStr() + nowHM();
+  // time kosong = akhir hari (konsisten dgn taskBadge yang default "23:59").
+  // Tanpa ini, "2026-09-16" + "" < "2026-09-1614:30" selalu true → false-overdue.
+  const hm = /^\d{2}:\d{2}$/.test(t.time) ? t.time : "23:59";
+  return t.date + hm < todayStr() + nowHM();
 }
 
 export function taskBadge(t: Task): { txt: string; cls: string } {
@@ -87,4 +94,24 @@ const ESC_MAP: Record<string, string> = {
 
 export function esc(s: string): string {
   return String(s).replace(/[&<>"']/g, (c) => ESC_MAP[c]);
+}
+
+function toISODate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+/**
+ * Jendela kalender anti-overflow: from = tanggal 1 (back bulan lalu),
+ * to = hari terakhir (fwd bulan depan). Konstruktor new Date(y, m, 1)/(y, m, 0)
+ * tak pernah melompat bulan seperti setMonth dari tanggal 29–31.
+ */
+export function monthWindow(back = 1, fwd = 2, now: Date = new Date()): { from: string; to: string } {
+  const from = new Date(now.getFullYear(), now.getMonth() - back, 1);
+  const to = new Date(now.getFullYear(), now.getMonth() + fwd + 1, 0);
+  return { from: toISODate(from), to: toISODate(to) };
+}
+
+/** ID unik lokal: prefix + base36 waktu + acak (anti-kembar Date.now() murni). */
+export function uid(prefix = "id"): string {
+  return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
 }

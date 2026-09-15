@@ -13,7 +13,15 @@ export async function POST(req: Request) {
   const to = (body.to ?? "").trim();
   const subj = (body.subj ?? "").trim();
   const text = (body.body ?? "").trim();
-  if (!to || !to.includes("@")) return Response.json({ error: "Tujuan email tidak valid" }, { status: 400 });
+  // Validasi ketat server-side (jangan andalkan regex client saja):
+  // - tolak CRLF agar tak bisa injeksi header Bcc/Cc via "a@b.com\r\nBcc: evil@x".
+  // - satu alamat saja, format email sederhana.
+  if (
+    !to ||
+    /[\r\n]/.test(to) ||
+    !/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(to)
+  )
+    return Response.json({ error: "Tujuan email tidak valid" }, { status: 400 });
   if (!subj || !text) return Response.json({ error: "Subjek & isi wajib diisi" }, { status: 400 });
   if (subj.length > 200 || text.length > 20000)
     return Response.json({ error: "Subjek/isi terlalu panjang" }, { status: 400 });

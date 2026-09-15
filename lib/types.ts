@@ -26,8 +26,14 @@ export interface Sched {
   time: string; // hh:mm mulai
   /** hh:mm selesai, same-day, opsional — kosong = sekilas (end == start). */
   endTime?: string;
+  /** Seharian dari Google Calendar (start.date tanpa dateTime). */
+  allDay?: boolean;
+  /** Jam selesai lewat tengah malam (end <= start → tanggal end +1 hari). */
+  overnight?: boolean;
   note: string;
   color: string;
+  /** Menit pengingat sebelum mulai; opsional, default 15, 0 = mati. */
+  reminderMin?: number;
 }
 
 export interface Routine {
@@ -52,14 +58,17 @@ export interface Task {
   prio: Prio;
   note: string;
   done: boolean;
+  /** Menit pengingat sebelum deadline; opsional, default 15, 0 = mati. */
+  reminderMin?: number;
 }
 
-export type ViewName = "dashboard" | "email" | "tugas" | "kalender" | "profil" | "koneksi";
+/** Layar utama: beranda (Hari Ini) + email + tugas + kalender + profil. */
+export type ViewName = "beranda" | "email" | "tugas" | "kalender" | "profil";
 
 /** Target navigasi: pindah view, atau buka sheet tambah jadwal. */
 export type NavTarget = ViewName | "tambah";
 
-export type Theme = "dark" | "light";
+export type Theme = "dark" | "light" | "auto";
 
 export interface ComposePreset {
   to: string;

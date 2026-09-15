@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DEFAULT_ACCENT, useTheme } from "./ThemeProvider";
+import { DEFAULT_ACCENT, ACCENT_PRESETS, useTheme } from "./ThemeProvider";
 import { InfoSheet, type InfoSheetId } from "./Sheets";
 import {
   IconArrowRight,
@@ -24,14 +24,11 @@ interface Props {
   notif: boolean;
   onToggleNotif: () => void;
   onLogout: () => void;
-  onKoneksi: () => void;
   preview: boolean;
   guestName: string;
   onGuestName: (v: string) => void;
   onExitPreview: () => void;
 }
-
-const ACCENT_PRESETS = ["#00CFFF", "#7C5CFF", "#16A34A", "#D97706", "#EC4899", "#EF4444"];
 
 export default function ProfileView({
   connected,
@@ -39,14 +36,12 @@ export default function ProfileView({
   notif,
   onToggleNotif,
   onLogout,
-  onKoneksi,
   preview,
   guestName,
   onGuestName,
   onExitPreview,
 }: Props) {
-  const { theme, toggle, accent, setAccent } = useTheme();
-  const dark = theme === "dark";
+  const { theme, setTheme, accent, setAccent } = useTheme();
   const initial = (email?.trim()?.[0] ?? "").toUpperCase();
   const [info, setInfo] = useState<InfoSheetId>(null);
 
@@ -103,10 +98,6 @@ export default function ProfileView({
         )}
         {connected ? (
           <div className="btn-pair" style={{ marginTop: 14 }}>
-            <button className="btn soft btn-ic" onClick={onKoneksi}>
-              Kelola koneksi
-              <IconArrowRight size={15} />
-            </button>
             <button className="btn danger" onClick={onLogout}>
               Keluar
             </button>
@@ -139,17 +130,23 @@ export default function ProfileView({
           <div>
             <div className="t row-ic">
               <IconMoon size={14} />
-              Mode gelap
+              Tampilan
             </div>
-            <div className="s">Nyaman di kelas &amp; hemat baterai</div>
+            <div className="s">Terang, gelap, atau ikut sistem</div>
           </div>
-          <button
-            className="switch"
-            role="switch"
-            aria-checked={dark ? "true" : "false"}
-            aria-label="Mode gelap"
-            onClick={toggle}
-          />
+        </div>
+        <div className="chips" role="group" aria-label="Mode tampilan" style={{ paddingBottom: 8 }}>
+          {(["light", "dark", "auto"] as const).map((m) => (
+            <button
+              key={m}
+              type="button"
+              className={`chip${theme === m ? " on" : ""}`}
+              aria-pressed={theme === m}
+              onClick={() => setTheme(m)}
+            >
+              {m === "light" ? "Terang" : m === "dark" ? "Gelap" : "Otomatis"}
+            </button>
+          ))}
         </div>
         <div className="set-row">
           <div>
@@ -233,24 +230,23 @@ export default function ProfileView({
               <IconPlug size={14} />
               Koneksi Google
             </div>
-            <div className="s">{connected ? `Tersambung sebagai ${email}` : preview ? "Mode pratinjau — belum tersambung" : "Belum tersambung"}</div>
+            <div className="s">{connected ? `Tersambung sebagai ${email}` : preview ? "Mode pratinjau — data contoh" : "Belum tersambung"}</div>
           </div>
-          <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={onKoneksi}>
-            Lihat
-            <IconArrowRight size={14} />
-          </button>
-        </div>
-        {connected && (
-          <div className="set-row">
-            <div>
-              <div className="t">Keluar dari Google</div>
-              <div className="s">Putus koneksi &amp; hapus sesi di perangkat ini</div>
-            </div>
+          {connected ? (
             <button className="btn danger" style={{ marginLeft: "auto", padding: "10px 16px" }} onClick={onLogout}>
               Keluar
             </button>
-          </div>
-        )}
+          ) : (
+            <a
+              className="link link-ic"
+              style={{ marginLeft: "auto", textDecoration: "none" }}
+              href="/api/auth/login"
+            >
+              Login dengan Google
+              <IconArrowRight size={14} />
+            </a>
+          )}
+        </div>
       </div>
 
       {/* ── Info: Kredit / Privasi / Syarat ── */}

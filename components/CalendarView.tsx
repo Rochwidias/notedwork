@@ -28,6 +28,7 @@ interface Props {
   onAddSched: () => void;
   onManageRoutine: () => void;
   preview?: boolean;
+  onToggleTask?: (id: string) => void;
 }
 
 export default function CalendarView({
@@ -42,6 +43,7 @@ export default function CalendarView({
   onAddSched,
   onManageRoutine,
   preview,
+  onToggleTask,
 }: Props) {
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
@@ -72,21 +74,17 @@ export default function CalendarView({
   const tail = (7 - ((first + days) % 7)) % 7;
   for (let d = 1; d <= tail; d++) cells.push({ key: `n${d}`, label: d, iso: null, dim: true });
 
+  const ts = todayStr();
+  const offToday = selDate !== ts;
+
   const wd = weekdayOf(selDate);
   const dayRoutines = routines
     .filter((x) => x.day === wd)
     .sort((a, b) => a.start.localeCompare(b.start));
-  const daySched = schedules.filter((s) => s.date === selDate);
+  const daySched = schedules
+    .filter((s) => s.date === selDate)
+    .sort((a, b) => a.time.localeCompare(b.time));
   const dayTasks = tasks.filter((x) => x.date === selDate);
-
-  // Agenda hari ini — selalu todayStr, terpisah dari tanggal yang dipilih.
-  const ts = todayStr();
-  const todayWd = weekdayOf(ts);
-  const todayRoutines = routines
-    .filter((x) => x.day === todayWd)
-    .sort((a, b) => a.start.localeCompare(b.start));
-  const todaySched = schedules.filter((s) => s.date === ts);
-  const todayTasks = tasks.filter((x) => x.date === ts);
 
   const routineList = routines.slice().sort((a, b) => a.day - b.day || a.start.localeCompare(b.start));
 
@@ -165,73 +163,19 @@ export default function CalendarView({
         </div>
       </div>
       <div className="card">
-        <h2>
-          <span className="h-ic">
-            <IconCalendarDays size={15} />
-          </span>
-          Agenda hari ini • {fmtDateID(ts)}
-        </h2>
-        <div>
-          {todayRoutines.map((x) => (
-            <div className="row" key={x.id}>
-              <span className="dot" style={{ background: x.color || "#00cfff" }} />
-              <div>
-                <div className="t">
-                  {x.course} <span className="pill blue" style={{ margin: 0 }}>Rutin</span>
-                </div>
-                <div className="s">
-                  {x.start}–{x.end}
-                  {x.room ? ` • Ruang ${x.room}` : ""}
-                  {x.lect ? ` • ${x.lect}` : ""}
-                </div>
-              </div>
-            </div>
-          ))}
-          {todaySched.map((s) => (
-            <div className="row" key={s.id}>
-              <span className="dot" style={{ background: s.color || "#22c55e" }} />
-              <div>
-                <div className="t">
-                  {s.title} <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {fmtSchedRange(s)}</span>
-                </div>
-                {s.note && <div className="s">{s.note}</div>}
-              </div>
-              <button className="edit del-ic" aria-label={`Ubah ${s.title}`} onClick={() => onEditSched(s.id)}>
-                <IconPencil size={15} />
-              </button>
-              <button className="del del-ic" aria-label={`Hapus ${s.title}`} onClick={() => onDeleteSched(s.id)}>
-                <IconTrash size={15} />
-              </button>
-            </div>
-          ))}
-          {todayTasks.map((x) => {
-            const b = taskBadge(x);
-            return (
-              <div className="row" key={x.id}>
-                <span className="dot" style={{ background: "#ef4444" }} />
-                <div>
-                  <div className="t row-ic">
-                    <IconAlarm size={14} />
-                    {x.title} {x.done && <IconCheck size={14} />} <span className={`tag ${b.cls}`}>{b.txt}</span>
-                  </div>
-                  <div className="s">
-                    {x.matkul} • deadline {x.time}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-          {todayRoutines.length + todaySched.length + todayTasks.length === 0 && (
-            <div className="empty">
-              Tidak ada agenda hari ini.
-              <br />
-              Nikmati harimu!
-            </div>
+        <div className="card-head">
+          <h2>
+            <span className="h-ic">
+              <IconCalendarDays size={15} />
+            </span>
+            Agenda • {fmtDateID(selDate)}
+          </h2>
+          {offToday && (
+            <button className="link link-ic" onClick={() => onSelectDate(ts)} aria-label="Kembali ke hari ini">
+              Hari ini <span aria-hidden="true">›</span>
+            </button>
           )}
         </div>
-      </div>
-      <div className="card">
-        <h2>Agenda • {fmtDateID(selDate)}</h2>
         <div>
           {dayRoutines.map((x) => (
             <div className="row" key={x.id}>
@@ -267,8 +211,23 @@ export default function CalendarView({
           ))}
           {dayTasks.map((x) => {
             const b = taskBadge(x);
+            const toggle = () => onToggleTask?.(x.id);
             return (
-              <div className="row" key={x.id}>
+              <div
+                className="row"
+                key={x.id}
+                role="button"
+                tabIndex={0}
+                aria-label={`${x.title}. Ketuk untuk tandai selesai.`}
+                onClick={toggle}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") {
+                    e.preventDefault();
+                    toggle();
+                  }
+                }}
+                style={{ cursor: "pointer" }}
+              >
                 <span className="dot" style={{ background: "#ef4444" }} />
                 <div>
                   <div className="t row-ic">
@@ -279,6 +238,7 @@ export default function CalendarView({
                     {x.matkul} • deadline {x.time}
                   </div>
                 </div>
+                <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
               </div>
             );
           })}

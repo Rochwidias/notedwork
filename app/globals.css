@@ -2,19 +2,20 @@
 @tailwind components;
 @tailwind utilities;
 
-/* ── notedwork design token: --brand dkk dioverride ThemeProvider saat user ganti warna ── */
+/* ── notedwork design token (base Kertas Netral, spec §5): --brand dkk dioverride ThemeProvider saat user ganti warna ── */
 :root {
-  --bg: #f3f6f0;
-  --card: #ffffff;
-  --card-2: #ebeee8;
-  --ink: #0d0d0d;
-  --muted: #4b5563;
-  --brand: #0090b3;
-  --brand-dark: #007a99;
-  --brand-soft: rgba(0, 144, 179, 0.12);
-  --accent-glow: rgba(0, 207, 255, 0.28);
-  --accent-muted: rgba(0, 207, 255, 0.08);
-  --border-accent: rgba(0, 207, 255, 0.35);
+  --bg: #F7F4EE;
+  --card: #FFFFFF;
+  --card-2: #EDE6D6;
+  --ink: #292524;
+  --muted: #A8A29E;
+  --brand: #B45309;
+  --brand-dark: #92400E;
+  --brand-soft: rgba(180, 83, 9, 0.12);
+  --accent-glow: rgba(180, 83, 9, 0.28);
+  --accent-muted: rgba(180, 83, 9, 0.08);
+  --border-accent: rgba(180, 83, 9, 0.35);
+  --on-brand: #FFFFFF;
   --green: #16a34a;
   --green-soft: #dcfce7;
   --amber: #d97706;
@@ -23,25 +24,25 @@
   --red-soft: #fee2e2;
   --violet: #7c5cff;
   --violet-soft: #ede9fe;
-  --line: rgba(0, 0, 0, 0.09);
-  --input: #ffffff;
-  --topbar: rgba(243, 246, 240, 0.9);
+  --line: #E8E1D4;
+  --input: #FFFFFF;
+  --topbar: rgba(247, 244, 238, 0.9);
   --radius: 16px;
   --shadow: 0 1px 2px rgba(13, 13, 13, 0.06), 0 8px 24px -12px rgba(13, 13, 13, 0.18);
 }
 
 [data-theme="dark"] {
-  --bg: #121212;
-  --card: #1a1a1a;
-  --card-2: #242424;
-  --ink: #f5f5f5;
-  --muted: #888888;
-  --brand: #00cfff;
-  --brand-dark: #00cfff;
-  --brand-soft: rgba(0, 207, 255, 0.14);
-  --accent-glow: rgba(0, 207, 255, 0.28);
-  --accent-muted: rgba(0, 207, 255, 0.08);
-  --border-accent: rgba(0, 207, 255, 0.35);
+  --bg: #1C1917;
+  --card: #292524;
+  --card-2: #342E2A;
+  --ink: #F7F4EE;
+  --muted: #A8A29E;
+  --brand: #D97706;
+  --brand-dark: #D97706;
+  --brand-soft: rgba(217, 119, 6, 0.14);
+  --accent-glow: rgba(217, 119, 6, 0.28);
+  --accent-muted: rgba(217, 119, 6, 0.08);
+  --border-accent: rgba(217, 119, 6, 0.35);
   --green: #4ade80;
   --green-soft: rgba(74, 222, 128, 0.14);
   --amber: #fbbf24;
@@ -50,9 +51,10 @@
   --red-soft: rgba(248, 113, 113, 0.14);
   --violet: #a78bfa;
   --violet-soft: rgba(124, 92, 255, 0.16);
-  --line: rgba(255, 255, 255, 0.08);
-  --input: #1a1a1a;
-  --topbar: rgba(18, 18, 18, 0.88);
+  --line: rgba(247, 244, 238, 0.12);
+  --input: #292524;
+  --topbar: rgba(28, 25, 23, 0.88);
+  --on-brand: #FFFFFF;
   --shadow: 0 1px 2px rgba(0, 0, 0, 0.5), 0 12px 32px -12px rgba(0, 0, 0, 0.6);
 }
 
@@ -66,7 +68,7 @@ html {
   -webkit-text-size-adjust: 100%;
   overscroll-behavior: auto;
   overflow-x: clip;
-  background-color: #121212;
+  background-color: #1C1917;
 }
 
 body {

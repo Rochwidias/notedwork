@@ -68,6 +68,7 @@ export async function apiCreateEvent(v: {
   time: string;
   endTime?: string;
   note: string;
+  reminderMin?: number;
 }): Promise<Sched> {
   const j = await jpost<{ event: Sched }>("/api/calendar/events", v);
   return j.event;
@@ -81,7 +82,7 @@ export async function apiDeleteEvent(id: string): Promise<void> {
 
 export async function apiUpdateEvent(
   id: string,
-  v: { title: string; date: string; time: string; endTime?: string; note: string }
+  v: { title: string; date: string; time: string; endTime?: string; note: string; reminderMin?: number }
 ): Promise<Sched> {
   const res = await fetch(`/api/calendar/events/${encodeURIComponent(id)}`, {
     method: "PATCH",

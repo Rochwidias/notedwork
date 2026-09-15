@@ -5,6 +5,7 @@ import type { Theme } from "@/lib/types";
 import { ACCENT_KEY, LS } from "@/lib/data";
 
 interface ThemeContextValue {
+  /** Preferensi tema ("dark" | "light" | "auto"); tema efektif di-resolve ke DOM. */
   theme: Theme;
   toggle: () => void;
   setTheme: (t: Theme) => void;
@@ -12,7 +13,10 @@ interface ThemeContextValue {
   setAccent: (hex: string) => void;
 }
 
-export const DEFAULT_ACCENT = "#00CFFF";
+export const DEFAULT_ACCENT = "#B45309";
+
+/** Preset aksen unisex (Kertas Netral): coklat default + biru + hijau + ungu + merah tua. */
+export const ACCENT_PRESETS = ["#B45309", "#1D4ED8", "#15803D", "#7C3AED", "#B91C1C"];
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: "dark",
@@ -30,12 +34,27 @@ function getStoredTheme(): Theme | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = localStorage.getItem(LS.theme);
-    if (raw === '"dark"' || raw === "dark") return "dark";
-    if (raw === '"light"' || raw === "light") return "light";
+    const v = raw?.trim().replace(/^"+|"+$/g, "");
+    if (v === "dark" || v === "light" || v === "auto") return v;
   } catch {
     /* abaikan */
   }
   return null;
+}
+
+/** Tema sistem dari prefers-color-scheme. Fallback "light" di SSR/tanpa matchMedia. */
+function getSystemTheme(): "dark" | "light" {
+  if (typeof window === "undefined" || typeof window.matchMedia !== "function") return "light";
+  try {
+    return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  } catch {
+    return "light";
+  }
+}
+
+/** Resolve tema efektif: "auto" mengikuti sistem, "dark"/"light" dipakai apa adanya. */
+function resolveTheme(t: Theme): "dark" | "light" {
+  return t === "auto" ? getSystemTheme() : t;
 }
 
 function sanitizeHex(v: string | null): string | null {
@@ -116,6 +135,8 @@ function getStoredAccent(): string | null {
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
   const [accent, setAccentState] = useState<string>(DEFAULT_ACCENT);
+  // Pilihan sistem saat ini — lazy-init dari matchMedia agar tanpa setState di effect.
+  const [system, setSystem] = useState<"dark" | "light">(() => getSystemTheme());
 
   useEffect(() => {
     const stored = getStoredTheme();
@@ -129,19 +150,32 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     }
   }, []);
 
+  // Langganan prefers-color-scheme: hanya callback perubahan yang setState.
   useEffect(() => {
-    document.documentElement.dataset.theme = theme;
+    if (typeof window === "undefined" || typeof window.matchMedia !== "function") return;
+    const mq = window.matchMedia("(prefers-color-scheme: dark)");
+    const onChange = (e: MediaQueryListEvent) => setSystem(e.matches ? "dark" : "light");
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+
+  // Tema efektif = turunan murni (bukan state): "auto" → sistem, lain → apa adanya.
+  const effective: "dark" | "light" = theme === "auto" ? system : theme;
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = effective;
     try {
       localStorage.setItem(LS.theme, JSON.stringify(theme));
     } catch {
       /* abaikan */
     }
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", theme === "dark" ? "#121212" : "#f5f5f5");
-    applyAccent(accent, theme === "dark");
-  }, [theme, accent]);
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", effective === "dark" ? "#121212" : "#f5f5f5");
+    applyAccent(accent, effective === "dark");
+  }, [theme, effective, accent]);
 
   const toggle = useCallback(() => {
-    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
+    // Non-breaking: toggle selalu dark<->light ("auto" → ikut efektif lalu dibalik).
+    setTheme((prev) => (resolveTheme(prev) === "dark" ? "light" : "dark"));
   }, []);
 
   const setAccent = useCallback((hex: string) => {

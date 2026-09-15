@@ -1,8 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { migrateRochaKeys } from "./data";
 
 function readLS<T>(key: string, fallback: T): T {
+  // Migrasi selalu sebelum baca — perbaiki bug hidrasi-timpa-migrasi:
+  // tanpa ini, state lama terbaca dulu lalu ditulis balik dan menimpa hasil migrasi.
+  try {
+    migrateRochaKeys();
+  } catch {
+    /* abaikan: storage tak tersedia */
+  }
   if (typeof window === "undefined") return fallback;
   try {
     const raw = localStorage.getItem(key);
@@ -26,15 +34,12 @@ function writeLS(key: string, value: unknown): void {
 
 /** State yang persist ke localStorage. Hydration-safe: baca saat mount. */
 export function useLocalStorage<T>(key: string, initial: T | (() => T)) {
-  const [value, setValue] = useState<T>(() =>
-    typeof initial === "function" ? (initial as () => T)() : initial
-  );
+  const initialNow: T = typeof initial === "function" ? (initial as () => T)() : initial;
+  const [value, setValue] = useState<T>(initialNow);
 
   // initial hanya dipakai untuk seed pertama; simpan snapshot-nya agar
   // effect tidak perlu depend ke referensi fungsi yang berubah tiap render.
-  const [seed] = useState<T>(() =>
-    typeof initial === "function" ? (initial as () => T)() : initial
-  );
+  const [seed] = useState<T>(initialNow);
 
   useEffect(() => {
     const stored = readLS<T>(key, seed);
@@ -44,6 +49,14 @@ export function useLocalStorage<T>(key: string, initial: T | (() => T)) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- seed snapshot, key saja
   }, [key]);
+
+  // Reset tanpa bocor satu render saat key akun berganti: set-state-dalam-render
+  // (pola React resmi) agar value langsung sinkron sebelum paint berikutnya.
+  const [prevKey, setPrevKey] = useState(key);
+  if (prevKey !== key) {
+    setPrevKey(key);
+    setValue(readLS(key, initialNow));
+  }
 
   const set = useCallback(
     (next: T | ((prev: T) => T)) => {

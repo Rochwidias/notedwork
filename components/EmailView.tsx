@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { Mail } from "@/lib/types";
 import { EmailBody } from "@/lib/emailBody";
 import {
@@ -83,6 +83,27 @@ function EmailHead({ preview, updatedAt, total }: { preview?: boolean; updatedAt
 export default function EmailView(props: Props) {
   const { mails, remote, preview } = props;
   const [status, setStatus] = useState<MailStatus>("all");
+  // Status pencarian ber-debounce: tampil "mencari…" saat user masih mengetik,
+  // agar jelas request dikirim setelah berhenti — bukan tiap huruf.
+  const [typing, setTyping] = useState(false);
+  const typeT = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (typeT.current) clearTimeout(typeT.current);
+    };
+  }, []);
+
+  const onSearchChange = useCallback(
+    (q: string) => {
+      setTyping(true);
+      if (typeT.current) clearTimeout(typeT.current);
+      // 400ms tanpa ketikan = anggap selesai; induk juga debounce di sisinya.
+      typeT.current = setTimeout(() => setTyping(false), 450);
+      props.onSearch(q);
+    },
+    [props]
+  );
 
   const current = mails.find((m) => m.id === props.currentMail) ?? null;
 
@@ -121,14 +142,19 @@ export default function EmailView(props: Props) {
           placeholder="Cari email…"
           aria-label="Cari email"
           value={props.search}
-          onChange={(e) => props.onSearch(e.target.value)}
+          onChange={(e) => onSearchChange(e.target.value)}
         />
         {props.search && (
-          <button type="button" className="search-clear" aria-label="Bersihkan pencarian" onClick={() => props.onSearch("")}>
+          <button type="button" className="search-clear" aria-label="Bersihkan pencarian" onClick={() => onSearchChange("")}>
             <IconX size={15} />
           </button>
         )}
       </div>
+      {(typing || remote.loading) && (
+        <div className="search-count" role="status" aria-live="polite">
+          {typing ? "Mengetik…" : "Mencari…"}
+        </div>
+      )}
       {filtering && (
         <div className="search-count" role="status">
           {list.length} hasil{props.search.trim() ? ` untuk “${props.search.trim()}”` : ""}

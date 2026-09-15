@@ -2,12 +2,12 @@
 
 import type { ComponentType } from "react";
 import type { NavTarget, ViewName } from "@/lib/types";
-import { IconCalendar, IconHome, IconMail, IconPlug, IconPlus, IconTask, IconUser } from "./icons";
+import { IconCalendar, IconHome, IconMail, IconPlus, IconTask, IconUser } from "./icons";
 
 type IconComp = ComponentType<{ size?: number; className?: string }>;
 
 const TABS: { id: ViewName; Icon: IconComp; label: string }[] = [
-  { id: "dashboard", Icon: IconHome, label: "Dashboard" },
+  { id: "beranda", Icon: IconHome, label: "Hari Ini" },
   { id: "email", Icon: IconMail, label: "Email" },
   { id: "tugas", Icon: IconTask, label: "Tugas" },
   { id: "kalender", Icon: IconCalendar, label: "Kalender" },
@@ -26,35 +26,26 @@ export function Sidebar({ view, go }: { view: ViewName; go: (v: NavTarget) => vo
           {t.label}
         </button>
       ))}
-      <div className="cap">RENCANA</div>
-      <button className={`tab${view === "koneksi" ? " active" : ""}`} onClick={() => go("koneksi")}>
-        <span className="ic">
-          <IconPlug size={20} />
-        </span>
-        Koneksi Google
-      </button>
+      <div className="cap">TAMBAH</div>
       <button className="tab" onClick={() => go("tambah")}>
         <span className="ic">
           <IconPlus size={20} />
         </span>
-        Tambah Jadwal
+        Tambah Baru
       </button>
     </nav>
   );
 }
 
 export function TabBar({ view, go }: { view: ViewName; go: (v: NavTarget) => void }) {
-  // view "koneksi" tak punya tab sendiri di mobile (grid fix 5 kolom):
-  // sorot Profil sebagai proxy karena koneksi diakses via profil.
-  const eff = view === "koneksi" ? "profil" : view;
   return (
     <nav className="tabbar" aria-label="Navigasi utama">
       <div className="tabbar-inner">
         {TABS.map((t) => (
           <button
             key={t.id}
-            className={`tab${eff === t.id ? " active" : ""}`}
-            aria-current={eff === t.id ? "page" : undefined}
+            className={`tab${view === t.id ? " active" : ""}`}
+            aria-current={view === t.id ? "page" : undefined}
             onClick={() => go(t.id)}
           >
             <span className="ic">
@@ -70,7 +61,7 @@ export function TabBar({ view, go }: { view: ViewName; go: (v: NavTarget) => voi
 
 export function Fab({ onAdd }: { onAdd: () => void }) {
   return (
-    <button className="fab" onClick={onAdd} title="Tambah jadwal" aria-label="Tambah">
+    <button className="fab" onClick={onAdd} title="Tambah baru" aria-label="Tambah baru">
       <IconPlus size={26} />
     </button>
   );

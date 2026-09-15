@@ -10,6 +10,7 @@ interface GEvent {
   location?: string;
   start?: { dateTime?: string; date?: string };
   end?: { dateTime?: string; date?: string };
+  extendedProperties?: { private?: Record<string, string> };
 }
 
 const COLORS = ["#00cfff", "#22c55e", "#f59e0b", "#7c5cff", "#ec4899", "#ef4444"];
@@ -24,21 +25,34 @@ function toSched(e: GEvent, i: number): Sched | null {
   const startIso = e.start?.dateTime ?? e.start?.date;
   if (!startIso || !e.id) return null;
   const { date, time } = splitDateTime(startIso);
+  // Event seharian Google: start.date tanpa dateTime → allDay.
   const allDay = !!e.start?.date && !e.start?.dateTime;
-  // endTime hanya bila beda tanggal-jam mulai (same-day); end == start/all-day → undefined.
+  // end beda tanggal (end.date > start.date) → overnight: jam end + flag.
+  // endTime same-day seperti sebelumnya (end == start/all-day → undefined).
   let endTime: string | undefined;
+  let overnight = false;
   if (e.end?.dateTime) {
     const e2 = splitDateTime(e.end.dateTime);
-    if (e2.date === date && e2.time && e2.time !== (allDay ? "00:00" : time)) endTime = e2.time;
+    if (e2.date > date && e2.time) {
+      endTime = e2.time;
+      overnight = true;
+    } else if (e2.date === date && e2.time && e2.time !== (allDay ? "00:00" : time)) {
+      endTime = e2.time;
+    }
   }
+  const rawReminder = e.extendedProperties?.private?.notedworkReminderMin;
+  const reminderNum = rawReminder != null && rawReminder !== "" ? Number(rawReminder) : NaN;
   return {
     id: `g:${e.id}`,
     title: e.summary || "(tanpa judul)",
     date,
     time: allDay ? "00:00" : time || "00:00",
     ...(endTime ? { endTime } : {}),
+    ...(allDay ? { allDay: true } : {}),
+    ...(overnight ? { overnight: true } : {}),
     note: [e.location, e.description].filter(Boolean).join(" • ").slice(0, 140),
     color: COLORS[i % COLORS.length],
+    ...(Number.isFinite(reminderNum) ? { reminderMin: reminderNum } : {}),
   };
 }
 
@@ -60,29 +74,45 @@ export interface EventInput {
   title: string;
   date: string;
   time: string;
-  /** hh:mm selesai same-day, opsional — kosong = sekilas (end == start). */
+  /** hh:mm selesai, opsional — kosong = sekilas (end == start); <= time = overnight (besok). */
   endTime?: string;
   note: string;
+  /** Menit pengingat sebelum mulai; opsional, default 15, 0 = mati. */
+  reminderMin?: number;
 }
 
-function eventPayload(v: EventInput) {
-  const end = v.endTime && /^\d{2}:\d{2}$/.test(v.endTime) && v.endTime > v.time ? v.endTime : v.time;
+/** Tambah hari ke iso yyyy-mm-dd (aritmetika Date aman, lintas bulan/tahun). */
+function addDaysISO(iso: string, n: number): string {
+  const d = new Date(Number(iso.slice(0, 4)), Number(iso.slice(5, 7)) - 1, Number(iso.slice(8, 10)));
+  d.setDate(d.getDate() + n);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function eventPayload(v: EventInput, reminderMin?: number) {
+  const endValid = v.endTime && /^\d{2}:\d{2}$/.test(v.endTime) ? v.endTime : null;
+  // end <= start = overnight: tanggal end +1 hari (diterima, bukan ditolak).
+  const endDate = endValid && endValid <= v.time ? addDaysISO(v.date, 1) : v.date;
+  const end = endValid ?? v.time;
   return {
     summary: v.title,
     description: v.note || undefined,
     start: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
-    end: { dateTime: `${v.date}T${end}:00+07:00`, timeZone: "Asia/Jakarta" },
+    end: { dateTime: `${endDate}T${end}:00+07:00`, timeZone: "Asia/Jakarta" },
+    ...(reminderMin != null
+      ? { extendedProperties: { private: { notedworkReminderMin: String(reminderMin) } } }
+      : {}),
   };
 }
 
 export async function createEvent(
   userId: string,
-  v: EventInput
+  v: EventInput,
+  reminderMin?: number
 ): Promise<Sched> {
   const res = await googleFetch(userId, `${CAL}/events`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(eventPayload(v)),
+    body: JSON.stringify(eventPayload(v, reminderMin ?? v.reminderMin)),
   });
   if (!res.ok) throw new Error("Calendar create gagal: " + res.status);
   const e = (await res.json()) as GEvent;
@@ -94,12 +124,13 @@ export async function createEvent(
 export async function updateEvent(
   userId: string,
   eventId: string,
-  v: EventInput
+  v: EventInput,
+  reminderMin?: number
 ): Promise<Sched> {
   const res = await googleFetch(userId, `${CAL}/events/${encodeURIComponent(eventId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(eventPayload(v)),
+    body: JSON.stringify(eventPayload(v, reminderMin ?? v.reminderMin)),
   });
   if (!res.ok) throw new Error("Calendar update gagal: " + res.status);
   const e = (await res.json()) as GEvent;

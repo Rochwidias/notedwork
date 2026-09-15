@@ -31,6 +31,10 @@ self.addEventListener("fetch", (e) => {
   if (request.method !== "GET") return;
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return; // jangan cache Google Fonts dkk
+  // API & flight-data Next (RSC) jangan disentuh SW: selalu network, tanpa
+  // cache — kalau tidak, /api/gmail/list?q=a bisa disaji dari cache ?q=b
+  // (akibat ignoreSearch) dan UI tampil data basi sebagai segar.
+  if (url.pathname.startsWith("/api/") || url.searchParams.has("_rsc")) return;
 
   // Navigasi: network-first agar HTML tak pernah basi.
   if (isNavigation(request)) {
