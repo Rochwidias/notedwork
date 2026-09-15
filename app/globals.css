@@ -857,6 +857,66 @@ button {
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
+.body-footer-label {
+  font-size: 10.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  margin-bottom: 6px;
+}
+/* ── Tabel di dalam email (newsletter) ── */
+.table-scroll {
+  overflow-x: auto;
+  margin: 12px 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+}
+.mail-table {
+  border-collapse: collapse;
+  width: 100%;
+  font-size: 12.5px;
+  line-height: 1.5;
+}
+.mail-table th,
+.mail-table td {
+  border-bottom: 1px solid var(--line);
+  padding: 7px 10px;
+  text-align: left;
+  vertical-align: top;
+  overflow-wrap: anywhere;
+}
+.mail-table tr:last-child th,
+.mail-table tr:last-child td {
+  border-bottom: none;
+}
+.mail-table th {
+  font-weight: 800;
+  background: var(--brand-soft);
+  color: var(--brand-dark);
+  white-space: nowrap;
+}
+[data-theme="dark"] .mail-table th {
+  color: var(--brand);
+}
+.mail-table td + td,
+.mail-table th + th,
+.mail-table td + th,
+.mail-table th + td {
+  border-left: 1px solid var(--line);
+}
+/* ── Blok kode di dalam email ── */
+.body-pre {
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+  font-size: 12.5px;
+  line-height: 1.6;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin: 12px 0;
+  overflow-x: auto;
+  white-space: pre;
+}
 .mail-detail .body .body-footer a.mail-link {
   color: var(--muted);
 }

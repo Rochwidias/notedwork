@@ -5,6 +5,7 @@ import type { ComposePreset, Mail, NavTarget, Routine, Sched, Task, ViewName } f
 import { GUEST_NAME_KEY, GUEST_SUFFIX, LS, migrateRochaKeys } from "@/lib/data";
 import { RCOL, todayStr } from "@/lib/dates";
 import { PREVIEW_LOGIN_HINT, sampleRoutines, sampleScheds, sampleTasks, SAMPLE_MAILS } from "@/lib/preview";
+import { stripMailTokens } from "@/lib/emailBody";
 import { removeLS, useLocalStorage } from "@/lib/store";
 import ThemeProvider from "./ThemeProvider";
 import TopBar from "./TopBar";
@@ -275,13 +276,16 @@ function Shell() {
       const m = remoteMails.find((x) => x.id === currentMail);
       if (!m) return;
       const stripRe = (s: string) => s.replace(/^re:\s+/i, "");
+      // Draf reply/fwd = teks polos: token [label](url)/[TABLE]/[PRE] dikembalikan
+      // jadi "label (url)" / "a | b" agar markup tak bocor ke email terkirim.
+      const quoted = stripMailTokens(m.body);
       try {
         if (act === "reply") {
           openCompose(
             {
               to: m.email,
               subj: "Re: " + stripRe(m.subj),
-              body: `\n\n— — —\nPada ${m.time}, ${m.from} menulis:\n${m.body}`,
+              body: `\n\n— — —\nPada ${m.time}, ${m.from} menulis:\n${quoted}`,
             },
             "balas"
           );
@@ -290,7 +294,7 @@ function Shell() {
             {
               to: "",
               subj: "Fwd: " + stripRe(m.subj).replace(/^fwd:\s+/i, ""),
-              body: `\n\n— Diteruskan dari ${m.from} <${m.email}> —\n${m.body}`,
+              body: `\n\n— Diteruskan dari ${m.from} <${m.email}> —\n${quoted}`,
             },
             "teruskan"
           );

@@ -78,6 +78,18 @@ export const SAMPLE_MAILS: Mail[] = [
     unread: false,
     starred: true,
   },
+  {
+    id: "pv-mail-6",
+    from: "Google AI Studio",
+    email: "noreply@google.com",
+    subj: "Google AI Studio — Gemini 3.8 Flash",
+    prev: "Model reasoning & coding terbaru: coba di AI Studio, lihat harga…",
+    body: "Google AI Studio\n\n[Try in AI Studio](https://example.com/studio) — model reasoning & coding terbaru.\n\n- Long-horizon software engineering\n- Autonomous agents\n- Tunable thinking level\n\n[TABLE]\n[R][H]Model | [H]Input | [H]Output\n[R]Gemini 3.8 Flash | $0.75* | $3.75*\n[R]Lainnya | $5.00 | $25.00\n[/TABLE]\n\nContoh pakai:\n\n[PRE]\nfrom google import genai\nclient = genai.Client()\nprint(\"halo\")\n[/PRE]\n\nLihat [dokumentasi lengkap](https://example.com/docs) atau kunjungi www.contoh.id untuk info.\n\n* Harga promo berakhir 31 Desember 2026.\n© 2026 Google LLC, 1600 Amphitheatre Parkway, Mountain View, CA 94043, USA\n\nThis email was sent to kamu@contoh.id because you signed up to receive emails about Google AI. If you do not wish to receive these emails, please unsubscribe.",
+    time: "4 Sep",
+    tag: "Contoh",
+    files: [],
+    unread: true,
+  },
 ];
 
 export function sampleScheds(): Sched[] {
