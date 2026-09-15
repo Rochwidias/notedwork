@@ -28,6 +28,7 @@ import {
   apiLogout,
   apiSendMail,
   apiStatus,
+  apiUpdateEvent,
 } from "@/lib/remote";
 
 export default function NotedworkApp() {
@@ -86,6 +87,10 @@ function Shell() {
   const [search, setSearch] = useState("");
   const [selDate, setSelDate] = useState<string>(() => todayStr());
 
+  // Jadwal yang sedang diedit (null = mode tambah). Sheet dibuka via onEditSched.
+  // Dideklarasikan sebelum markDisconnected agar reset saat putus koneksi.
+  const [editingSched, setEditingSched] = useState<Sched | null>(null);
+
   const markDisconnected = useCallback(() => {
     setConnected(false);
     setConnEmail(null);
@@ -93,6 +98,7 @@ function Shell() {
     setMailPage(null);
     setRemoteEvents([]);
     setCurrentMail(null);
+    setEditingSched(null);
   }, []);
 
   const nowHMID = useCallback(() => {
@@ -368,6 +374,50 @@ function Shell() {
     [connected, toastMsg, markDisconnected, go]
   );
 
+  const startEditSched = useCallback(
+    (id: string) => {
+      if (!connected) {
+        toastMsg(PREVIEW_LOGIN_HINT);
+        return;
+      }
+      const s = remoteEvents.find((x) => x.id === id);
+      if (!s) {
+        toastMsg("Jadwal tidak ditemukan");
+        return;
+      }
+      setEditingSched(s);
+      setSheet("sched");
+    },
+    [connected, remoteEvents, toastMsg]
+  );
+
+  const saveEditSched = useCallback(
+    async (v: { title: string; date: string; time: string; note: string }) => {
+      if (!connected || !editingSched) {
+        toastMsg(PREVIEW_LOGIN_HINT);
+        return;
+      }
+      try {
+        const ev = await apiUpdateEvent(editingSched.id, v);
+        setRemoteEvents((prev) =>
+          prev
+            .map((s) => (s.id === editingSched.id ? ev : s))
+            .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+        );
+        toastMsg("Jadwal diperbarui di Google Calendar");
+      } catch (e) {
+        if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
+        else toastMsg(`Gagal ubah: ${e instanceof Error ? e.message : "unknown"}`);
+        return;
+      }
+      setEditingSched(null);
+      setSelDate(v.date);
+      setSheet(null);
+      go("kalender");
+    },
+    [connected, editingSched, toastMsg, markDisconnected, go]
+  );
+
   const saveMail = useCallback(
     async (to: string, subj: string, body: string) => {
       if (!connected) {
@@ -497,9 +547,17 @@ function Shell() {
                 tasks={tasks}
                 selDate={selDate}
                 onSelectDate={(iso) => setSelDate(iso)}
+                onEditSched={startEditSched}
                 onDeleteSched={delSched}
                 onDeleteRoutine={delRoutine}
-                onAddSched={() => (connected ? setSheet("sched") : toastMsg(PREVIEW_LOGIN_HINT))}
+                onAddSched={() => {
+                  if (!connected) {
+                    toastMsg(PREVIEW_LOGIN_HINT);
+                    return;
+                  }
+                  setEditingSched(null);
+                  setSheet("sched");
+                }}
                 onManageRoutine={() => setSheet("routine")}
                 preview={preview}
               />
@@ -537,12 +595,28 @@ function Shell() {
       </div>
       <TabBar view={view} go={go} />
       {/* Fab: tambah event saat login, tambah tugas lokal saat preview. */}
-      <Fab onAdd={() => (connected ? setSheet("sched") : setSheet("task"))} />
+      <Fab
+        onAdd={() => {
+          if (connected) {
+            setEditingSched(null);
+            setSheet("sched");
+          } else setSheet("task");
+        }}
+      />
 
       {/* Sched/Mail = tulis ke Google (saat login saja). Task/Routine = lokal (jalan juga di preview). */}
       {connected && (
         <>
-          <SchedSheet open={sheet === "sched"} selDate={selDate} onClose={() => setSheet(null)} onSave={saveSched} />
+          <SchedSheet
+            open={sheet === "sched"}
+            selDate={selDate}
+            initial={editingSched}
+            onClose={() => {
+              setEditingSched(null);
+              setSheet(null);
+            }}
+            onSave={(v) => (editingSched ? saveEditSched(v) : saveSched(v))}
+          />
           <MailSheet
             open={sheet === "mail"}
             preset={compose}

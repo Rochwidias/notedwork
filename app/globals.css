@@ -1432,6 +1432,17 @@ textarea.f {
   min-height: 44px;
   flex: none;
 }
+.edit {
+  background: none;
+  border: none;
+  color: var(--brand);
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 10px 8px;
+  min-height: 44px;
+  flex: none;
+}
 
 /* ── Reveal animation (scroll, ala personal-web) ── */
 .reveal {
