@@ -43,28 +43,32 @@ function b64ToText(b64: string): string {
   return bin;
 }
 
+/**
+ * Decode entities HTML satu pass: &amp;lt; → "&lt;" (literal), bukan "<".
+ * Berantai (.replace &amp; lalu &lt;) akan decode ganda dan bisa menghidupkan
+ * kembali tag/script dari teks yang aslinya ter-escape.
+ */
 function decodeEntities(s: string): string {
-  return s
-    .replace(/&nbsp;/gi, " ")
-    .replace(/&amp;/gi, "&")
-    .replace(/&lt;/gi, "<")
-    .replace(/&gt;/gi, ">")
-    .replace(/&quot;/gi, '"')
-    .replace(/&#39;|&apos;/gi, "'")
-    .replace(/&#(\d+);/g, (_, n: string) => {
+  return s.replace(/&(nbsp|amp|lt|gt|quot|apos|#\d+|#x[0-9a-f]+);/gi, (m: string, ent: string) => {
+    const e = ent.toLowerCase();
+    if (e === "nbsp") return " ";
+    if (e === "amp") return "&";
+    if (e === "lt") return "<";
+    if (e === "gt") return ">";
+    if (e === "quot") return '"';
+    if (e === "apos" || ent === "&#39;") return "'";
+    let num: number | null = null;
+    if (/^#\d+$/.test(ent)) num = Number(ent.slice(1));
+    else if (/^#x[0-9a-f]+$/i.test(ent)) num = parseInt(ent.slice(2), 16);
+    if (num !== null && Number.isFinite(num)) {
       try {
-        return String.fromCharCode(Number(n));
+        return String.fromCharCode(num);
       } catch {
         return "";
       }
-    })
-    .replace(/&#x([0-9a-f]+);/gi, (_, h: string) => {
-      try {
-        return String.fromCharCode(parseInt(h, 16));
-      } catch {
-        return "";
-      }
-    });
+    }
+    return m;
+  });
 }
 
 /** HTML → teks ber-token: link [label](url), tabel [TABLE]/[R]/[H], code [PRE], <img> dibuang. */
@@ -230,21 +234,44 @@ function safeSlice(text: string, max = 6000): string {
 }
 
 function extractBody(msg: GmailMessage): string {
-  const walk = (part: GmailPart | undefined): string => {
+  const pickPlain = (part: GmailPart | undefined): string => {
     if (!part) return "";
     if (part.mimeType === "text/plain" && part.body?.data) return cleanPlain(b64ToText(part.body.data));
     if (part.parts) {
       for (const p of part.parts) {
-        const t = walk(p);
+        const t = pickPlain(p);
         if (t) return t;
       }
+    }
+    if (!part.parts && part.body?.data && part.mimeType === "text/plain") return cleanPlain(b64ToText(part.body.data));
+    return "";
+  };
+  const pickHtml = (part: GmailPart | undefined): string => {
+    if (!part) return "";
+    if (part.mimeType === "text/html" && part.body?.data) return htmlToText(b64ToText(part.body.data));
+    if (part.parts) {
       for (const p of part.parts) {
-        if (p.mimeType === "text/html" && p.body?.data) {
-          return htmlToText(b64ToText(p.body.data));
-        }
+        const t = pickHtml(p);
+        if (t) return t;
       }
     }
-    if (part.body?.data && part.mimeType?.startsWith("text/")) return cleanPlain(b64ToText(part.body.data));
+    if (!part.parts && part.body?.data && part.mimeType === "text/html") return htmlToText(b64ToText(part.body.data));
+    return "";
+  };
+  const walk = (part: GmailPart | undefined): string => {
+    if (!part) return "";
+    // Single-part text/html: tanpa .parts, tanpa mimeType gabungan — render via htmlToText.
+    if (!part.parts && part.body?.data && part.mimeType?.startsWith("text/")) {
+      return part.mimeType === "text/html" ? htmlToText(b64ToText(part.body.data)) : cleanPlain(b64ToText(part.body.data));
+    }
+    if (part.parts) {
+      // Plain dulu di seluruh subtree, baru HTML — jangan campur walk generik yang
+      // bisa menelan HTML mentah sebagai teks.
+      return pickPlain(part) || pickHtml(part);
+    }
+    if (part.body?.data && part.mimeType?.startsWith("text/")) {
+      return part.mimeType === "text/html" ? htmlToText(b64ToText(part.body.data)) : cleanPlain(b64ToText(part.body.data));
+    }
     return "";
   };
   const payload = msg.payload as GmailPart | undefined;
@@ -279,6 +306,8 @@ function prettyDate(internalDateMs: string | undefined): string {
   y.setDate(now.getDate() - 1);
   if (d.toDateString() === y.toDateString()) return "Kemarin";
   const diffDays = Math.floor((now.getTime() - d.getTime()) / 864e5);
+  // Email masa depan (jam mundur / zona waktu) bukan "N hari lalu" — tampilkan tanggalnya.
+  if (diffDays < 0) return d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
   if (diffDays < 7) return `${diffDays} hari lalu`;
   return d.toLocaleDateString("id-ID", { day: "numeric", month: "short" });
 }
@@ -295,7 +324,41 @@ function cutWords(s: string, max: number): string {
 
 /** Hilangkan token link [label](url) → label (untuk subjek/prev agar markup tak bocor). */
 function detokenize(s: string): string {
-  return s.replace(/\[([^\[\]\n]{1,200})\]\((https?:\/\/[^\s()<>\"]+)\)/g, "$1");
+  // Token dipindai manual (bukan regex tunggal) agar URL berkurung-seimbang
+  // cth: [Foo](https://…/Foo_(bar)) ikut utuh, bukan terpotong di "bar)".
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const lb = s.indexOf("[", i);
+    if (lb < 0) { out += s.slice(i); break; }
+    const mid = s.indexOf("](", lb + 1);
+    if (mid < 0 || mid - (lb + 1) > 200 || mid - (lb + 1) < 1 || /[\[\]\n]/.test(s.slice(lb + 1, mid))) {
+      out += s.slice(i, lb + 1); i = lb + 1; continue;
+    }
+    const url = readBalancedUrl(s, mid + 1);
+    if (url === null) { out += s.slice(i, mid + 2); i = mid + 2; continue; }
+    out += s.slice(i, lb) + s.slice(lb + 1, mid);
+    i = mid + 2 + url.length + 1;
+  }
+  return out;
+}
+
+/** Baca URL dari posisi "(" dgn kurung seimbang; null bila tak ada ")" penutup. */
+export function readBalancedUrl(s: string, openIdx: number): string | null {
+  let depth = 0;
+  for (let i = openIdx; i < s.length; i++) {
+    const c = s[i];
+    if (c === "(") depth++;
+    else if (c === ")") {
+      depth--;
+      if (depth === 0) {
+        const url = s.slice(openIdx + 1, i);
+        if (!/^https?:\/\//i.test(url) || /[\s<>\"]/.test(url)) return null;
+        return url;
+      }
+    } else if ((c === "\n" || c === " ") && depth <= 0) return null;
+  }
+  return null;
 }
 
 /** Baris-baris bermakna dari teks: buang kosong, placeholder gambar, dan baris murni struktur. */
@@ -425,8 +488,14 @@ export async function getMail(userId: string, id: string): Promise<Mail> {
   return toMail(full, full.internalDate);
 }
 
+/** Encode header RFC2047 bila ada byte non-ASCII; ASCII murni dikirim apa adanya. */
+export function encodeHeader(s: string): string {
+  if (/^[\x20-\x7e]*$/.test(s)) return s;
+  return `=?UTF-8?B?${Buffer.from(s, "utf-8").toString("base64")}?=`;
+}
+
 function rawMessage(to: string, subj: string, body: string): string {
-  const raw = [`To: ${to}`, `Subject: ${subj}`, "Content-Type: text/plain; charset=utf-8", "", body].join("\r\n");
+  const raw = [`To: ${to}`, `Subject: ${encodeHeader(subj)}`, "Content-Type: text/plain; charset=utf-8", "", body].join("\r\n");
   return Buffer.from(raw, "utf-8").toString("base64url");
 }
 

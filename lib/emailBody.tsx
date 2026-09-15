@@ -2,10 +2,80 @@
 
 import { Fragment, type ReactNode } from "react";
 
+// Catatan: alternatif ")" di URL_RE sengaja dikecualikan agar "(lihat https://x/y)"
+// tak menelan ")" kalimat. Konsekuensinya URL wiki "…/Foo_(bar)" terpotong di "("
+// → dipulihkan oleh restoreBalancedTail() di bawah (kembalikan ")" yang seimbang).
 const URL_RE = /https?:\/\/[^\s<>"')\]]+|www\.[^\s<>"')\]]+|[\w.+-]+@[\w-]+\.[\w.]+/g;
-const TRAIL_PUNCT = /[.,;:!?)\]}"'»”’]+$/;
-/** Token link berlabel dari htmlToText: [label](url). */
-const TOKEN_RE = /\[([^\[\]\n]{1,200})\]\((https?:\/\/[^\s()<>\"]+)\)/g;
+
+/** Baca URL dari posisi "(" dgn kurung seimbang; null bila tak ada ")" penutup. */
+export function readBalancedUrl(s: string, openIdx: number): string | null {
+  let depth = 0;
+  for (let i = openIdx; i < s.length; i++) {
+    const c = s[i];
+    if (c === "(") depth++;
+    else if (c === ")") {
+      depth--;
+      if (depth === 0) {
+        const url = s.slice(openIdx + 1, i);
+        if (!/^https?:\/\//i.test(url) || /[\s<>\"]/.test(url)) return null;
+        return url;
+      }
+    } else if ((c === "\n" || c === " ") && depth <= 0) return null;
+  }
+  return null;
+}
+
+/** Pecah teks jadi [plain, label, url, plain, …] dgn URL berkurung-seimbang. */
+function splitTokens(text: string): string[] {
+  const parts: string[] = [];
+  const re = /\[([^\[\]\n]{1,200})\]\(/g;
+  let last = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(text)) !== null) {
+    const url = readBalancedUrl(text, m.index + m[0].length - 1);
+    if (url === null) continue;
+    parts.push(text.slice(last, m.index), m[1], url);
+    last = m.index + m[0].length + url.length + 1;
+    re.lastIndex = last;
+  }
+  parts.push(text.slice(last));
+  return parts;
+}
+
+/** Kembalikan ")" / "]" penutup yang ditelan URL_RE, bila seimbang dgn pembukanya.
+ *  Batas: hanya intip ≤ 8 char ke depan agar tak menelan kalimat berikutnya. */
+function restoreBalancedTail(url: string, after: string): string {
+  let u = url;
+  for (let k = 0; k < 8 && k < after.length; k++) {
+    const c = after[k];
+    if (c !== ")" && c !== "]") break;
+    const open = c === ")" ? "(" : "[";
+    const opens = u.split(open).length - 1;
+    const closes = u.split(c).length - 1;
+    if (opens > closes) u += c;
+    else break;
+  }
+  return u;
+}
+
+/** Potong tanda baca di ekor bare-URL: [.,;:!?] selalu; ) ] hanya bila tak berpasangan.
+ *  Urutan penting: paren/siku DULU (seimbang dipertahankan), titik-koma dkk TERAKHIR —
+ *  kalau dibalik, "…Foo_(bar)" kehilangan ")" duluan. TRAIL_PUNCT tak dipakai di sini
+ *  karena ia menelan ")" tanpa cek keseimbangan (dipakai hanya untuk "(…)" kalimat
+ *  di versi lama — sekarang loop seimbang di atas yang menentukan). */
+export function trimBareTail(raw: string): string {
+  let u = raw.replace(/[.,;:!?]+$/, "");
+  for (;;) {
+    const last = u[u.length - 1];
+    if (last !== ")" && last !== "]") break;
+    const open = last === ")" ? "(" : "[";
+    const opens = u.split(open).length - 1;
+    const closes = u.split(last).length - 1;
+    if (closes > opens) u = u.slice(0, -1).replace(/[.,;:!?]+$/, "");
+    else break;
+  }
+  return u;
+}
 
 function isSafeUrl(u: string): boolean {
   try {
@@ -49,10 +119,25 @@ function linkNode(url: string, href: string, key: string): ReactNode {
   );
 }
 
-/** Hilangkan token [..](..)/[TABLE]/[PRE] → teks polos (untuk draf reply/fwd & subjek). */
+/** Hilangkan token [..](..)/[TABLE]/[PRE] → teks polos (untuk draf reply/fwd & subjek).
+ *  Pemindaian manual berkurung-seimbang (bukan regex tunggal) agar URL wiki utuh. */
 export function stripMailTokens(t: string): string {
-  return t
-    .replace(TOKEN_RE, (_m, label: string, url: string) => (label === url ? url : `${label} (${url})`))
+  let out = "";
+  let i = 0;
+  for (;;) {
+    const lb = t.indexOf("[", i);
+    if (lb < 0) { out += t.slice(i); break; }
+    const mid = t.indexOf("](", lb + 1);
+    if (mid < 0 || mid - (lb + 1) > 200 || mid - (lb + 1) < 1 || /[\[\]\n]/.test(t.slice(lb + 1, mid))) {
+      out += t.slice(i, lb + 1); i = lb + 1; continue;
+    }
+    const url = readBalancedUrl(t, mid + 1);
+    if (url === null) { out += t.slice(i, mid + 2); i = mid + 2; continue; }
+    const label = t.slice(lb + 1, mid);
+    out += t.slice(i, lb) + (label === url ? ` ${url} ` : ` ${label} (${url}) `);
+    i = mid + 2 + url.length + 1;
+  }
+  return out
     .replace(/\[TABLE\]|\[\/TABLE\]|\[PRE\]|\[\/PRE\]|\[H\]/g, "")
     .replace(/\[R\]/g, "")
     .replace(/[ \t]+\|/g, " |");
@@ -63,20 +148,24 @@ function linkifyText(text: string): ReactNode[] {
   const out: ReactNode[] = [];
   let i = 0;
   // Lapis 1: token [label](url) dari htmlToText — label diklik, URL di href+title.
-  const parts = text.split(TOKEN_RE);
+  const parts = splitTokens(text);
   for (let p = 0; p < parts.length; p += 3) {
     const plain = parts[p] ?? "";
     if (plain) {
       // Lapis 2: bare-URL pada sisa teks (label pendek, href penuh).
+      // "last" dimajukan sejauh karakter yang benar-benar dikonsumsi (match + restore),
+      // agar ")" yang dipulihkan tak dirender ganda sebagai teks.
       let last = 0;
       for (const m of plain.matchAll(URL_RE)) {
         const idx = m.index ?? 0;
-        const url = m[0].replace(TRAIL_PUNCT, "");
+        const after = plain.slice(idx + m[0].length, idx + m[0].length + 8);
+        const restored = restoreBalancedTail(m[0], after);
+        const url = trimBareTail(restored);
         if (!url) continue;
         if (idx > last) out.push(plain.slice(last, idx));
         const href = toHref(url);
         out.push(href ? linkNode(url, href, `b${i}-${idx}`) : url);
-        last = idx + m[0].length - (m[0].length - url.length);
+        last = idx + restored.length;
         i++;
       }
       if (last < plain.length) out.push(plain.slice(last));
