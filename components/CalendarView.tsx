@@ -11,6 +11,7 @@ import {
   IconChevronLeft,
   IconChevronRight,
   IconGear,
+  IconPencil,
   IconPlus,
   IconTrash,
 } from "./icons";
@@ -21,6 +22,7 @@ interface Props {
   tasks: Task[];
   selDate: string;
   onSelectDate: (iso: string) => void;
+  onEditSched: (id: string) => void;
   onDeleteSched: (id: string) => void;
   onDeleteRoutine: (id: string) => void;
   onAddSched: () => void;
@@ -34,6 +36,7 @@ export default function CalendarView({
   tasks,
   selDate,
   onSelectDate,
+  onEditSched,
   onDeleteSched,
   onDeleteRoutine,
   onAddSched,
@@ -193,6 +196,9 @@ export default function CalendarView({
                 </div>
                 {s.note && <div className="s">{s.note}</div>}
               </div>
+              <button className="edit del-ic" aria-label={`Ubah ${s.title}`} onClick={() => onEditSched(s.id)}>
+                <IconPencil size={15} />
+              </button>
               <button className="del del-ic" aria-label={`Hapus ${s.title}`} onClick={() => onDeleteSched(s.id)}>
                 <IconTrash size={15} />
               </button>
@@ -251,6 +257,9 @@ export default function CalendarView({
                 </div>
                 {s.note && <div className="s">{s.note}</div>}
               </div>
+              <button className="edit del-ic" aria-label={`Ubah ${s.title}`} onClick={() => onEditSched(s.id)}>
+                <IconPencil size={15} />
+              </button>
               <button className="del del-ic" aria-label={`Hapus ${s.title}`} onClick={() => onDeleteSched(s.id)}>
                 <IconTrash size={15} />
               </button>

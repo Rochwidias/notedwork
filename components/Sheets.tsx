@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ComposePreset, Prio, Routine } from "@/lib/types";
+import type { ComposePreset, Prio, Routine, Sched } from "@/lib/types";
 import { IconBook, IconForward, IconMail, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 
@@ -75,11 +75,13 @@ export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => voi
 export function SchedSheet({
   open,
   selDate,
+  initial,
   onClose,
   onSave,
 }: {
   open: boolean;
   selDate: string;
+  initial?: Sched | null;
   onClose: () => void;
   onSave: (v: { title: string; date: string; time: string; note: string }) => void;
 }) {
@@ -90,14 +92,20 @@ export function SchedSheet({
 
   useEffect(() => {
     if (open) {
+      // Mode edit: isi form dari data lama; mode tambah: default tanggal dipilih.
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form default saat sheet dibuka
-      setDate(selDate);
+      setTitle(initial?.title ?? "");
+      setDate(initial?.date ?? selDate);
+      setTime(initial?.time ?? "09:00");
+      setNote(initial?.note ?? "");
     }
-  }, [open, selDate]);
+  }, [open, selDate, initial]);
+
+  const editing = !!initial;
 
   return (
     <Shell id="ovSched" open={open} onClose={onClose}>
-      <h2><span className="h-ic"><IconPlus size={15} /></span>Tambah Jadwal</h2>
+      <h2><span className="h-ic"><IconPlus size={15} /></span>{editing ? "Ubah Jadwal" : "Tambah Jadwal"}</h2>
       <p className="hint">Agenda sekali saja. Untuk matkul tiap minggu, pakai jadwal rutin.</p>
       <form
         onSubmit={(e) => {
@@ -136,7 +144,7 @@ export function SchedSheet({
             Tutup
           </button>
           <button type="submit" className="btn primary">
-            Simpan
+            {editing ? "Simpan perubahan" : "Simpan"}
           </button>
         </div>
       </form>

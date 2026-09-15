@@ -72,3 +72,21 @@ export async function apiDeleteEvent(id: string): Promise<void> {
   if (res.status === 401) throw new Error(NOT_CONNECTED);
   if (!res.ok) throw new Error("hapus event gagal: " + res.status);
 }
+
+export async function apiUpdateEvent(
+  id: string,
+  v: { title: string; date: string; time: string; note: string }
+): Promise<Sched> {
+  const res = await fetch(`/api/calendar/events/${encodeURIComponent(id)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(v),
+  });
+  if (res.status === 401) throw new Error(NOT_CONNECTED);
+  if (!res.ok) {
+    const j = (await res.json().catch(() => null)) as { error?: string } | null;
+    throw new Error(j?.error ?? "ubah event gagal: " + res.status);
+  }
+  const j = (await res.json()) as { event: Sched };
+  return j.event;
+}

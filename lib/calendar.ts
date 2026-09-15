@@ -70,6 +70,28 @@ export async function createEvent(
   );
 }
 
+export async function updateEvent(
+  userId: string,
+  eventId: string,
+  v: { title: string; date: string; time: string; note: string }
+): Promise<Sched> {
+  const res = await googleFetch(userId, `${CAL}/events/${encodeURIComponent(eventId)}`, {
+    method: "PATCH",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      summary: v.title,
+      description: v.note || undefined,
+      start: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
+      end: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
+    }),
+  });
+  if (!res.ok) throw new Error("Calendar update gagal: " + res.status);
+  const e = (await res.json()) as GEvent;
+  return (
+    toSched(e, 0) ?? { id: `g:${eventId}`, title: v.title, date: v.date, time: v.time, note: v.note, color: COLORS[0] }
+  );
+}
+
 export async function deleteEvent(userId: string, eventId: string): Promise<void> {
   const res = await googleFetch(userId, `${CAL}/events/${encodeURIComponent(eventId)}`, { method: "DELETE" });
   if (!res.ok && res.status !== 410) throw new Error("Calendar delete gagal: " + res.status);
