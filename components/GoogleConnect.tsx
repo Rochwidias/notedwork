@@ -1,5 +1,7 @@
 "use client";
 
+import { IconArrowLeft, IconSignal } from "./icons";
+
 interface Props {
   connected: boolean;
   email: string | null;
@@ -10,12 +12,17 @@ interface Props {
 
 export default function GoogleConnect({ connected, email, updatedAt, onLogout, onProfile }: Props) {
   return (
-    <section className="view active" id="v-mcp">
+    <section className="view active" id="v-koneksi">
       <div className="greet">
         Koneksi Google<small>Gmail &amp; Kalender asli — {connected ? "terhubung" : "belum tersambung"}</small>
       </div>
       <div className="card">
-        <h2>📡 Status</h2>
+        <h2>
+          <span className="h-ic">
+            <IconSignal size={15} />
+          </span>
+          Status
+        </h2>
         <div className="row">
           <span className="dot" style={{ background: connected ? "var(--green)" : "var(--amber)" }} />
           <div style={{ minWidth: 0, flex: 1 }}>
@@ -32,8 +39,9 @@ export default function GoogleConnect({ connected, email, updatedAt, onLogout, o
             <button className="btn ghost" onClick={onLogout}>
               Keluar
             </button>
-            <button className="btn soft" onClick={onProfile}>
-              ← Profil
+            <button className="btn soft btn-ic" onClick={onProfile}>
+              <IconArrowLeft size={15} />
+              Profil
             </button>
           </div>
         ) : (
@@ -41,33 +49,6 @@ export default function GoogleConnect({ connected, email, updatedAt, onLogout, o
             Login dengan Google
           </a>
         )}
-      </div>
-      <div className="card">
-        <h2>🧩 Cara kerja</h2>
-        <div className="flow">
-          <div className="box">
-            <b>📱 Aplikasi ini</b>Email • Tugas • Jadwal rutin • Kalender. Token TIDAK disimpan di sini.
-          </div>
-          <div className="arrow">
-            ↓ <small>fetch /api/…</small> ↓
-          </div>
-          <div className="box">
-            <b>🖥️ Server notedwork</b>Menyimpan token OAuth terenkripsi &amp; meneruskan ke Google.
-          </div>
-          <div className="arrow">
-            ↓ <small>HTTPS</small> ↓
-          </div>
-          <div className="box">
-            <b>🔌 Gmail + Google Calendar</b>baca • kirim • arsip • tambah/hapus event
-          </div>
-        </div>
-        <div className="code">
-          GET&nbsp; /api/gmail/list &nbsp;# 50 email terbaru
-          <br />
-          GET&nbsp; /api/calendar/events &nbsp;# event kalender utama
-          <br />
-          POST /api/gmail/send &nbsp;&nbsp;# kirim email (teks)
-        </div>
       </div>
     </section>
   );

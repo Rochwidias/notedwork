@@ -47,7 +47,7 @@ export default function NotFound() {
           textDecoration: "none",
         }}
       >
-        ← Kembali ke Dashboard
+        Kembali ke Dashboard
       </Link>
     </main>
   );

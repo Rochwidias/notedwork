@@ -3,6 +3,20 @@
 import { useState } from "react";
 import { DEFAULT_ACCENT, useTheme } from "./ThemeProvider";
 import { InfoSheet, type InfoSheetId } from "./Sheets";
+import {
+  IconArrowRight,
+  IconBell,
+  IconDoc,
+  IconEye,
+  IconGear,
+  IconInfo,
+  IconMoon,
+  IconPalette,
+  IconPlug,
+  IconShield,
+  IconStar,
+  IconUser,
+} from "./icons";
 
 interface Props {
   connected: boolean;
@@ -10,7 +24,7 @@ interface Props {
   notif: boolean;
   onToggleNotif: () => void;
   onLogout: () => void;
-  onMcp: () => void;
+  onKoneksi: () => void;
   preview: boolean;
   guestName: string;
   onGuestName: (v: string) => void;
@@ -25,7 +39,7 @@ export default function ProfileView({
   notif,
   onToggleNotif,
   onLogout,
-  onMcp,
+  onKoneksi,
   preview,
   guestName,
   onGuestName,
@@ -44,9 +58,16 @@ export default function ProfileView({
 
       {/* ── Akun ── */}
       <div className="card">
-        <h2>👤 Akun</h2>
+        <h2>
+          <span className="h-ic">
+            <IconUser size={15} />
+          </span>
+          Akun
+        </h2>
         <div className="profile-head">
-          <div className="profile-ava">{connected && initial ? initial : "👀"}</div>
+          <div className="profile-ava">
+            {connected && initial ? initial : <IconEye size={24} />}
+          </div>
           <div style={{ minWidth: 0, flex: 1 }}>
             {connected ? (
               <>
@@ -81,9 +102,10 @@ export default function ProfileView({
           </>
         )}
         {connected ? (
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 14 }}>
-            <button className="btn soft" onClick={onMcp}>
-              Kelola koneksi →
+          <div className="btn-pair" style={{ marginTop: 14 }}>
+            <button className="btn soft btn-ic" onClick={onKoneksi}>
+              Kelola koneksi
+              <IconArrowRight size={15} />
             </button>
             <button className="btn danger" onClick={onLogout}>
               Keluar
@@ -107,10 +129,18 @@ export default function ProfileView({
 
       {/* ── Pengaturan ── */}
       <div className="card">
-        <h2>⚙️ Pengaturan</h2>
+        <h2>
+          <span className="h-ic">
+            <IconGear size={15} />
+          </span>
+          Pengaturan
+        </h2>
         <div className="set-row">
           <div>
-            <div className="t">🌙 Mode gelap</div>
+            <div className="t row-ic">
+              <IconMoon size={14} />
+              Mode gelap
+            </div>
             <div className="s">Nyaman di kelas &amp; hemat baterai</div>
           </div>
           <button
@@ -123,7 +153,10 @@ export default function ProfileView({
         </div>
         <div className="set-row">
           <div>
-            <div className="t">🎨 Warna tampilan</div>
+            <div className="t row-ic">
+              <IconPalette size={14} />
+              Warna tampilan
+            </div>
             <div className="s">Aksen tombol, badge &amp; logo — pilihanmu, tersimpan di perangkat</div>
           </div>
         </div>
@@ -158,9 +191,12 @@ export default function ProfileView({
               flex: "none",
               position: "relative",
               overflow: "hidden",
+              color: "#fff",
             }}
           >
-            <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center", fontSize: 16 }}>🎨</span>
+            <span style={{ position: "absolute", inset: 0, display: "grid", placeItems: "center" }}>
+              <IconPalette size={16} />
+            </span>
             <input
               type="color"
               aria-label="Warna custom"
@@ -177,7 +213,10 @@ export default function ProfileView({
         </div>
         <div className="set-row">
           <div>
-            <div className="t">🔔 Pengingat jadwal</div>
+            <div className="t row-ic">
+              <IconBell size={14} />
+              Pengingat jadwal
+            </div>
             <div className="s">Notifikasi pengingat dari aplikasi</div>
           </div>
           <button
@@ -190,11 +229,15 @@ export default function ProfileView({
         </div>
         <div className="set-row">
           <div>
-            <div className="t">🔌 Koneksi Google</div>
+            <div className="t row-ic">
+              <IconPlug size={14} />
+              Koneksi Google
+            </div>
             <div className="s">{connected ? `Tersambung sebagai ${email}` : preview ? "Mode pratinjau — belum tersambung" : "Belum tersambung"}</div>
           </div>
-          <button className="link" style={{ marginLeft: "auto" }} onClick={onMcp}>
-            Lihat →
+          <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={onKoneksi}>
+            Lihat
+            <IconArrowRight size={14} />
           </button>
         </div>
         {connected && (
@@ -212,38 +255,60 @@ export default function ProfileView({
 
       {/* ── Info: Kredit / Privasi / Syarat ── */}
       <div className="card">
-        <h2>ℹ️ Info</h2>
+        <h2>
+          <span className="h-ic">
+            <IconInfo size={15} />
+          </span>
+          Info
+        </h2>
         <div className="set-row">
           <div>
-            <div className="t">⭐ Kredit</div>
+            <div className="t row-ic">
+              <IconStar size={14} />
+              Kredit
+            </div>
             <div className="s">Pembuat &amp; teknologi notedwork</div>
           </div>
-          <button className="link" style={{ marginLeft: "auto" }} onClick={() => setInfo("credit")}>
-            Buka →
+          <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={() => setInfo("credit")}>
+            Buka
+            <IconArrowRight size={14} />
           </button>
         </div>
         <div className="set-row">
           <div>
-            <div className="t">🔏 Privasi</div>
+            <div className="t row-ic">
+              <IconShield size={14} />
+              Privasi
+            </div>
             <div className="s">Data apa yang disimpan &amp; di mana</div>
           </div>
-          <button className="link" style={{ marginLeft: "auto" }} onClick={() => setInfo("privacy")}>
-            Buka →
+          <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={() => setInfo("privacy")}>
+            Buka
+            <IconArrowRight size={14} />
           </button>
         </div>
         <div className="set-row">
           <div>
-            <div className="t">📜 Syarat</div>
+            <div className="t row-ic">
+              <IconDoc size={14} />
+              Syarat
+            </div>
             <div className="s">Aturan pakai aplikasi ini</div>
           </div>
-          <button className="link" style={{ marginLeft: "auto" }} onClick={() => setInfo("terms")}>
-            Buka →
+          <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={() => setInfo("terms")}>
+            Buka
+            <IconArrowRight size={14} />
           </button>
         </div>
       </div>
 
       <div className="card">
-        <h2>ℹ️ Tentang</h2>
+        <h2>
+          <span className="h-ic">
+            <IconInfo size={15} />
+          </span>
+          Tentang
+        </h2>
         <div style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.7 }}>
           notedwork — email, tugas &amp; kalender untuk mahasiswa.
           <br />

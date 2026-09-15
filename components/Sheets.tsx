@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { ComposePreset, Prio, Routine } from "@/lib/types";
+import { IconBook, IconForward, IconMail, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 
 export type SheetId = "sched" | "mail" | "task" | "routine" | null;
@@ -96,7 +97,7 @@ export function SchedSheet({
 
   return (
     <Shell id="ovSched" open={open} onClose={onClose}>
-      <h2>➕ Tambah Jadwal</h2>
+      <h2><span className="h-ic"><IconPlus size={15} /></span>Tambah Jadwal</h2>
       <p className="hint">Agenda sekali saja. Untuk matkul tiap minggu, pakai jadwal rutin.</p>
       <form
         onSubmit={(e) => {
@@ -170,7 +171,7 @@ export function MailSheet({
   const isReply = !!preset?.to;
   return (
     <Shell id="ovMail" open={open} onClose={onClose}>
-      <h2>{preset ? (isReply ? "↩️ Balas Email" : "➡️ Teruskan Email") : "✉️ Tulis Email"}</h2>
+      <h2><span className="h-ic">{preset ? (isReply ? <IconReply size={15} /> : <IconForward size={15} />) : <IconMail size={15} />}</span>{preset ? (isReply ? "Balas Email" : "Teruskan Email") : "Tulis Email"}</h2>
       <p className="hint">Terkirim langsung via Gmail.</p>
       <form
         onSubmit={(e) => {
@@ -237,7 +238,7 @@ export function TaskSheet({
 
   return (
     <Shell id="ovTask" open={open} onClose={onClose}>
-      <h2>📝 Tambah Tugas</h2>
+      <h2><span className="h-ic"><IconTask size={15} /></span>Tambah Tugas</h2>
       <p className="hint">Deadline otomatis muncul di Kalender &amp; Dashboard.</p>
       <form
         onSubmit={(e) => {
@@ -296,9 +297,9 @@ export function TaskSheet({
         </div>
         <label className="f" htmlFor="tPrio">Prioritas</label>
         <select className="f" id="tPrio" value={prio} onChange={(e) => setPrio(e.target.value as Prio)}>
-          <option value="tinggi">🔴 Tinggi</option>
-          <option value="sedang">🟡 Sedang</option>
-          <option value="rendah">🟢 Rendah</option>
+          <option value="tinggi">Tinggi</option>
+          <option value="sedang">Sedang</option>
+          <option value="rendah">Rendah</option>
         </select>
         <label className="f" htmlFor="tNote">Catatan</label>
         <input className="f" id="tNote" maxLength={140} placeholder="Cara kumpul, link, dsb…" value={note} onChange={(e) => setNote(e.target.value)} />
@@ -339,7 +340,7 @@ export function RoutineSheet({
 
   return (
     <Shell id="ovRoutine" open={open} onClose={onClose}>
-      <h2>📚 Kelola Jadwal Rutin</h2>
+      <h2><span className="h-ic"><IconBook size={15} /></span>Kelola Jadwal Rutin</h2>
       <p className="hint">Matkul tetap tiap minggu — otomatis muncul di Kalender.</p>
       <form
         onSubmit={(e) => {
@@ -424,7 +425,7 @@ export function RoutineSheet({
             </div>
           ))
         ) : (
-          <div className="empty">Belum ada — tambah lewat form di atas 👆</div>
+          <div className="empty">Belum ada — tambah lewat form di atas.</div>
         )}
       </div>
     </Shell>
