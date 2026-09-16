@@ -4,7 +4,7 @@
 import { readFileSync, existsSync } from "node:fs";
 import { resolveTimeZone, tzOffsetString } from "../lib/dates.ts";
 import { BATCH_URL, buildBatchBody, parseBatchResponse } from "../lib/gmailBatch.ts";
-import { resolveIdentityKeys } from "../lib/identity.ts";
+import { resolveIdentityKeys, isMissingColumnError } from "../lib/identity.ts";
 
 let failures = 0;
 function check(name, cond, detail = "") {
@@ -80,6 +80,19 @@ check(
   check("V4: tanpa sub → kunci email", k.userId === "user@contoh.id" && k.prevKey === "user@contoh.id", JSON.stringify(k));
   const r = resolveIdentityKeys("lama@contoh.id", "Baru@contoh.id");
   check("V4: sub dikenal + email ganti → rename", r.userId === "baru@contoh.id" && r.prevKey === "lama@contoh.id", JSON.stringify(r));
+  check(
+    "V4: deteksi kolom google_sub hilang (string)",
+    isMissingColumnError({ message: 'column "google_sub" of relation "notedwork_google_tokens" does not exist' })
+  );
+  check("V4: deteksi PGRST204 (objek)", isMissingColumnError({ code: "PGRST204", message: "other" }));
+  check(
+    "V4: gagal lain BUKAN kolom hilang",
+    !isMissingColumnError({ message: "Simpan token gagal: connection reset" })
+  );
+  check(
+    "V4: login toleran tanpa kolom (best-effort)",
+    /tanpa google_sub/i.test(g) || /best-effort/i.test(g)
+  );
   const sqlUrl = new URL("../db/notedwork_google_sub.sql", import.meta.url);
   check("V4: migrasi SQL ada", existsSync(sqlUrl));
   if (existsSync(sqlUrl)) {

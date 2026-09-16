@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { decryptText, encryptText, randomToken } from "./crypto";
-import { resolveIdentityKeys } from "./identity";
+import { isMissingColumnError, resolveIdentityKeys } from "./identity";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Scope sekaligus di awal (keputusan desain): baca+tulis Gmail & Calendar.
@@ -122,16 +122,33 @@ export async function saveTokensFromCode(code: string, verifier: string): Promis
   if (!tok.refresh_token) throw new Error("Google tidak memberi refresh_token (coba login ulang)");
   const { email, sub } = await fetchGoogleIdentity(tok.access_token);
   const userId = email.toLowerCase();
-  // Rename aman (V4): cari baris lama via google_sub; sesiones ikut pindah
+  // Rename aman (V4): cari baris lama via google_sub; sesi ikut pindah
   // lewat ON UPDATE CASCADE — tanpa sesi yatim saat ganti email primer.
   // Pakai helper terpusat agar normalisasi konsisten dengan yang diuji.
-  const { data: prev } = await supabaseAdmin
-    .from("notedwork_google_tokens")
-    .select("user_id")
-    .eq("google_sub", sub)
-    .limit(1)
-    .single<{ user_id: string }>();
-  const { prevKey } = resolveIdentityKeys(prev?.user_id ?? null, email);
+  //
+  // Login TOLERAN tanpa kolom google_sub (best-effort, migrasi belum jalan):
+  // - select/cari-sub yang gagal karena kolom hilang → anggap "tak ada baris lama",
+  //   lanjut jalur lama (upsert TANPA google_sub) agar login tetap bisa.
+  // - upsert tanpa kolom dulu; bila kolom SUDAH ada, tulis google_sub via update
+  //   best-effort (gagal → abaikan, login tetap sukses).
+  let prevUserId: string | null = null;
+  try {
+    const { data: prev, error: prevErr } = await supabaseAdmin
+      .from("notedwork_google_tokens")
+      .select("user_id")
+      .eq("google_sub", sub)
+      .limit(1)
+      .single<{ user_id: string }>();
+    if (prevErr) throw prevErr;
+    prevUserId = prev?.user_id ?? null;
+  } catch (e) {
+    if (!isMissingColumnError(e)) {
+      // Bukan soal kolom: .single() tanpa baris (PGRST116) atau error lain
+      // → anggap tak ada baris lama, lanjut login normal.
+    }
+    prevUserId = null;
+  }
+  const { prevKey } = resolveIdentityKeys(prevUserId, email);
   const needsRename = prevKey !== userId;
   if (needsRename) {
     // UPDATE PK = rename; butuh skema baru (db/notedwork_google_sub.sql).
@@ -142,38 +159,64 @@ export async function saveTokensFromCode(code: string, verifier: string): Promis
         .eq("user_id", prevKey);
       if (renameErr) throw renameErr;
     } catch (e) {
-      // Skema lama (kolom google_sub ada, tanpa ON UPDATE CASCADE):
-      // hapus sesi + baris token lama agar tak ada refresh_token yatim,
-      // lalu upsert biasa di bawah.
-      console.error("[google] rename-gagal, bersihkan baris lama:", e instanceof Error ? e.message : e);
-      await supabaseAdmin.from("notedwork_sessions").delete().eq("user_id", prevKey);
-      await supabaseAdmin.from("notedwork_google_tokens").delete().eq("user_id", prevKey);
+      if (isMissingColumnError(e)) {
+        // Kolom belum ada → tak ada yang bisa di-rename (pencarian sub di atas
+        // pun tak jalan). Lanjut jalur lama di bawah.
+      } else {
+        // Skema lama (kolom google_sub ada, tanpa ON UPDATE CASCADE):
+        // hapus sesi + baris token lama agar tak ada refresh_token yatim,
+        // lalu upsert biasa di bawah.
+        console.error("[google] rename-gagal, bersihkan baris lama:", e instanceof Error ? e.message : e);
+        await supabaseAdmin.from("notedwork_sessions").delete().eq("user_id", prevKey);
+        await supabaseAdmin.from("notedwork_google_tokens").delete().eq("user_id", prevKey);
+      }
     }
   }
   // Tolak pengambilalihan email: bila baris user_id ini milik sub lain
   // (email direassign/recycle), cabut sesi lama agar pemilik lama tak ikut valid.
-  const { data: existing } = await supabaseAdmin
-    .from("notedwork_google_tokens")
-    .select("google_sub")
-    .eq("user_id", userId)
-    .limit(1)
-    .single<{ google_sub: string | null }>();
-  if (existing && existing.google_sub && existing.google_sub !== sub) {
-    await supabaseAdmin.from("notedwork_sessions").delete().eq("user_id", userId);
+  // Dilewati bila kolom belum ada (tak bisa bandingkan sub → jalur lama).
+  try {
+    const { data: existing, error: existErr } = await supabaseAdmin
+      .from("notedwork_google_tokens")
+      .select("google_sub")
+      .eq("user_id", userId)
+      .limit(1)
+      .single<{ google_sub: string | null }>();
+    if (existErr) throw existErr;
+    if (existing && existing.google_sub && existing.google_sub !== sub) {
+      await supabaseAdmin.from("notedwork_sessions").delete().eq("user_id", userId);
+    }
+  } catch (e) {
+    if (!isMissingColumnError(e)) throw e;
+    // Kolom belum ada → lewati cek takeover, lanjut jalur lama.
   }
-  const { error } = await supabaseAdmin.from("notedwork_google_tokens").upsert(
-    {
-      user_id: userId,
-      email,
-      google_sub: sub,
-      access_token: await encryptText(tok.access_token),
-      refresh_token: await encryptText(tok.refresh_token),
-      expiry_ms: Date.now() + tok.expires_in * 1000,
-      scope: tok.scope ?? GOOGLE_SCOPES,
-      updated_at: new Date().toISOString(),
-    },
-    { onConflict: "user_id" }
-  );
+  // Jalur tulis: coba LENGKAP dulu (dengan google_sub); bila kolom belum ada,
+  // ulangi TANPA google_sub agar login tetap sukses (fitur rename nonaktif
+  // sampai migrasi dijalankan — didokumentasikan di pesan error & README).
+  const rowFull = {
+    user_id: userId,
+    email,
+    google_sub: sub,
+    access_token: await encryptText(tok.access_token),
+    refresh_token: await encryptText(tok.refresh_token),
+    expiry_ms: Date.now() + tok.expires_in * 1000,
+    scope: tok.scope ?? GOOGLE_SCOPES,
+    updated_at: new Date().toISOString(),
+  };
+  let { error } = await supabaseAdmin
+    .from("notedwork_google_tokens")
+    .upsert(rowFull, { onConflict: "user_id" });
+  if (error && isMissingColumnError(error)) {
+    const { google_sub: _drop, ...rowLegacy } = rowFull;
+    void _drop;
+    const retry = await supabaseAdmin
+      .from("notedwork_google_tokens")
+      .upsert(rowLegacy, { onConflict: "user_id" });
+    error = retry.error;
+    if (!error) {
+      console.error("[google] login tanpa google_sub (migrasi belum jalan — rename nonaktif)");
+    }
+  }
   if (error) {
     // Pesan jelas bila migrasi SQL belum dijalankan (bukan "gagal" misterius).
     if (/google_sub/i.test(error.message))
