@@ -71,8 +71,9 @@ function decodeEntities(s: string): string {
   });
 }
 
-/** HTML → teks ber-token: link [label](url), tabel [TABLE]/[R]/[H], code [PRE], <img> dibuang. */
-function htmlToText(html: string): string {
+/** HTML → teks ber-token: link [label](url), tabel [TABLE]/[R]/[H], code [PRE], <img> dibuang.
+ *  Diekspor agar bisa diuji langsung (tests/repro-email.mjs). */
+export function htmlToText(html: string): string {
   let t = html;
   // Komentar HTML (termasuk kondisional MSO <!--[if mso]>…<![endif]--> yang
   // menyembunyikan <table> hantu) + <head>/<style>/<script> dibuang dulu —
@@ -93,10 +94,11 @@ function htmlToText(html: string): string {
     return `\n\0PRE${pres.length - 1}\0\n`;
   });
   // <a href="U">teks</a> → token [label](url) agar pasangan label-href tidak hilang.
+  // href BOLEH tanpa quote (newsletter jadul): href=URL-telanjang ikut jadi link.
   t = t.replace(
-    /<a\b[^>]*href=["']([^"']+)["'][^>]*>([\s\S]*?)<\/a>/gi,
-    (_m: string, url: string, inner: string) => {
-      const u = cleanLinkUrl(url);
+    /<a\b[^>]*href=(?:"([^"]+)"|'([^']+)'|([^\s>"']+))[^>]*>([\s\S]*?)<\/a\s*>/gi,
+    (_m: string, uq: string | undefined, us: string | undefined, ub: string | undefined, inner: string) => {
+      const u = cleanLinkUrl(uq ?? us ?? ub ?? "");
       const label = cleanLinkLabel(inner);
       if (!u) return label ? ` ${label} ` : " ";
       if (!label || label === u) return ` ${u} `;
@@ -112,6 +114,9 @@ function htmlToText(html: string): string {
     if (t === before) break;
   }
   // Tabel → token struktur (dirender jadi <table> beneran di EmailBody).
+  // [TABLE] pembuka dipertahankan agar EmailBody menemukan blok tabel;
+  // token yatim (tanpa [R]) dibersihkan di langkah akhir di bawah.
+  t = t.replace(/<table\b[^>]*>/gi, "[TABLE]");
   t = t.replace(/<\/table\s*>/gi, "\n[/TABLE]\n");
   t = t.replace(/<tr\b[^>]*>/gi, "[R]");
   t = t.replace(/<\/tr\s*>/gi, "\n");
@@ -122,8 +127,10 @@ function htmlToText(html: string): string {
   // List → bullet eksplisit.
   t = t.replace(/<li\b[^>]*>/gi, "\n• ");
   // Elemen blok → newline (sebelum tag dibuang).
-  t = t.replace(/<(br\s*\/?|\/p|\/div|\/li|\/tr|\/h[1-6]|\/ul|\/ol|\/table|\/blockquote)>/gi, "\n");
-  t = t.replace(/<(p|div|li|tr|h[1-6]|ul|ol|table|blockquote)[\s>]/gi, "\n");
+  t = t.replace(/<(br\s*\/?|\/p|\/div|\/li|\/tr|\/h[1-6]|\/ul|\/ol|\/table|\/blockquote|\/figure|\/figcaption)>/gi, "\n");
+  t = t.replace(/<(p|div|li|tr|h[1-6]|ul|ol|table|blockquote|figure)[\s>]/gi, "\n");
+  // <figcaption> pembuka → newline (caption tampil sebagai baris sendiri).
+  t = t.replace(/<figcaption\b[^>]*>/gi, "\n");
   // <img> dibuang total — tanpa placeholder "[image: ...]".
   t = t.replace(/<img\b[^>]*>/gi, " ");
   // <a> sudah diproses di atas; sisa "<URL>" / "teks<URL>" (autolink pola newsletter)
@@ -142,20 +149,29 @@ function htmlToText(html: string): string {
   // Sisa tag → spasi agar kata tidak menempel.
   t = t.replace(/<[^>]*>/g, " ");
   t = decodeEntities(t);
-  // Baris sisa token/atribut: ">" penutup tag yatim, "|" sisa <td>, token
-  // struktur yatim ([TABLE]/[/TABLE]/[R]/[H] tanpa baris sel), sisa atribut.
+  // Baris sisa token/atribut: ">" penutup tag yatim, "|" sisa <td>,
+  // token [R]/[H]/[PRE] yatim, sisa atribut.
+  // PENTING: baris token [TABLE]/[/TABLE] JANGAN dibuang di sini — EmailBody
+  // butuh pasangan [TABLE]…[/TABLE] yang utuh untuk render <table> beneran.
+  // Token yatim tanpa pasangan dibersihkan di langkah akhir di bawah.
   t = t
     .split("\n")
     .map((l) => {
       let x = l.trim();
       if (/^[>|]+$/.test(x)) return "";
-      if (/^\[(TABLE|\/TABLE|PRE|\/PRE|R|H)\]$/.test(x)) return "";
+      if (/^\[(PRE|\/PRE|R|H)\]$/.test(x)) return "";
+      if (/^\[(TABLE|\/TABLE)\]/.test(x)) return x;
       x = x.replace(/^[>|]+\s*/, "").replace(/\s*[|]\s*$/, "").trim();
-      if (/^\[(TABLE|\/TABLE|PRE|\/PRE|R|H)\]$/.test(x)) return "";
+      if (/^\[(PRE|\/PRE|R|H)\]$/.test(x)) return "";
       return x;
     })
     .join("\n");
   const lines = t.split("\n").map((l) => {
+    if (/^\[TABLE\]/.test(l.trim())) {
+      // Baris pembuka tabel tanpa <tr>: normalisasi trailing pipe TANPA memenggal
+      // token [TABLE] — langkah akhir butuh pasangan [TABLE]…[/TABLE] yang utuh.
+      return l.replace(/[ \t\r\f\v]+/g, " ").replace(/(\s*\|\s*)+$/, "").trim();
+    }
     if (l.includes("[R]") || l.includes(" | ") || l.includes("[H]")) {
       // Baris tabel: rapikan trailing " | " tapi jangan collapse interior.
       return l.replace(/[ \t\r\f\v]+/g, " ").replace(/(\s*\|\s*)+$/, "").trim();
@@ -169,6 +185,28 @@ function htmlToText(html: string): string {
     const code = pres[Number(n)] ?? "";
     return code ? `\n\n[PRE]\n${code}\n[/PRE]\n` : "";
   });
+  // Tabel jadul tanpa <tr> (layout email lama): sel tampil tapi tanpa [R]
+  // sehingga EmailBody tak mengenalinya → jadikan baris [R] agar tampil
+  // sebagai <table> beneran, bukan token mentah bocor ke layar.
+  // Token [TABLE]…[/TABLE] yatim (tanpa [R] dan tanpa sel) dibuang bersih.
+  out = out.replace(/\[TABLE\]([\s\S]*?)\[\/TABLE\]/g, (_m: string, inner: string) => {
+    if (/\[R\]/.test(inner)) return `[TABLE]${inner}[/TABLE]`;
+    const rows = inner
+      .split("\n")
+      .map((l) => l.replace(/(\s*\|\s*)+$/, "").trim())
+      .filter((l) => l && !/^\[(TABLE|\/TABLE|PRE|\/PRE|R|H)\]$/.test(l));
+    if (!rows.length) return "";
+    return `[TABLE]\n${rows.map((r) => `[R]${r}`).join("\n")}\n[/TABLE]`;
+  });
+  // Sisa token yatim tanpa pasangan (tak termakan regex berpasangan di atas).
+  out = out
+    .split("\n")
+    .map((l) => {
+      const x = l.trim();
+      if (/^\[(TABLE|\/TABLE)\]$/.test(x)) return "";
+      return l;
+    })
+    .join("\n");
   return out.replace(/\n{3,}/g, "\n\n").trim();
 }
 

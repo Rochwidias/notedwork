@@ -278,7 +278,12 @@ function renderCells(line: string, keyBase: string): ReactNode {
 export function EmailBody({ text }: { text: string }) {
   const { main, footer } = splitFooter(text);
   const blocks: ReactNode[] = [];
-  const chunks = main.split(/(\n?\[TABLE\][\s\S]*?\[\/TABLE\]\n?|\n?\[PRE\]\n[\s\S]*?\n\[\/PRE\]\n?)/g);
+  // Tabel tanpa pasangan [TABLE]…[/TABLE] (mis. baris [R] yatim dari tabel jadul)
+  // tetap dirender sebagai <table> beneran — jangan biarkan token mentah ke layar.
+  const tableish = /\[TABLE\][\s\S]*?\[\/TABLE\]|\[R\]/;
+  const chunks = tableish.test(main)
+    ? main.split(/(\n?\[TABLE\][\s\S]*?\[\/TABLE\]\n?|\n?\[PRE\]\n[\s\S]*?\n\[\/PRE\]\n?)/g)
+    : main.split(/(\n?\[PRE\]\n[\s\S]*?\n\[\/PRE\]\n?)/g);
   chunks.forEach((ch, i) => {
     if (!ch || !ch.trim()) return;
     const pre = ch.match(/\[PRE\]\n([\s\S]*?)\n\[\/PRE\]/);
@@ -291,11 +296,20 @@ export function EmailBody({ text }: { text: string }) {
       return;
     }
     const tbl = ch.match(/\[TABLE\]([\s\S]*?)\[\/TABLE\]/);
-    if (tbl) {
-      const rows = tbl[1]
-        .split("\n")
-        .map((l) => l.trim())
-        .filter((l) => l.startsWith("[R]"));
+    // Baris [R] yatim (tanpa [TABLE]…[/TABLE]) → bungkus jadi tabel beneran.
+    const orphanRows = !tbl
+      ? ch
+          .split("\n")
+          .map((l) => l.trim())
+          .filter((l) => l.startsWith("[R]"))
+      : [];
+    if (tbl || orphanRows.length) {
+      const rows = tbl
+        ? tbl[1]
+            .split("\n")
+            .map((l) => l.trim())
+            .filter((l) => l.startsWith("[R]"))
+        : orphanRows;
       if (rows.length) {
         blocks.push(
           <div key={i} className="table-scroll">
