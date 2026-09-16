@@ -4,8 +4,8 @@ import type { Mail, Sched } from "./types";
 
 export const NOT_CONNECTED = "NOT_CONNECTED";
 
-async function jget<T>(url: string): Promise<T> {
-  const res = await fetch(url);
+async function jget<T>(url: string, init?: { signal?: AbortSignal }): Promise<T> {
+  const res = await fetch(url, init?.signal ? { signal: init.signal } : undefined);
   if (res.status === 401) throw new Error(NOT_CONNECTED);
   if (!res.ok) throw new Error("fetch gagal: " + res.status);
   return (await res.json()) as T;
@@ -33,14 +33,23 @@ export async function apiStatus(): Promise<{ connected: boolean; email?: string 
   }
 }
 
-export async function apiLogout(): Promise<void> {
-  await fetch("/api/auth/logout", { method: "POST" }).catch(() => null);
+export async function apiLogout(): Promise<boolean> {
+  try {
+    const res = await fetch("/api/auth/logout", { method: "POST" });
+    return res.ok;
+  } catch {
+    return false;
+  }
 }
 
-export async function apiListMails(q: string, pageToken?: string): Promise<{ mails: Mail[]; nextPageToken: string | null }> {
+export async function apiListMails(
+  q: string,
+  pageToken?: string,
+  init?: { signal?: AbortSignal }
+): Promise<{ mails: Mail[]; nextPageToken: string | null }> {
   const p = new URLSearchParams({ q });
   if (pageToken) p.set("pageToken", pageToken);
-  return jget<{ mails: Mail[]; nextPageToken: string | null }>(`/api/gmail/list?${p.toString()}`);
+  return jget<{ mails: Mail[]; nextPageToken: string | null }>(`/api/gmail/list?${p.toString()}`, init);
 }
 
 export async function apiGetMail(id: string): Promise<Mail> {
@@ -56,21 +65,29 @@ export async function apiLabelMail(id: string, act: "star" | "unstar" | "read" |
   await jpost("/api/gmail/label", { id, act });
 }
 
-export async function apiListEvents(timeMin: string, timeMax: string): Promise<Sched[]> {
+export async function apiListEvents(
+  timeMin: string,
+  timeMax: string,
+  tz?: string
+): Promise<Sched[]> {
   const p = new URLSearchParams({ timeMin, timeMax });
+  if (tz) p.set("tz", tz);
   const j = await jget<{ events: Sched[] }>(`/api/calendar/events?${p.toString()}`);
   return j.events;
 }
 
-export async function apiCreateEvent(v: {
-  title: string;
-  date: string;
-  time: string;
-  endTime?: string;
-  note: string;
-  reminderMin?: number;
-}): Promise<Sched> {
-  const j = await jpost<{ event: Sched }>("/api/calendar/events", v);
+export async function apiCreateEvent(
+  v: {
+    title: string;
+    date: string;
+    time: string;
+    endTime?: string;
+    note: string;
+    reminderMin?: number;
+  },
+  tz?: string
+): Promise<Sched> {
+  const j = await jpost<{ event: Sched }>("/api/calendar/events", tz ? { ...v, tz } : v);
   return j.event;
 }
 
@@ -82,12 +99,13 @@ export async function apiDeleteEvent(id: string): Promise<void> {
 
 export async function apiUpdateEvent(
   id: string,
-  v: { title: string; date: string; time: string; endTime?: string; note: string; reminderMin?: number }
+  v: { title: string; date: string; time: string; endTime?: string; note: string; reminderMin?: number },
+  tz?: string
 ): Promise<Sched> {
   const res = await fetch(`/api/calendar/events/${encodeURIComponent(id)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(v),
+    body: JSON.stringify(tz ? { ...v, tz } : v),
   });
   if (res.status === 401) throw new Error(NOT_CONNECTED);
   if (!res.ok) {

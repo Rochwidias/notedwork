@@ -169,7 +169,7 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     } catch {
       /* abaikan */
     }
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", effective === "dark" ? "#121212" : "#f5f5f5");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", effective === "dark" ? "#1C1917" : "#F7F4EE");
     applyAccent(accent, effective === "dark");
   }, [theme, effective, accent]);
 

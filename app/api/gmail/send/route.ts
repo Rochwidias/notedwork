@@ -23,6 +23,9 @@ export async function POST(req: Request) {
   )
     return Response.json({ error: "Tujuan email tidak valid" }, { status: 400 });
   if (!subj || !text) return Response.json({ error: "Subjek & isi wajib diisi" }, { status: 400 });
+  // Subjek juga tolak CRLF (defense-in-depth: encodeHeader memang base64-kan
+  // subjek ber-CRLF, tapi tolak sejak awal agar perilaku eksplisit & konsisten dgn "to").
+  if (/[\r\n]/.test(subj)) return Response.json({ error: "Subjek email tidak valid" }, { status: 400 });
   if (subj.length > 200 || text.length > 20000)
     return Response.json({ error: "Subjek/isi terlalu panjang" }, { status: 400 });
   try {

@@ -25,7 +25,20 @@ function ensureBuild() {
     console.log(String(e.stdout ?? "") + String(e.stderr ?? "") + String(e.message ?? ""));
     process.exit(1);
   }
+  writeStubs();
+}
+
+function writeStubs() {
+  // tsc ikut men-transpile rantai impor gmail.ts → google.ts → supabaseAdmin.ts,
+  // sehingga TMP berisi versi kompilasi yang butuh node_modules produksi.
+  // Stub ditulis SETIAP jalan (bukan cuma saat ensureBuild) agar cache basi
+  // atau hasil tsc manual tak merusak impor: htmlToText tak pakai ketiganya.
   writeFileSync(join(TMP, "google.js"), 'export async function googleFetch(){ throw new Error("stub"); }\n');
+  // Stub rantai server-only (supabaseAdmin/crypto/identity) agar transpile bisa
+  // diimpor tanpa node_modules produksi: gmail.js hasil tsc ikut men-transpile
+  // google.ts → supabaseAdmin.ts (@supabase/supabase-js tak resolvable dari tmpdir).
+  writeFileSync(join(TMP, "supabaseAdmin.js"), 'export const supabaseAdmin = null;\n');
+  writeFileSync(join(TMP, "identity.js"), 'export function resolveIdentityKeys(bySubUserId, email){ const userId = String(email).toLowerCase(); const prev = String(bySubUserId ?? "").trim().toLowerCase(); return prev && prev !== userId ? { userId, prevKey: prev } : { userId, prevKey: userId }; }\n');
 }
 
 if (!existsSync(join(TMP, "gmail.js"))) ensureBuild();
@@ -36,6 +49,7 @@ else {
   const out = statSync(join(TMP, "gmail.js")).mtimeMs;
   if (src > out) ensureBuild();
 }
+writeStubs();
 
 const { pathToFileURL } = await import("node:url");
 const g = await import(pathToFileURL(join(TMP, "gmail.js")).href);

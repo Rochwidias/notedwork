@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import type { ComposePreset, Prio, Routine, Sched } from "@/lib/types";
+import type { ComposePreset, Prio, Routine, Sched, Task } from "@/lib/types";
 import { IconBook, IconForward, IconMail, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 
@@ -407,12 +407,15 @@ export function TaskSheet({
   open,
   selDate,
   courses,
+  initial,
   onClose,
   onSave,
 }: {
   open: boolean;
   selDate: string;
   courses: string[];
+  /** Mode edit: isi form dari tugas lama (seperti SchedSheet); null/undefined = mode tambah. */
+  initial?: Task | null;
   onClose: () => void;
   onSave: (v: { matkul: string; title: string; date: string; time: string; prio: Prio; note: string; reminderMin?: number }) => Promise<boolean | void> | boolean | void;
 }) {
@@ -426,20 +429,23 @@ export function TaskSheet({
 
   useEffect(() => {
     if (open) {
-      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset SEMUA field saat sheet dibuka
-      setMatkul("");
-      setTitle("");
-      setDate(selDate);
-      setTime("23:59");
-      setPrio("sedang");
-      setNote("");
-      setReminderMin(15);
+      // Mode edit: isi form dari data lama; mode tambah: reset SEMUA field.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form default saat sheet dibuka
+      setMatkul(initial?.matkul ?? "");
+      setTitle(initial?.title ?? "");
+      setDate(initial?.date ?? selDate);
+      setTime(initial?.time ?? "23:59");
+      setPrio(initial?.prio ?? "sedang");
+      setNote(initial?.note ?? "");
+      setReminderMin(initial?.reminderMin ?? 15);
     }
-  }, [open, selDate]);
+  }, [open, selDate, initial]);
+
+  const editing = !!initial;
 
   return (
     <Shell id="ovTask" open={open} onClose={onClose}>
-      <h2><span className="h-ic"><IconTask size={15} /></span>Tambah Tugas</h2>
+      <h2><span className="h-ic"><IconTask size={15} /></span>{editing ? "Ubah Tugas" : "Tambah Tugas"}</h2>
       <p className="hint">Deadline otomatis muncul di Kalender &amp; Dashboard.</p>
       <form
         onSubmit={async (e) => {
@@ -514,7 +520,7 @@ export function TaskSheet({
             Tutup
           </button>
           <button type="submit" className="btn primary">
-            Simpan
+            {editing ? "Simpan perubahan" : "Simpan"}
           </button>
         </div>
       </form>

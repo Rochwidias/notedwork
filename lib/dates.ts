@@ -23,8 +23,8 @@ export const PRIO: Record<Prio, [string, string]> = {
   rendah: ["Rendah", "lo"],
 };
 
-export const RCOL = ["#00cfff", "#22c55e", "#f59e0b", "#7c5cff", "#ec4899", "#ef4444"];
-export const SCHED_COLORS = ["#22c55e", "#00cfff", "#f59e0b", "#7c5cff", "#ec4899", "#ef4444"];
+export const RCOL = ["#D97706", "#16a34a", "#b45309", "#7c5cff", "#ec4899", "#dc2626"];
+export const SCHED_COLORS = ["#16a34a", "#D97706", "#b45309", "#7c5cff", "#ec4899", "#dc2626"];
 
 export function todayStr(): string {
   const d = new Date();
@@ -114,4 +114,64 @@ export function monthWindow(back = 1, fwd = 2, now: Date = new Date()): { from: 
 /** ID unik lokal: prefix + base36 waktu + acak (anti-kembar Date.now() murni). */
 export function uid(prefix = "id"): string {
   return prefix + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
+}
+
+/** Zona default app (WIB) — dipakai bila browser/server tak memberi zona valid. */
+export const DEFAULT_TZ = "Asia/Jakarta";
+
+/** Validasi zona IANA; fallback DEFAULT_TZ bila tak dikenal/kosong. */
+export function resolveTimeZone(tz?: string | null): string {
+  if (!tz) return DEFAULT_TZ;
+  try {
+    // Lempar RangeError bila zona tak dikenal — tanpa membuat Date.
+    new Intl.DateTimeFormat("en-US", { timeZone: tz });
+    return tz;
+  } catch {
+    return DEFAULT_TZ;
+  }
+}
+
+/** Offset menit zona tz pada satu instant UTC (satu-pass, cukup untuk boundary). */
+function offsetMinutesAt(zone: string, utcMs: number): number {
+  const dtf = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+    hourCycle: "h23",
+  });
+  const parts: Record<string, string> = {};
+  for (const p of dtf.formatToParts(new Date(utcMs))) {
+    if (p.type !== "literal") parts[p.type] = p.value;
+  }
+  const asUTC = Date.UTC(
+    Number(parts.year),
+    Number(parts.month) - 1,
+    Number(parts.day),
+    Number(parts.hour),
+    Number(parts.minute),
+    Number(parts.second ?? "0")
+  );
+  return Math.round((asUTC - utcMs) / 60000);
+}
+
+/**
+ * Offset "+HH:MM" zona tz pada tanggal/waktu dinding tertentu (DST-aware,
+ * dua iterasi agar tepat di sekitar transisi DST).
+ */
+export function tzOffsetString(tz: string, date: string, time: string): string {
+  const zone = resolveTimeZone(tz);
+  const guess = Date.parse(`${date}T${time}:00Z`);
+  if (!Number.isFinite(guess)) return "+07:00";
+  const off1 = offsetMinutesAt(zone, guess);
+  const off = offsetMinutesAt(zone, guess - off1 * 60000);
+  const sign = off < 0 ? "-" : "+";
+  const abs = Math.abs(off);
+  return `${sign}${String(Math.floor(abs / 60)).padStart(2, "0")}${String(abs % 60).padStart(2, "0")}`.replace(
+    /^([+-]\d{2})(\d{2})$/,
+    "$1:$2"
+  );
 }

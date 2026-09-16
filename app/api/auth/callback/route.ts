@@ -29,11 +29,17 @@ export async function GET(req: NextRequest) {
 
   try {
     const { userId } = await saveTokensFromCode(code, verifier);
-    await createSession(userId);
+    try {
+      await createSession(userId);
+    } catch (e) {
+      console.error("[auth/callback] buat-sesi-gagal:", e instanceof Error ? e.message : e);
+      return fail("buat-sesi-gagal");
+    }
     const url = new URL("/", process.env.APP_URL ?? req.nextUrl.origin);
     url.searchParams.set("auth", "ok");
     return Response.redirect(url);
   } catch (e) {
-    return fail(e instanceof Error ? "server" : "server");
+    console.error("[auth/callback] simpan-token-gagal:", e instanceof Error ? e.message : e);
+    return fail("simpan-token-gagal");
   }
 }

@@ -51,7 +51,7 @@ const STATUS_DEF: { id: MailStatus; label: string; star?: boolean }[] = [
 
 /** Warna avatar pengirim — hash dari nama/email agar beda tiap pengirim. */
 export function senderColor(key: string): string {
-  const cols = ["#00cfff", "#22c55e", "#f59e0b", "#7c5cff", "#ec4899", "#ef4444"];
+  const cols = ["#D97706", "#16a34a", "#d97706", "#7c5cff", "#ec4899", "#dc2626"];
   let h = 0;
   for (let i = 0; i < key.length; i++) h = (h * 31 + key.charCodeAt(i)) >>> 0;
   return cols[h % cols.length];

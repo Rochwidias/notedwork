@@ -39,7 +39,7 @@ export interface Sched {
 export interface Routine {
   id: string;
   course: string;
-  day: number; // 1=Senin … 6=Sabtu
+  day: number; // 1=Senin … 7=Minggu
   start: string;
   end: string;
   room: string;

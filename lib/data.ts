@@ -22,7 +22,7 @@ export const GUEST_SUFFIX = ":preview";
 /** Nama tampilan tamu (lokal, bisa diubah di Profil). */
 export const GUEST_NAME_KEY = "notedwork.guestName";
 
-/** Accent warna pilihan user (hex, default cyan). */
+/** Accent warna pilihan user (hex, default coklat brand). */
 export const ACCENT_KEY = "notedwork.accent";
 
 /**

@@ -1,8 +1,14 @@
+import { createHash } from "node:crypto";
 import { decryptText, encryptText, randomToken } from "./crypto";
+import { resolveIdentityKeys } from "./identity";
 import { supabaseAdmin } from "./supabaseAdmin";
 
 // Scope sekaligus di awal (keputusan desain): baca+tulis Gmail & Calendar.
+// "openid email" hanya untuk identitas stabil (sub + email terverifikasi) —
+// tanpa data profil tambahan. Kedua scope OIDC ini yang memaksa consent ulang sekali.
 export const GOOGLE_SCOPES = [
+  "openid",
+  "email",
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/gmail.modify",
@@ -35,9 +41,7 @@ function b64url(input: Uint8Array): string {
 }
 
 function sha256B64url(s: string): string {
-  // Sinkron via node:crypto agar route tetap sederhana (server-only).
-  // eslint-disable-next-line @typescript-eslint/no-require-imports
-  const { createHash } = require("node:crypto") as typeof import("node:crypto");
+  // createHash diimpor di atas (node:crypto) agar route tetap sederhana (server-only).
   return createHash("sha256").update(s).digest("base64url");
 }
 
@@ -92,26 +96,76 @@ async function exchangeCode(code: string, verifier: string): Promise<GoogleToken
   return (await res.json()) as GoogleTokenResponse;
 }
 
-async function fetchGoogleEmail(accessToken: string): Promise<string> {
-  const res = await fetch("https://gmail.googleapis.com/gmail/v1/users/me/profile", {
+// WAJIB sebelum deploy: jalankan db/notedwork_google_sub.sql (kolom google_sub +
+// UNIQUE parsial + FK ON UPDATE CASCADE). Tanpa itu login gagal di upsert.
+//
+// Catatan deploy-ordering (disengaja, bukan fallback diam-diam):
+// - select google_sub di bawah hanya untuk cari baris lama (rename saat ganti
+//   email primer). Bila kolom belum ada → prev = null → rename dilewati → upsert
+//   tetap kirim google_sub dan PASTI gagal dengan pesan jelas — agar salah
+//   konfigurasi ketahuan saat itu juga, bukan jadi sesi yatim diam-diam.
+async function fetchGoogleIdentity(accessToken: string): Promise<{ email: string; sub: string; emailVerified: boolean }> {
+  const res = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
     headers: { Authorization: `Bearer ${accessToken}` },
   });
-  if (!res.ok) throw new Error("Ambil profil Gmail gagal: " + res.status);
-  const j = (await res.json()) as { emailAddress?: string };
-  if (!j.emailAddress) throw new Error("Profil Gmail tanpa email");
-  return j.emailAddress;
+  if (!res.ok) throw new Error("Ambil profil Google gagal: " + res.status);
+  const j = (await res.json()) as { email?: string; sub?: string; email_verified?: unknown };
+  if (!j.email || !j.sub) throw new Error("Profil Google tanpa email/sub");
+  // Jangan jadikan email kunci identitas bila belum terverifikasi Google.
+  if (j.email_verified === false) throw new Error("Email Google belum terverifikasi");
+  return { email: j.email, sub: j.sub, emailVerified: j.email_verified !== false };
 }
 
 export async function saveTokensFromCode(code: string, verifier: string): Promise<{ userId: string; email: string }> {
   if (!supabaseAdmin) throw new Error("Supabase belum dikonfigurasi");
   const tok = await exchangeCode(code, verifier);
   if (!tok.refresh_token) throw new Error("Google tidak memberi refresh_token (coba login ulang)");
-  const email = await fetchGoogleEmail(tok.access_token);
+  const { email, sub } = await fetchGoogleIdentity(tok.access_token);
   const userId = email.toLowerCase();
+  // Rename aman (V4): cari baris lama via google_sub; sesiones ikut pindah
+  // lewat ON UPDATE CASCADE — tanpa sesi yatim saat ganti email primer.
+  // Pakai helper terpusat agar normalisasi konsisten dengan yang diuji.
+  const { data: prev } = await supabaseAdmin
+    .from("notedwork_google_tokens")
+    .select("user_id")
+    .eq("google_sub", sub)
+    .limit(1)
+    .single<{ user_id: string }>();
+  const { prevKey } = resolveIdentityKeys(prev?.user_id ?? null, email);
+  const needsRename = prevKey !== userId;
+  if (needsRename) {
+    // UPDATE PK = rename; butuh skema baru (db/notedwork_google_sub.sql).
+    try {
+      const { error: renameErr } = await supabaseAdmin
+        .from("notedwork_google_tokens")
+        .update({ user_id: userId })
+        .eq("user_id", prevKey);
+      if (renameErr) throw renameErr;
+    } catch (e) {
+      // Skema lama (kolom google_sub ada, tanpa ON UPDATE CASCADE):
+      // hapus sesi + baris token lama agar tak ada refresh_token yatim,
+      // lalu upsert biasa di bawah.
+      console.error("[google] rename-gagal, bersihkan baris lama:", e instanceof Error ? e.message : e);
+      await supabaseAdmin.from("notedwork_sessions").delete().eq("user_id", prevKey);
+      await supabaseAdmin.from("notedwork_google_tokens").delete().eq("user_id", prevKey);
+    }
+  }
+  // Tolak pengambilalihan email: bila baris user_id ini milik sub lain
+  // (email direassign/recycle), cabut sesi lama agar pemilik lama tak ikut valid.
+  const { data: existing } = await supabaseAdmin
+    .from("notedwork_google_tokens")
+    .select("google_sub")
+    .eq("user_id", userId)
+    .limit(1)
+    .single<{ google_sub: string | null }>();
+  if (existing && existing.google_sub && existing.google_sub !== sub) {
+    await supabaseAdmin.from("notedwork_sessions").delete().eq("user_id", userId);
+  }
   const { error } = await supabaseAdmin.from("notedwork_google_tokens").upsert(
     {
       user_id: userId,
       email,
+      google_sub: sub,
       access_token: await encryptText(tok.access_token),
       refresh_token: await encryptText(tok.refresh_token),
       expiry_ms: Date.now() + tok.expires_in * 1000,
@@ -120,7 +174,12 @@ export async function saveTokensFromCode(code: string, verifier: string): Promis
     },
     { onConflict: "user_id" }
   );
-  if (error) throw new Error("Simpan token gagal: " + error.message);
+  if (error) {
+    // Pesan jelas bila migrasi SQL belum dijalankan (bukan "gagal" misterius).
+    if (/google_sub/i.test(error.message))
+      throw new Error("Skema DB belum dimigrasi (kolom google_sub): jalankan db/notedwork_google_sub.sql");
+    throw new Error("Simpan token gagal: " + error.message);
+  }
   return { userId, email };
 }
 

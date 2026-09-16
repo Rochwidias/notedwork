@@ -1,5 +1,6 @@
 import type { Sched } from "./types";
 import { googleFetch } from "./google";
+import { resolveTimeZone, tzOffsetString } from "./dates";
 
 const CAL = "https://www.googleapis.com/calendar/v3/calendars/primary";
 
@@ -13,7 +14,7 @@ interface GEvent {
   extendedProperties?: { private?: Record<string, string> };
 }
 
-const COLORS = ["#00cfff", "#22c55e", "#f59e0b", "#7c5cff", "#ec4899", "#ef4444"];
+const COLORS = ["#D97706", "#16a34a", "#b45309", "#7c5cff", "#ec4899", "#dc2626"];
 
 function splitDateTime(iso?: string): { date: string; time: string } {
   if (!iso) return { date: "", time: "" };
@@ -56,10 +57,17 @@ function toSched(e: GEvent, i: number): Sched | null {
   };
 }
 
-export async function listEvents(userId: string, timeMin: string, timeMax: string): Promise<Sched[]> {
+export async function listEvents(
+  userId: string,
+  timeMin: string,
+  timeMax: string,
+  tz?: string
+): Promise<Sched[]> {
+  const zone = resolveTimeZone(tz);
   const p = new URLSearchParams({
-    timeMin: `${timeMin}T00:00:00+07:00`,
-    timeMax: `${timeMax}T23:59:59+07:00`,
+    timeMin: `${timeMin}T00:00:00${tzOffsetString(zone, timeMin, "00:00")}`,
+    timeMax: `${timeMax}T23:59:59${tzOffsetString(zone, timeMax, "23:59")}`,
+    timeZone: zone,
     singleEvents: "true",
     orderBy: "startTime",
     maxResults: "100",
@@ -88,7 +96,8 @@ function addDaysISO(iso: string, n: number): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-function eventPayload(v: EventInput, reminderMin?: number) {
+function eventPayload(v: EventInput, reminderMin?: number, tz?: string) {
+  const zone = resolveTimeZone(tz);
   const endValid = v.endTime && /^\d{2}:\d{2}$/.test(v.endTime) ? v.endTime : null;
   // end <= start = overnight: tanggal end +1 hari (diterima, bukan ditolak).
   const endDate = endValid && endValid <= v.time ? addDaysISO(v.date, 1) : v.date;
@@ -96,8 +105,8 @@ function eventPayload(v: EventInput, reminderMin?: number) {
   return {
     summary: v.title,
     description: v.note || undefined,
-    start: { dateTime: `${v.date}T${v.time}:00+07:00`, timeZone: "Asia/Jakarta" },
-    end: { dateTime: `${endDate}T${end}:00+07:00`, timeZone: "Asia/Jakarta" },
+    start: { dateTime: `${v.date}T${v.time}:00${tzOffsetString(zone, v.date, v.time)}`, timeZone: zone },
+    end: { dateTime: `${endDate}T${end}:00${tzOffsetString(zone, endDate, end)}`, timeZone: zone },
     ...(reminderMin != null
       ? { extendedProperties: { private: { notedworkReminderMin: String(reminderMin) } } }
       : {}),
@@ -107,12 +116,13 @@ function eventPayload(v: EventInput, reminderMin?: number) {
 export async function createEvent(
   userId: string,
   v: EventInput,
-  reminderMin?: number
+  reminderMin?: number,
+  tz?: string
 ): Promise<Sched> {
   const res = await googleFetch(userId, `${CAL}/events`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(eventPayload(v, reminderMin ?? v.reminderMin)),
+    body: JSON.stringify(eventPayload(v, reminderMin ?? v.reminderMin, tz)),
   });
   if (!res.ok) throw new Error("Calendar create gagal: " + res.status);
   const e = (await res.json()) as GEvent;
@@ -125,12 +135,13 @@ export async function updateEvent(
   userId: string,
   eventId: string,
   v: EventInput,
-  reminderMin?: number
+  reminderMin?: number,
+  tz?: string
 ): Promise<Sched> {
   const res = await googleFetch(userId, `${CAL}/events/${encodeURIComponent(eventId)}`, {
     method: "PATCH",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(eventPayload(v, reminderMin ?? v.reminderMin)),
+    body: JSON.stringify(eventPayload(v, reminderMin ?? v.reminderMin, tz)),
   });
   if (!res.ok) throw new Error("Calendar update gagal: " + res.status);
   const e = (await res.json()) as GEvent;

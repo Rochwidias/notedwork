@@ -1,5 +1,6 @@
 import type { Mail, MailFile } from "./types";
 import { googleFetch } from "./google";
+import { BATCH_URL, buildBatchBody, parseBatchResponse } from "./gmailBatch";
 
 const GMAIL = "https://gmail.googleapis.com/gmail/v1/users/me";
 
@@ -532,22 +533,65 @@ export async function listMails(
   const j = (await res.json()) as GmailListResponse;
   const ids = j.messages ?? [];
   const mails: Mail[] = [];
-  // Gmail tidak mengembalikan header di list; ambil per pesan (50 max, paralel terbatas).
-  const CONC = 8;
-  for (let i = 0; i < ids.length; i += CONC) {
-    const chunk = await Promise.all(
-      ids.slice(i, i + CONC).map(async (m) => {
-        const hp = new URLSearchParams({ format: "metadata" });
-        for (const h of ["From", "Sender", "Reply-To", "Return-Path", "Subject"]) hp.append("metadataHeaders", h);
-        const r = await googleFetch(userId, `${GMAIL}/messages/${m.id}?${hp.toString()}`);
-        if (!r.ok) return null;
-        const full = (await r.json()) as GmailMessage & { internalDate?: string };
-        return toMail(full, full.internalDate);
-      })
-    );
-    for (const m of chunk) if (m) mails.push(m);
+  // Gmail tidak mengembalikan header di list → batchGet 1 round-trip
+  // (multipart POST /batch/gmail/v1). Gagal/parsial → fallback N+1 per pesan (CONC=8).
+  const byId = await batchMetadata(userId, ids.map((m) => m.id));
+  const missing = ids.map((m) => m.id).filter((id) => !byId.has(id));
+  if (missing.length) {
+    // Paralel terbatas seperti pola lama (bukan serial) agar tak timeout Vercel.
+    const CONC = 8;
+    for (let i = 0; i < missing.length; i += CONC) {
+      const chunk = await Promise.all(missing.slice(i, i + CONC).map((id) => singleMetadata(userId, id)));
+      chunk.forEach((full, k) => {
+        if (full && full.id) byId.set(missing[i + k], full);
+      });
+    }
+  }
+  for (const id of ids.map((m) => m.id)) {
+    const full = byId.get(id);
+    if (full) mails.push(toMail(full, full.internalDate));
   }
   return { mails, nextPageToken: j.nextPageToken };
+}
+
+async function singleMetadata(
+  userId: string,
+  id: string
+): Promise<(GmailMessage & { internalDate?: string }) | null> {
+  const hp = new URLSearchParams({ format: "metadata" });
+  for (const h of ["From", "Sender", "Reply-To", "Return-Path", "Subject"]) hp.append("metadataHeaders", h);
+  const r = await googleFetch(userId, `${GMAIL}/messages/${id}?${hp.toString()}`);
+  if (!r.ok) return null;
+  return (await r.json()) as GmailMessage & { internalDate?: string };
+}
+
+/** Ambil metadata banyak pesan sekaligus via batch; kembalikan map id → pesan (parsial OK). */
+async function batchMetadata(
+  userId: string,
+  ids: string[]
+): Promise<Map<string, GmailMessage & { internalDate?: string }>> {
+  const out = new Map<string, GmailMessage & { internalDate?: string }>();
+  if (!ids.length) return out;
+  const boundary = `notedwork_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 10)}`;
+  let res: Response;
+  try {
+    res = await googleFetch(userId, BATCH_URL, {
+      method: "POST",
+      headers: { "Content-Type": `multipart/mixed; boundary=${boundary}` },
+      body: buildBatchBody(ids, boundary),
+    });
+  } catch {
+    return out; // network gagal → fallback N+1 di pemanggil
+  }
+  if (!res.ok) return out;
+  const parts = parseBatchResponse(await res.text());
+  // Cocokkan via msg.id yang dikembalikan server (bukan posisi): tahan terhadap
+  // respons yang diurut-ulang/di-skip; part yang tak cocok → fallback per-pesan.
+  for (const p of parts) {
+    const msg = p?.ok ? (p.json as GmailMessage & { internalDate?: string }) : null;
+    if (msg && msg.id && ids.includes(msg.id)) out.set(msg.id, msg);
+  }
+  return out;
 }
 
 export async function getMail(userId: string, id: string): Promise<Mail> {
@@ -557,10 +601,12 @@ export async function getMail(userId: string, id: string): Promise<Mail> {
   return toMail(full, full.internalDate);
 }
 
-/** Encode header RFC2047 bila ada byte non-ASCII; ASCII murni dikirim apa adanya. */
+/** Encode header RFC2047 bila ada byte non-ASCII; ASCII murni dikirim apa adanya.
+ *  CRLF selalu dibuang dulu (defense-in-depth lawan injeksi header MIME). */
 export function encodeHeader(s: string): string {
-  if (/^[\x20-\x7e]*$/.test(s)) return s;
-  return `=?UTF-8?B?${Buffer.from(s, "utf-8").toString("base64")}?=`;
+  const clean = s.replace(/[\r\n]+/g, " ");
+  if (/^[\x20-\x7e]*$/.test(clean)) return clean;
+  return `=?UTF-8?B?${Buffer.from(clean, "utf-8").toString("base64")}?=`;
 }
 
 function rawMessage(to: string, subj: string, body: string): string {

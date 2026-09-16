@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { deleteEvent, updateEvent } from "@/lib/calendar";
+import { resolveTimeZone } from "@/lib/dates";
 
 /** Validasi tanggal kalender asli: tolak 2026-13-99 (komponen Date harus sama). */
 function validCalendarDate(iso: string): boolean {
@@ -44,7 +45,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   // ID internal diawali "g:" — kupas sebelum dikirim ke Google.
   if (id.startsWith("g:")) id = id.slice(2);
   if (!id) return Response.json({ error: "ID kosong" }, { status: 400 });
-  let v: { title?: string; date?: string; time?: string; endTime?: string; note?: string; reminderMin?: unknown };
+  let v: { title?: string; date?: string; time?: string; endTime?: string; note?: string; reminderMin?: unknown; tz?: unknown };
   try {
     v = (await req.json()) as typeof v;
   } catch {
@@ -59,6 +60,7 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const reminderMin = parseReminder(v.reminderMin);
   if (reminderMin == null)
     return Response.json({ error: "Pengingat harus 0–1440 menit" }, { status: 400 });
+  const tz = resolveTimeZone(typeof v.tz === "string" ? v.tz : undefined);
   try {
     const event = await updateEvent(
       userId,
@@ -70,7 +72,8 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
         ...(endTime ? { endTime } : {}),
         note: (v.note ?? "").slice(0, 140),
       },
-      reminderMin
+      reminderMin,
+      tz
     );
     return Response.json({ event });
   } catch (e) {

@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import type { Routine, Task } from "@/lib/types";
 import { PRIO, fmtDateID, isOverdue, taskBadge } from "@/lib/dates";
-import { IconCheck, IconPlus, IconX } from "./icons";
+import { IconCheck, IconPencil, IconPlus, IconX } from "./icons";
 
 type Filter = "all" | "active" | "late" | "done";
 
@@ -20,10 +20,11 @@ interface Props {
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onAdd: () => void;
+  onEdit: (id: string) => void;
   preview?: boolean;
 }
 
-export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, preview }: Props) {
+export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, onEdit, preview }: Props) {
   const [filter, setFilter] = useState<Filter>("all");
 
   const counts = useMemo(
@@ -92,6 +93,17 @@ export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, 
                     <span className={`tag ${b.cls}`}>{b.txt}</span>
                   </div>
                 </div>
+                <button
+                  className="del del-ic"
+                  title="Ubah"
+                  aria-label={`Ubah ${t.title}`}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onEdit(t.id);
+                  }}
+                >
+                  <IconPencil size={14} />
+                </button>
                 <button
                   className="del del-ic"
                   title="Hapus"

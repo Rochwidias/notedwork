@@ -130,7 +130,7 @@ export default function CalendarView({
             if (c.iso === ts) cls.push("today");
             if (c.iso === selDate) cls.push("sel");
             const dots: string[] = [];
-            if (rDays.has(weekdayOf(c.iso))) dots.push("#00cfff");
+            if (rDays.has(weekdayOf(c.iso))) dots.push("var(--brand)");
             if (oSet.has(c.iso)) dots.push("#22c55e");
             if (tSet.has(c.iso)) dots.push("#ef4444");
             return (
@@ -149,7 +149,7 @@ export default function CalendarView({
         </div>
         <div className="legend">
           <span>
-            <i className="dot" style={{ background: "#00cfff" }} />
+            <i className="dot" style={{ background: "var(--brand)" }} />
             Rutin
           </span>
           <span>
@@ -179,7 +179,7 @@ export default function CalendarView({
         <div>
           {dayRoutines.map((x) => (
             <div className="row" key={x.id}>
-              <span className="dot" style={{ background: x.color || "#00cfff" }} />
+              <span className="dot" style={{ background: x.color || "var(--brand)" }} />
               <div>
                 <div className="t">
                   {x.course} <span className="pill blue" style={{ margin: 0 }}>Rutin</span>
@@ -268,7 +268,7 @@ export default function CalendarView({
           {routineList.length ? (
             routineList.map((r) => (
               <div className="row" key={r.id}>
-                <span className="dot" style={{ background: r.color || "#00cfff" }} />
+                <span className="dot" style={{ background: r.color || "var(--brand)" }} />
                 <div>
                   <div className="t">{r.course}</div>
                   <div className="s">

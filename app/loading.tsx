@@ -5,8 +5,8 @@ export default function Loading() {
         minHeight: "100dvh",
         display: "grid",
         placeItems: "center",
-        background: "#0d0d0d",
-        color: "#f5f5f5",
+        background: "#F7F4EE",
+        color: "#292524",
       }}
     >
       <div style={{ textAlign: "center" }}>
@@ -15,8 +15,8 @@ export default function Loading() {
             width: 40,
             height: 40,
             borderRadius: 12,
-            background: "#00cfff",
-            color: "#0d0d0d",
+            background: "#B45309",
+            color: "#FFFFFF",
             display: "grid",
             placeItems: "center",
             fontWeight: 800,
@@ -26,7 +26,7 @@ export default function Loading() {
         >
           N
         </div>
-        <p style={{ fontSize: 14, color: "#888" }}>Memuat notedwork…</p>
+        <p style={{ fontSize: 14, color: "#A8A29E" }}>Memuat notedwork…</p>
       </div>
     </main>
   );

@@ -96,7 +96,7 @@ export function sampleScheds(): Sched[] {
   const ts = todayStr();
   return [
     { id: "pv-sched-1", title: "Seminar proposal skripsi", date: ts, time: "10:00", endTime: "11:30", note: "Ruang sidang 2", color: "#22c55e" },
-    { id: "pv-sched-2", title: "Bimbingan dosen wali", date: isoPlus(1), time: "13:00", note: "Bawa draft KRS", color: "#00cfff" },
+    { id: "pv-sched-2", title: "Bimbingan dosen wali", date: isoPlus(1), time: "13:00", note: "Bawa draft KRS", color: "#D97706" },
     { id: "pv-sched-3", title: "Presentasi kelompok PBO", date: isoPlus(3), time: "09:40", endTime: "10:30", note: "Slide + demo", color: "#7c5cff" },
   ];
 }

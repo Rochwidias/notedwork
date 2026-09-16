@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node tests/repro.mjs"
+    "test": "node tests/repro.mjs && node tests/repro-email.mjs && node tests/repro-fix.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",
@@ -25,5 +25,8 @@
     "eslint-config-next": "16.2.11",
     "tailwindcss": "^3.4.19",
     "typescript": "^5"
+  },
+  "engines": {
+    "node": ">=22.6"
   }
 }

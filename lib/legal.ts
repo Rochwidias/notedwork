@@ -11,10 +11,10 @@ export const LEGAL: Record<LegalId, LegalDoc> = {
     title: "Kredit",
     updated: "notedwork • 2026",
     body: [
-      "notedwork adalah dashboard email, tugas & kalender untuk mahasiswa — dibuat sebagai proyek pribadi oleh Rochwidias.",
+      "notedwork adalah dashboard email, tugas & kalender untuk mahasiswa — dibuat sebagai proyek pribadi oleh @Rochwidias.",
       "Dibangun dengan Next.js, React, TypeScript, dan Tailwind CSS, di-deploy di Vercel. Font Poppins & JetBrains Mono (Google Fonts).",
       "Data email & kalender berasal dari Gmail API dan Google Calendar API milik akun Googlemu sendiri. Gmail dan Google Calendar adalah merek milik Google LLC.",
-      "Ikon & antarmuka dibuat khusus untuk notedwork. Warna aksen default cyan (#00CFFF) — bisa kamu ganti di Pengaturan.",
+      "Ikon & antarmuka dibuat khusus untuk notedwork. Warna aksen default coklat (#B45309) — bisa kamu ganti di Pengaturan.",
     ],
   },
   privacy: {

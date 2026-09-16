@@ -1,6 +1,7 @@
 import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { createEvent, listEvents } from "@/lib/calendar";
+import { resolveTimeZone } from "@/lib/dates";
 
 function disconnected(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : "";
@@ -34,8 +35,9 @@ export async function GET(req: NextRequest) {
     new Date(Date.now() + 60 * 864e5).toISOString().slice(0, 10);
   if (!validCalendarDate(timeMin) || !validCalendarDate(timeMax))
     return Response.json({ error: "Format tanggal salah" }, { status: 400 });
+  const tz = resolveTimeZone(q.get("tz"));
   try {
-    const events = await listEvents(userId, timeMin, timeMax);
+    const events = await listEvents(userId, timeMin, timeMax, tz);
     return Response.json({ events });
   } catch (e) {
     if (disconnected(e)) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
@@ -46,7 +48,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   const userId = await getSessionUser();
   if (!userId) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
-  let v: { title?: string; date?: string; time?: string; endTime?: string; note?: string; reminderMin?: unknown };
+  let v: { title?: string; date?: string; time?: string; endTime?: string; note?: string; reminderMin?: unknown; tz?: unknown };
   try {
     v = (await req.json()) as typeof v;
   } catch {
@@ -61,6 +63,7 @@ export async function POST(req: Request) {
   const reminderMin = parseReminder(v.reminderMin);
   if (reminderMin == null)
     return Response.json({ error: "Pengingat harus 0–1440 menit" }, { status: 400 });
+  const tz = resolveTimeZone(typeof v.tz === "string" ? v.tz : undefined);
   try {
     const event = await createEvent(
       userId,
@@ -71,7 +74,8 @@ export async function POST(req: Request) {
         ...(endTime ? { endTime } : {}),
         note: (v.note ?? "").slice(0, 140),
       },
-      reminderMin
+      reminderMin,
+      tz
     );
     return Response.json({ event });
   } catch (e) {

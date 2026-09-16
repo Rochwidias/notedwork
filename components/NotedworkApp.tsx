@@ -95,6 +95,7 @@ function Shell() {
 
   /* ---- ref cermin & penjaga race ---- */
   const searchT = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const searchAbort = useRef<AbortController | null>(null);
   const mailPageRef = useRef<string | null>(null);
   const mailLoadingRef = useRef(false);
   const tasksRef = useRef<Task[]>([]);
@@ -134,6 +135,8 @@ function Shell() {
   // Jadwal yang sedang diedit (null = mode tambah). Sheet dibuka via onEditSched.
   // Dideklarasikan sebelum markDisconnected agar reset saat putus koneksi.
   const [editingSched, setEditingSched] = useState<Sched | null>(null);
+  // Tugas yang sedang diedit (null = mode tambah). Sheet dibuka via onEditTask.
+  const [editingTask, setEditingTask] = useState<Task | null>(null);
 
   const markDisconnected = useCallback(() => {
     setConnected(false);
@@ -143,6 +146,7 @@ function Shell() {
     setRemoteEvents([]);
     setCurrentMail(null);
     setEditingSched(null);
+    setEditingTask(null);
     setSheet(null);
     setCompose(null);
   }, []);
@@ -152,8 +156,13 @@ function Shell() {
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   }, []);
 
+  const browserTz = useCallback(
+    () => (typeof Intl !== "undefined" ? Intl.DateTimeFormat().resolvedOptions().timeZone : undefined),
+    []
+  );
+
   const refreshRemote = useCallback(
-    async (opts?: { mails?: boolean; events?: boolean; query?: string; append?: boolean }) => {
+    async (opts?: { mails?: boolean; events?: boolean; query?: string; append?: boolean; signal?: AbortSignal }) => {
       const wantMails = opts?.mails ?? true;
       const wantEvents = opts?.events ?? true;
       const seq = ++fetchSeq.current;
@@ -163,7 +172,8 @@ function Shell() {
           setMailLoading(true);
           const { mails, nextPageToken } = await apiListMails(
             opts?.query ?? "",
-            opts?.append ? (mailPageRef.current ?? undefined) : undefined
+            opts?.append ? (mailPageRef.current ?? undefined) : undefined,
+            opts?.signal ? { signal: opts.signal } : undefined
           );
           if (stale()) return;
           setRemoteMails((prev) => {
@@ -180,12 +190,18 @@ function Shell() {
           const to = new Date(now.getFullYear(), now.getMonth() + 3, 0);
           const iso = (d: Date) =>
             `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
-          const events = await apiListEvents(iso(from), iso(to));
+          const events = await apiListEvents(
+            iso(from),
+            iso(to),
+            browserTz()
+          );
           if (stale()) return;
           setRemoteEvents(events);
         }
         if (!stale()) setUpdatedAt(nowHMID());
       } catch (e) {
+        // Abort search baru = bukan error: request lama sengaja dibatalkan.
+        if (e instanceof Error && e.name === "AbortError") return;
         if (stale()) return;
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
         else toastMsg("Gagal sync Google");
@@ -193,7 +209,7 @@ function Shell() {
         if (!stale()) setMailLoading(false);
       }
     },
-    [markDisconnected, nowHMID, toastMsg]
+    [markDisconnected, nowHMID, toastMsg, browserTz]
   );
 
   // Migrasi kunci lama rocha.* → notedwork.* (sekali per browser) + hasil login OAuth.
@@ -204,7 +220,19 @@ function Shell() {
     const auth = q.get("auth");
     if (auth === "ok" || auth === "gagal") {
       // Tunda ke microtask agar bukan setState sinkron di dalam effect.
-      const msg = auth === "ok" ? "Terhubung ke Google" : "Login Google gagal, coba lagi";
+      // Kode pesan spesifik dari /api/auth/callback (simpan-token-gagal/buat-sesi-gagal/…).
+      const detail = q.get("pesan");
+      const failMsg =
+        detail === "simpan-token-gagal"
+          ? "Login Google gagal saat simpan token — coba lagi"
+          : detail === "buat-sesi-gagal"
+            ? "Login Google gagal saat buat sesi — coba lagi"
+            : detail === "state-tidak-cocok"
+              ? "Login Google kedaluwarsa — coba lagi"
+              : detail === "ditolak-google"
+                ? "Login Google dibatalkan"
+                : "Login Google gagal, coba lagi";
+      const msg = auth === "ok" ? "Terhubung ke Google" : failMsg;
       queueMicrotask(() => toastMsg(msg));
       q.delete("auth");
       q.delete("pesan");
@@ -236,6 +264,7 @@ function Shell() {
     return () => {
       if (toastT.current) clearTimeout(toastT.current);
       if (searchT.current) clearTimeout(searchT.current);
+      searchAbort.current?.abort();
     };
   }, []);
 
@@ -263,13 +292,18 @@ function Shell() {
     setSheet("mail");
   }, []);
 
-  /** Cari email: debounce 400ms sebelum request agar tak spam/balap tiap huruf. */
+  /** Cari email: debounce 400ms + abort request lama agar tak spam/balap tiap huruf. */
   const handleSearch = useCallback(
     (q: string) => {
       setSearch(q);
       if (searchT.current) clearTimeout(searchT.current);
       searchT.current = setTimeout(() => {
-        if (connected) void refreshRemote({ mails: true, events: false, query: q });
+        if (!connected) return;
+        // Batalkan request search sebelumnya sebelum kirim yang baru.
+        searchAbort.current?.abort();
+        const ctl = new AbortController();
+        searchAbort.current = ctl;
+        void refreshRemote({ mails: true, events: false, query: q, signal: ctl.signal });
       }, 400);
     },
     [connected, refreshRemote]
@@ -438,6 +472,20 @@ function Shell() {
     [setTasks, toastMsg]
   );
 
+  // Mulai edit tugas: isi TaskSheet dari data lama (mode edit, bukan reset).
+  const startEditTask = useCallback(
+    (id: string) => {
+      const t = tasksRef.current.find((x) => x.id === id);
+      if (!t) {
+        toastMsg("Tugas tidak ditemukan");
+        return;
+      }
+      setEditingTask(t);
+      setSheet("task");
+    },
+    [toastMsg]
+  );
+
   /* ---- jadwal: Google Calendar saat login, lokal saat preview ---- */
   const delSched = useCallback(
     async (id: string) => {
@@ -488,7 +536,7 @@ function Shell() {
         return true;
       }
       try {
-        const ev = await apiCreateEvent(v);
+        const ev = await apiCreateEvent(v, browserTz());
         setRemoteEvents((prev) => [...prev, ev].sort(sortSched));
         toastMsg("Jadwal tersimpan ke Google Calendar");
       } catch (e) {
@@ -501,7 +549,7 @@ function Shell() {
       go("kalender");
       return true;
     },
-    [connected, toastMsg, markDisconnected, go, setPreviewScheds]
+    [connected, toastMsg, markDisconnected, go, setPreviewScheds, browserTz]
   );
 
   const startEditSched = useCallback(
@@ -554,7 +602,7 @@ function Shell() {
         return true;
       }
       try {
-        const ev = await apiUpdateEvent(editingSched.id, v);
+        const ev = await apiUpdateEvent(editingSched.id, v, browserTz());
         setRemoteEvents((prev) => prev.map((s) => (s.id === editingSched.id ? ev : s)).sort(sortSched));
         toastMsg("Jadwal diperbarui di Google Calendar");
       } catch (e) {
@@ -568,7 +616,7 @@ function Shell() {
       go("kalender");
       return true;
     },
-    [connected, editingSched, toastMsg, markDisconnected, go, setPreviewScheds]
+    [connected, editingSched, toastMsg, markDisconnected, go, setPreviewScheds, browserTz]
   );
 
   const saveMail = useCallback(
@@ -593,14 +641,21 @@ function Shell() {
   );
 
   const logoutGoogle = useCallback(async () => {
-    await apiLogout();
+    const ok = await apiLogout();
     markDisconnected();
     setView("profil");
-    toastMsg("Keluar dari Google");
+    // Bila server menolak (403 Origin) sesi+grant masih hidup: katakan jujur
+    // agar user tak merasa sudah keluar lalu diam-diam terautentikasi lagi.
+    toastMsg(ok ? "Keluar dari Google" : "Keluar lokal; sesi server mungkin masih aktif — coba lagi");
   }, [markDisconnected, toastMsg]);
 
-  /** Keluar preview: kembalikan kondisi contoh segar (tanpa hapus-then-kosong ala bug lama). */
+  /** Keluar preview: minta konfirmasi dulu — editan tamu ikut terhapus. */
   const exitPreview = useCallback(() => {
+    if (
+      typeof window !== "undefined" &&
+      !window.confirm("Keluar dari pratinjau? Data tamu (tugas, rutin, jadwal contoh) akan dihapus dan dikembalikan ke contoh awal.")
+    )
+      return;
     setTasks(sampleTasks());
     setRoutines(sampleRoutines());
     setPreviewScheds(sampleScheds());
@@ -774,7 +829,11 @@ function Shell() {
                 routines={routines}
                 onToggle={toggleTask}
                 onDelete={delTask}
-                onAdd={() => setSheet("task")}
+                onAdd={() => {
+                  setEditingTask(null);
+                  setSheet("task");
+                }}
+                onEdit={startEditTask}
                 preview={preview}
               />
             )}
@@ -854,10 +913,27 @@ function Shell() {
         open={sheet === "task"}
         selDate={selDate}
         courses={courses}
-        onClose={() => setSheet(null)}
+        initial={editingTask}
+        onClose={() => {
+          setEditingTask(null);
+          setSheet(null);
+        }}
         onSave={(v) => {
           const reminderMin =
             (v as { reminderMin?: number }).reminderMin ?? DEFAULT_REMINDER_MIN;
+          if (editingTask) {
+            const id = editingTask.id;
+            setTasks((prev) =>
+              prev.map((x) =>
+                x.id === id ? { ...x, matkul: v.matkul, title: v.title, date: v.date, time: v.time, prio: v.prio, note: v.note, reminderMin } : x
+              )
+            );
+            setEditingTask(null);
+            setSheet(null);
+            toastMsg("Tugas diperbarui");
+            go("tugas");
+            return;
+          }
           setTasks((prev) => [...prev, { id: genId("t"), ...v, reminderMin, done: false }]);
           setSheet(null);
           toastMsg("Tugas tersimpan");
