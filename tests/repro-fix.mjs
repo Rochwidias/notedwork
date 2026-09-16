@@ -215,6 +215,26 @@ check("V8a: Routine.day 1..7 Minggu", read("../lib/types.ts").includes("7=Minggu
   check("V8d: TasksView ada onEdit", read("../components/TasksView.tsx").includes("onEdit"));
   check("V8d: App kelola editingTask", read("../components/NotedworkApp.tsx").includes("editingTask"));
 }
+// ---------- V9: waktu & akhir opsional + error inline (SchedSheet/TaskSheet) ----------
+{
+  const s = read("../components/Sheets.tsx");
+  check(
+    "V9: SchedSheet jam mulai opsional",
+    /htmlFor="fTime"[\s\S]{0,200}?opsional/i.test(s) && !/id="fTime"[^>]*required/.test(s)
+  );
+  check(
+    "V9: SchedSheet akhir opsional + hint rentang",
+    s.includes('id="fEnd"') && /rentang/i.test(s)
+  );
+  check(
+    "V9: SchedSheet error inline judul & akhir",
+    s.includes("titleErr") && s.includes("endErr") && s.includes('role="alert"')
+  );
+  check(
+    "V9: TaskSheet jam opsional + hint 23.59",
+    /htmlFor="tTime"[\s\S]{0,200}?opsional/i.test(s) && s.includes("23.59")
+  );
+}
 {
   const pkg = JSON.parse(read("../package.json"));
   check(

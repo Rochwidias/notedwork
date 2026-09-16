@@ -124,21 +124,26 @@ export function SchedSheet({
 }) {
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selDate);
-  const [time, setTime] = useState("09:00");
+  const [time, setTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [note, setNote] = useState("");
   const [reminderMin, setReminderMin] = useState(15);
+  const [titleErr, setTitleErr] = useState("");
+  const [endErr, setEndErr] = useState("");
 
   useEffect(() => {
     if (open) {
       // Mode edit: isi form dari data lama; mode tambah: default tanggal dipilih.
+      // Jam mulai dikosongkan di mode tambah (opsional → 09:00 saat simpan).
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form default saat sheet dibuka
       setTitle(initial?.title ?? "");
       setDate(initial?.date ?? selDate);
-      setTime(initial?.time ?? "09:00");
+      setTime(initial?.time ?? "");
       setEndTime(initial?.endTime ?? "");
       setNote(initial?.note ?? "");
       setReminderMin(initial?.reminderMin ?? 15);
+      setTitleErr("");
+      setEndErr("");
     }
   }, [open, selDate, initial]);
 
@@ -151,16 +156,29 @@ export function SchedSheet({
       <form
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!title.trim()) return;
-          const t = time || "09:00";
+          // Error inline (bukan diam): judul wajib, akhir valid bila diisi.
+          const jt = title.trim();
+          if (!jt) {
+            setTitleErr("Isi judul dulu — cth: Seminar proposal");
+            return;
+          }
+          setTitleErr("");
+          const t = time.trim() || "09:00";
           const end = endTime.trim();
+          // Jam selesai: opsional — kosongkan bila sekilas (pakai jam mulai saja).
+          // format jam browser = "HH:MM"; string kosong = tak diisi.
+          if (end && !/^\d{2}:\d{2}$/.test(end)) {
+            setEndErr("Format jam selesai tidak valid — kosongkan bila sekilas");
+            return;
+          }
+          setEndErr("");
           // end<=start = lintas-hari (lewat tengah malam, besok): diterima, bukan ditolak.
-          if (end && !/^\d{2}:\d{2}$/.test(end)) return;
+          // end kosong / sama dengan mulai = sekilas (tak dikirim).
           const ok = await onSave({
-            title: title.trim(),
+            title: jt,
             date,
             time: t,
-            ...(end ? { endTime: end } : {}),
+            ...(end && end !== t ? { endTime: end } : {}),
             note: note.trim(),
             reminderMin,
           });
@@ -168,8 +186,10 @@ export function SchedSheet({
           if (ok === false) return;
           setTitle("");
           setNote("");
-          setTime("09:00");
+          setTime("");
           setEndTime("");
+          setTitleErr("");
+          setEndErr("");
           setReminderMin(15);
         }}
       >
@@ -177,20 +197,29 @@ export function SchedSheet({
         <input
           className="f"
           id="fTitle"
-          required
           maxLength={80}
           placeholder="cth: Seminar proposal"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (titleErr) setTitleErr("");
+          }}
+          aria-invalid={!!titleErr}
+          aria-describedby={titleErr ? "fTitleErr" : undefined}
         />
+        {titleErr && (
+          <p id="fTitleErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5, marginTop: 4 }}>
+            {titleErr}
+          </p>
+        )}
         <div className="frow">
           <div>
             <label className="f" htmlFor="fDate">Tanggal</label>
             <input className="f" id="fDate" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div>
-            <label className="f" htmlFor="fTime">Jam mulai</label>
-            <input className="f" id="fTime" type="time" required value={time} onChange={(e) => setTime(e.target.value)} />
+            <label className="f" htmlFor="fTime">Jam mulai <span style={{ fontWeight: 500, color: "var(--muted)" }}>(opsional)</span></label>
+            <input className="f" id="fTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
         </div>
         <label className="f" htmlFor="fEnd">Jam selesai <span style={{ fontWeight: 500, color: "var(--muted)" }}>(opsional)</span></label>
@@ -199,9 +228,19 @@ export function SchedSheet({
           id="fEnd"
           type="time"
           value={endTime}
-          onChange={(e) => setEndTime(e.target.value)}
+          onChange={(e) => {
+            setEndTime(e.target.value);
+            if (endErr) setEndErr("");
+          }}
+          aria-invalid={!!endErr}
+          aria-describedby={endErr ? "fEndErr" : "fEndHint"}
         />
-        <p className="hint" style={{ marginTop: 4 }}>Kosongkan bila sekilas. Jam selesai lebih kecil = lewat tengah malam (besok).</p>
+        {endErr && (
+          <p id="fEndErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5, marginTop: 4 }}>
+            {endErr}
+          </p>
+        )}
+        <p className="hint" id="fEndHint" style={{ marginTop: 4 }}>Dikosongkan = sekilas (pakai jam mulai saja). Diisi = tampil rentang 09.00–10.40. Jam selesai lebih kecil = lewat tengah malam (besok).</p>
         <label className="f">Pengingat</label>
         <ReminderChips value={reminderMin} onChange={setReminderMin} idPrefix="sRem" />
         <label className="f" htmlFor="fNote">Keterangan</label>
@@ -422,22 +461,25 @@ export function TaskSheet({
   const [matkul, setMatkul] = useState("");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selDate);
-  const [time, setTime] = useState("23:59");
+  const [time, setTime] = useState("");
   const [prio, setPrio] = useState<Prio>("sedang");
   const [note, setNote] = useState("");
   const [reminderMin, setReminderMin] = useState(15);
+  const [titleErr, setTitleErr] = useState("");
 
   useEffect(() => {
     if (open) {
       // Mode edit: isi form dari data lama; mode tambah: reset SEMUA field.
+      // Jam dikosongkan di mode tambah (opsional → 23:59 saat simpan).
       // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form default saat sheet dibuka
       setMatkul(initial?.matkul ?? "");
       setTitle(initial?.title ?? "");
       setDate(initial?.date ?? selDate);
-      setTime(initial?.time ?? "23:59");
+      setTime(initial?.time ?? "");
       setPrio(initial?.prio ?? "sedang");
       setNote(initial?.note ?? "");
       setReminderMin(initial?.reminderMin ?? 15);
+      setTitleErr("");
     }
   }, [open, selDate, initial]);
 
@@ -450,12 +492,19 @@ export function TaskSheet({
       <form
         onSubmit={async (e) => {
           e.preventDefault();
-          if (!title.trim()) return;
+          // Error inline (bukan diam): judul wajib.
+          const jt = title.trim();
+          if (!jt) {
+            setTitleErr("Isi judul tugas dulu — cth: Laporan modul 6");
+            return;
+          }
+          setTitleErr("");
+          // Jam deadline: opsional — kosong = akhir hari 23:59 (konsisten taskBadge/isOverdue).
           const ok = await onSave({
             matkul: matkul.trim() || "Umum",
-            title: title.trim(),
+            title: jt,
             date,
-            time: time || "23:59",
+            time: time.trim() || "23:59",
             prio,
             note: note.trim(),
             reminderMin,
@@ -465,7 +514,8 @@ export function TaskSheet({
           setTitle("");
           setNote("");
           setPrio("sedang");
-          setTime("23:59");
+          setTime("");
+          setTitleErr("");
           setReminderMin(15);
         }}
       >
@@ -489,22 +539,32 @@ export function TaskSheet({
         <input
           className="f"
           id="tTitle"
-          required
           maxLength={100}
           placeholder="cth: Laporan modul 6"
           value={title}
-          onChange={(e) => setTitle(e.target.value)}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (titleErr) setTitleErr("");
+          }}
+          aria-invalid={!!titleErr}
+          aria-describedby={titleErr ? "tTitleErr" : undefined}
         />
+        {titleErr && (
+          <p id="tTitleErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5, marginTop: 4 }}>
+            {titleErr}
+          </p>
+        )}
         <div className="frow">
           <div>
             <label className="f" htmlFor="tDate">Deadline tanggal</label>
             <input className="f" id="tDate" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div>
-            <label className="f" htmlFor="tTime">Jam</label>
-            <input className="f" id="tTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
+            <label className="f" htmlFor="tTime">Jam <span style={{ fontWeight: 500, color: "var(--muted)" }}>(opsional)</span></label>
+            <input className="f" id="tTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-describedby="tTimeHint" />
           </div>
         </div>
+        <p className="hint" id="tTimeHint" style={{ marginTop: 4 }}>Dikosongkan = akhir hari 23.59.</p>
         <label className="f" htmlFor="tPrio">Prioritas</label>
         <select className="f" id="tPrio" value={prio} onChange={(e) => setPrio(e.target.value as Prio)}>
           <option value="tinggi">Tinggi</option>

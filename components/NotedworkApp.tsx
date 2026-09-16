@@ -510,8 +510,10 @@ function Shell() {
   const saveSched = useCallback(
     async (v: SchedInput): Promise<boolean> => {
       if (!connected) {
-        const start = v.time || "09:00";
-        const end = v.endTime && v.endTime.trim() ? v.endTime : undefined;
+        const start = v.time && v.time.trim() ? v.time : "09:00";
+        // Akhir opsional: kosong / sama dengan mulai = sekilas (tak disimpan).
+        const rawEnd = v.endTime && v.endTime.trim() ? v.endTime.trim() : undefined;
+        const end = rawEnd && rawEnd !== start ? rawEnd : undefined;
         const overnight = end != null && end <= start;
         setPreviewScheds((prev) =>
           [
@@ -572,8 +574,10 @@ function Shell() {
         return false;
       }
       if (!connected) {
-        const start = v.time || "09:00";
-        const end = v.endTime && v.endTime.trim() ? v.endTime : undefined;
+        const start = v.time && v.time.trim() ? v.time : "09:00";
+        // Akhir opsional: kosong / sama dengan mulai = sekilas (tak disimpan).
+        const rawEnd = v.endTime && v.endTime.trim() ? v.endTime.trim() : undefined;
+        const end = rawEnd && rawEnd !== start ? rawEnd : undefined;
         const overnight = end != null && end <= start;
         const id = editingSched.id;
         setPreviewScheds((prev) =>
