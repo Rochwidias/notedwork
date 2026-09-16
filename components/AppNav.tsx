@@ -2,23 +2,22 @@
 
 import type { ComponentType } from "react";
 import type { NavTarget, ViewName } from "@/lib/types";
-import { IconCalendar, IconHome, IconMail, IconPlus, IconTask, IconUser } from "./icons";
+import { IconCalendar, IconHome, IconMail, IconTask, IconPlus } from "./icons";
 
 type IconComp = ComponentType<{ size?: number; className?: string }>;
 
-const TABS: { id: ViewName; Icon: IconComp; label: string }[] = [
+const MAIN_TABS: { id: Exclude<ViewName, "profil">; Icon: IconComp; label: string }[] = [
   { id: "beranda", Icon: IconHome, label: "Hari Ini" },
   { id: "email", Icon: IconMail, label: "Email" },
   { id: "tugas", Icon: IconTask, label: "Tugas" },
   { id: "kalender", Icon: IconCalendar, label: "Kalender" },
-  { id: "profil", Icon: IconUser, label: "Profil" },
 ];
 
 export function Sidebar({ view, go }: { view: ViewName; go: (v: NavTarget) => void }) {
   return (
     <nav className="sidebar" aria-label="Navigasi utama">
       <div className="cap">MENU</div>
-      {TABS.map((t) => (
+      {MAIN_TABS.map((t) => (
         <button key={t.id} className={`tab${view === t.id ? " active" : ""}`} onClick={() => go(t.id)}>
           <span className="ic">
             <t.Icon size={20} />
@@ -41,7 +40,7 @@ export function TabBar({ view, go }: { view: ViewName; go: (v: NavTarget) => voi
   return (
     <nav className="tabbar" aria-label="Navigasi utama">
       <div className="tabbar-inner">
-        {TABS.map((t) => (
+        {MAIN_TABS.map((t) => (
           <button
             key={t.id}
             className={`tab${view === t.id ? " active" : ""}`}

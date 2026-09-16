@@ -62,9 +62,8 @@ export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => voi
           <p key={i} style={{ color: "var(--ink)" }}>{p}</p>
         ))}
       </div>
-      <div className="actions">
-        <span />
-        <button type="button" className="btn primary" onClick={onClose}>
+      <div className="actions-single">
+        <button type="button" className="btn primary block" onClick={onClose}>
           Tutup
         </button>
       </div>
@@ -327,9 +326,8 @@ export function TambahSheet({
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
       </div>
-      <div className="actions">
-        <span />
-        <button type="button" className="btn ghost" onClick={onClose}>
+      <div className="actions-single">
+        <button type="button" className="btn ghost block" onClick={onClose}>
           Tutup
         </button>
       </div>

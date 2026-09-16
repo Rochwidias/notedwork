@@ -118,13 +118,13 @@ export default function ProfileView({
         )}
       </div>
 
-      {/* ── Pengaturan ── */}
+      {/* ── Galeri Tema ── */}
       <div className="card">
         <h2>
           <span className="h-ic">
             <IconGear size={15} />
           </span>
-          Pengaturan
+          Galeri Tema
         </h2>
         <div className="set-row">
           <div>

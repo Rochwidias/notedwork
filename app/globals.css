@@ -526,10 +526,11 @@ button {
 }
 .row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 11px 0;
   border-top: 1px solid var(--line);
+  text-align: left;
 }
 .row:first-of-type {
   border-top: none;
@@ -537,6 +538,13 @@ button {
 .row > div:nth-child(2) {
   min-width: 0;
   flex: 1;
+}
+.row .dot {
+  margin-top: 5px;
+}
+.row .del,
+.row .edit {
+  padding-top: 2px;
 }
 .dot {
   width: 10px;
@@ -1197,14 +1205,14 @@ button {
 .cal-head {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
+  gap: 10px;
   margin-bottom: 10px;
-  max-width: 440px;
-  margin-left: auto;
-  margin-right: auto;
 }
 .cal-head b {
   font-size: 15px;
+  order: -1;
+  margin-right: auto;
 }
 .nav-btn {
   border: 1px solid var(--line);
@@ -1284,9 +1292,7 @@ button {
   font-size: 12px;
   color: var(--muted);
   margin-top: 10px;
-  max-width: 440px;
-  margin-left: auto;
-  margin-right: auto;
+  justify-content: flex-start;
 }
 .legend span {
   display: flex;
@@ -1398,10 +1404,11 @@ button {
 }
 .set-row {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 12px;
   padding: 12px 0;
   border-top: 1px solid var(--line);
+  text-align: left;
 }
 .set-row:first-of-type {
   border-top: none;
@@ -1482,26 +1489,39 @@ button {
   max-width: 620px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(4, 1fr);
+}
+.tabbar .tab .ic svg {
+  width: 18px;
+  height: 18px;
 }
 .tab {
   border: none;
   background: none;
   cursor: pointer;
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   align-items: center;
-  gap: 3px;
-  font-size: 12px;
+  justify-content: flex-start;
+  gap: 7px;
+  font-size: 11.5px;
+  font-weight: 600;
   color: var(--muted);
-  padding: 8px 0;
+  padding: 8px 10px;
   border-radius: 10px;
   min-height: 56px;
-  justify-content: center;
+  text-align: left;
 }
 .tab .ic {
   font-size: 20px;
   line-height: 1;
+  flex: none;
+  display: grid;
+  place-items: center;
+}
+.tab .ic svg {
+  width: 19px;
+  height: 19px;
 }
 .tab {
   position: relative;
@@ -1510,17 +1530,10 @@ button {
 .tab.active {
   color: var(--brand);
   font-weight: 800;
+  background: var(--brand-soft);
 }
 .tab.active::after {
-  content: "";
-  position: absolute;
-  bottom: -3px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 24px;
-  height: 2px;
-  background: var(--brand);
-  border-radius: 1px;
+  content: none;
 }
 [data-theme="light"] .tab.active {
   color: var(--brand-dark);
@@ -1548,8 +1561,11 @@ button {
   }
   .sidebar .tab {
     flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
     gap: 10px;
     font-size: 14px;
+    font-weight: 600;
     padding: 12px;
     border-radius: 12px;
     width: 100%;
@@ -1559,6 +1575,19 @@ button {
     background: var(--brand-soft);
     color: var(--brand);
     font-weight: 800;
+  }
+  .sidebar .tab.active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 8px;
+    bottom: 8px;
+    width: 3px;
+    background: var(--brand);
+    border-radius: 2px;
+  }
+  .sidebar .tab.active::after {
+    content: none;
   }
   [data-theme="light"] .sidebar .tab.active {
     color: var(--brand-dark);
@@ -1707,6 +1736,16 @@ textarea.f.compose-body {
 .sheet .actions .btn {
   min-height: 48px;
 }
+/* Aksi tunggal (InfoSheet/TambahSheet): satu kolom full-width rata kiri. */
+.sheet .actions-single {
+  display: grid;
+  grid-template-columns: 1fr;
+  margin-top: 16px;
+}
+.sheet .actions-single .btn {
+  min-height: 48px;
+  width: 100%;
+}
 /* Tombol aksi GoogleConnect: collapse di layar sempit */
 .btn-pair {
   display: grid;
@@ -1719,7 +1758,7 @@ textarea.f.compose-body {
   height: 5px;
   border-radius: 99px;
   background: var(--line);
-  margin: 0 auto 12px;
+  margin: 0 0 12px;
 }
 
 /* ── Toast ── */
@@ -1894,11 +1933,18 @@ textarea.f.compose-body {
 .erow {
   display: flex;
   gap: 8px;
-  align-items: center;
+  align-items: flex-start;
   padding: 7px 0;
   border-top: 1px solid var(--line);
   font-size: 12px;
   cursor: pointer;
+  text-align: left;
+}
+.erow:first-of-type {
+  border-top: none;
+}
+.erow .dot {
+  margin-top: 4px;
 }
 .erow:first-of-type {
   border-top: none;

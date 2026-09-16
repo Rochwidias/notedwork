@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type KeyboardEvent } from "react";
 import type { Routine, Task } from "@/lib/types";
 import { PRIO, fmtDateID, isOverdue, taskBadge } from "@/lib/dates";
 import { IconCheck, IconPencil, IconPlus, IconX } from "./icons";
@@ -69,8 +69,22 @@ export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, 
           list.map((t) => {
             const b = taskBadge(t);
             const p = PRIO[t.prio] ?? PRIO.sedang;
+            const onKey = (e: KeyboardEvent) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                onToggle(t.id);
+              }
+            };
             return (
-              <div key={t.id} className={`trow${t.done ? " done" : ""}`} onClick={() => onToggle(t.id)}>
+              <div
+                key={t.id}
+                className={`trow${t.done ? " done" : ""}`}
+                role="button"
+                tabIndex={0}
+                aria-label={`${t.title} — ${t.done ? "selesai" : "aktif"}. Ketuk untuk ubah status.`}
+                onClick={() => onToggle(t.id)}
+                onKeyDown={onKey}
+              >
                 <button
                   className="check"
                   title="Tandai selesai"
@@ -115,6 +129,7 @@ export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, 
                 >
                   <IconX size={14} />
                 </button>
+                <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, flex: "none" }}>›</span>
               </div>
             );
           })
