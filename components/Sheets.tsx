@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { ComposePreset, Prio, Routine, Sched, Task } from "@/lib/types";
 import { IconBook, IconForward, IconMail, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
@@ -130,6 +130,10 @@ export function SchedSheet({
   const [reminderMin, setReminderMin] = useState(15);
   const [titleErr, setTitleErr] = useState("");
   const [endErr, setEndErr] = useState("");
+  // Anti-spam simpan: ref sinkron (lolos bila pakai state saja — klik cepat
+  // masuk sebelum re-render). finally selalu reset agar sheet tak macet.
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -144,6 +148,8 @@ export function SchedSheet({
       setReminderMin(initial?.reminderMin ?? 15);
       setTitleErr("");
       setEndErr("");
+      savingRef.current = false;
+      setSaving(false);
     }
   }, [open, selDate, initial]);
 
@@ -156,6 +162,7 @@ export function SchedSheet({
       <form
         onSubmit={async (e) => {
           e.preventDefault();
+          if (savingRef.current) return;
           // Error inline (bukan diam): judul wajib, akhir valid bila diisi.
           const jt = title.trim();
           if (!jt) {
@@ -174,14 +181,22 @@ export function SchedSheet({
           setEndErr("");
           // end<=start = lintas-hari (lewat tengah malam, besok): diterima, bukan ditolak.
           // end kosong / sama dengan mulai = sekilas (tak dikirim).
-          const ok = await onSave({
-            title: jt,
-            date,
-            time: t,
-            ...(end && end !== t ? { endTime: end } : {}),
-            note: note.trim(),
-            reminderMin,
-          });
+          savingRef.current = true;
+          setSaving(true);
+          let ok: boolean | void = false;
+          try {
+            ok = await onSave({
+              title: jt,
+              date,
+              time: t,
+              ...(end && end !== t ? { endTime: end } : {}),
+              note: note.trim(),
+              reminderMin,
+            });
+          } finally {
+            savingRef.current = false;
+            setSaving(false);
+          }
           // Form tetap utuh bila simpan gagal (false): jangan clear draf.
           if (ok === false) return;
           setTitle("");
@@ -246,11 +261,11 @@ export function SchedSheet({
         <label className="f" htmlFor="fNote">Keterangan</label>
         <input className="f" id="fNote" placeholder="Ruang, dosen, link meeting…" value={note} onChange={(e) => setNote(e.target.value)} />
         <div className="actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
+          <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
             Tutup
           </button>
-          <button type="submit" className="btn primary">
-            {editing ? "Simpan perubahan" : "Simpan"}
+          <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
+            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan"}
           </button>
         </div>
       </form>
@@ -342,6 +357,9 @@ export function MailSheet({
   const [body, setBody] = useState("");
   const [toErr, setToErr] = useState("");
   const [sending, setSending] = useState(false);
+  // Anti double-kirim: ref sinkron validasi SEKARANG (state telat satu render —
+  // klik cepat 2x bisa lolos dua-duanya bila cuma cek state).
+  const sendingRef = useRef(false);
 
   useEffect(() => {
     if (open) {
@@ -350,6 +368,7 @@ export function MailSheet({
       setSubj(preset?.subj ?? "");
       setBody(preset?.body ?? "");
       setToErr("");
+      sendingRef.current = false;
       setSending(false);
     }
   }, [open, preset]);
@@ -370,17 +389,23 @@ export function MailSheet({
       <form
         onSubmit={async (e) => {
           e.preventDefault();
-          if (sending) return;
+          if (sendingRef.current) return;
           const dest = to.trim();
           if (!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(dest)) {
             setToErr("Format email tujuan tidak valid");
             return;
           }
           setToErr("");
+          sendingRef.current = true;
           setSending(true);
           // Draf dipertahankan bila kirim gagal (return false): jangan clear.
-          const ok = await onSave(dest, subj, body);
-          setSending(false);
+          let ok: boolean | void = false;
+          try {
+            ok = await onSave(dest, subj, body);
+          } finally {
+            sendingRef.current = false;
+            setSending(false);
+          }
           if (ok === false) return;
           setTo("");
           setSubj("");
@@ -466,6 +491,9 @@ export function TaskSheet({
   const [note, setNote] = useState("");
   const [reminderMin, setReminderMin] = useState(15);
   const [titleErr, setTitleErr] = useState("");
+  // Anti-spam simpan: ref sinkron validasi SEKARANG (state telat satu render).
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (open) {
@@ -480,6 +508,8 @@ export function TaskSheet({
       setNote(initial?.note ?? "");
       setReminderMin(initial?.reminderMin ?? 15);
       setTitleErr("");
+      savingRef.current = false;
+      setSaving(false);
     }
   }, [open, selDate, initial]);
 
@@ -492,6 +522,7 @@ export function TaskSheet({
       <form
         onSubmit={async (e) => {
           e.preventDefault();
+          if (savingRef.current) return;
           // Error inline (bukan diam): judul wajib.
           const jt = title.trim();
           if (!jt) {
@@ -500,15 +531,23 @@ export function TaskSheet({
           }
           setTitleErr("");
           // Jam deadline: opsional — kosong = akhir hari 23:59 (konsisten taskBadge/isOverdue).
-          const ok = await onSave({
-            matkul: matkul.trim() || "Umum",
-            title: jt,
-            date,
-            time: time.trim() || "23:59",
-            prio,
-            note: note.trim(),
-            reminderMin,
-          });
+          savingRef.current = true;
+          setSaving(true);
+          let ok: boolean | void = false;
+          try {
+            ok = await onSave({
+              matkul: matkul.trim() || "Umum",
+              title: jt,
+              date,
+              time: time.trim() || "23:59",
+              prio,
+              note: note.trim(),
+              reminderMin,
+            });
+          } finally {
+            savingRef.current = false;
+            setSaving(false);
+          }
           if (ok === false) return;
           setMatkul("");
           setTitle("");
@@ -576,11 +615,11 @@ export function TaskSheet({
         <label className="f">Pengingat</label>
         <ReminderChips value={reminderMin} onChange={setReminderMin} idPrefix="tRem" />
         <div className="actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
+          <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
             Tutup
           </button>
-          <button type="submit" className="btn primary">
-            {editing ? "Simpan perubahan" : "Simpan"}
+          <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
+            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan"}
           </button>
         </div>
       </form>
@@ -607,6 +646,10 @@ export function RoutineSheet({
   const [start, setStart] = useState("09:00");
   const [end, setEnd] = useState("10:40");
   const [lect, setLect] = useState("");
+  // Anti-spam tambah: onSave sinkron tapi spam-klik = 2 submit sebelum
+  // state clear — tahan via ref satu tick + disabled tombol.
+  const addingRef = useRef(false);
+  const [adding, setAdding] = useState(false);
 
   const dayName = (d: number) => ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][d - 1] ?? "";
 
@@ -617,7 +660,10 @@ export function RoutineSheet({
       <form
         onSubmit={(e) => {
           e.preventDefault();
+          if (addingRef.current) return;
           if (!course.trim()) return;
+          addingRef.current = true;
+          setAdding(true);
           onSave({
             course: course.trim(),
             day: Number(day),
@@ -629,6 +675,12 @@ export function RoutineSheet({
           setCourse("");
           setRoom("");
           setLect("");
+          // Lepas di tick berikut: cukup tahan double-submit satu event-loop,
+          // tanpa bikin tombol macet bila user tambah 2 rutin berurutan.
+          setTimeout(() => {
+            addingRef.current = false;
+            setAdding(false);
+          }, 0);
         }}
       >
         <label className="f" htmlFor="rCourse">Mata kuliah</label>
@@ -672,11 +724,11 @@ export function RoutineSheet({
         <label className="f" htmlFor="rLect">Dosen</label>
         <input className="f" id="rLect" maxLength={60} placeholder="cth: Pak Andi" value={lect} onChange={(e) => setLect(e.target.value)} />
         <div className="actions">
-          <button type="button" className="btn ghost" onClick={onClose}>
+          <button type="button" className="btn ghost" onClick={onClose} disabled={adding}>
             Tutup
           </button>
-          <button type="submit" className="btn primary">
-            Tambah
+          <button type="submit" className="btn primary" disabled={adding} aria-busy={adding}>
+            {adding ? "Menambah…" : "Tambah"}
           </button>
         </div>
       </form>

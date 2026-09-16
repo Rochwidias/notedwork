@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node tests/repro.mjs && node tests/repro-email.mjs && node tests/repro-fix.mjs"
+    "test": "node tests/repro.mjs && node tests/repro-email.mjs && node tests/repro-fix.mjs && node tests/repro-double.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

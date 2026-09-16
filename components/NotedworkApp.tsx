@@ -103,6 +103,10 @@ function Shell() {
   const fetchSeq = useRef(0);
   /** Anti-race bintang: id yang sedang di-POST tak bisa diklik ulang. */
   const starPending = useRef(new Map<string, boolean>());
+  /** Anti double-submit (spam-klik Simpan/Kirim): submit yg sedang jalan tolak yg baru. */
+  const schedBusy = useRef(false);
+  const mailBusy = useRef(false);
+  const taskBusy = useRef(false);
   /** Pengingat yang sudah dibunyikan: kunci id|date|time (maks 200). */
   const firedRef = useRef<Set<string>>(new Set());
 
@@ -509,47 +513,54 @@ function Shell() {
 
   const saveSched = useCallback(
     async (v: SchedInput): Promise<boolean> => {
-      if (!connected) {
-        const start = v.time && v.time.trim() ? v.time : "09:00";
-        // Akhir opsional: kosong / sama dengan mulai = sekilas (tak disimpan).
-        const rawEnd = v.endTime && v.endTime.trim() ? v.endTime.trim() : undefined;
-        const end = rawEnd && rawEnd !== start ? rawEnd : undefined;
-        const overnight = end != null && end <= start;
-        setPreviewScheds((prev) =>
-          [
-            ...prev,
-            {
-              id: genId("s"),
-              title: v.title,
-              date: v.date,
-              time: start,
-              ...(end ? { endTime: end } : {}),
-              note: v.note ?? "",
-              color: RCOL[prev.length % RCOL.length],
-              reminderMin: v.reminderMin,
-              ...(overnight ? { overnight: true } : {}),
-            } as Sched,
-          ].sort(sortSched)
-        );
-        toastMsg("Jadwal tersimpan");
+      // Lapis 2 (lapis 1 = guard sheet): spam dari keyboard/Enter ganda tetap tertahan.
+      if (schedBusy.current) return false;
+      schedBusy.current = true;
+      try {
+        if (!connected) {
+          const start = v.time && v.time.trim() ? v.time : "09:00";
+          // Akhir opsional: kosong / sama dengan mulai = sekilas (tak disimpan).
+          const rawEnd = v.endTime && v.endTime.trim() ? v.endTime.trim() : undefined;
+          const end = rawEnd && rawEnd !== start ? rawEnd : undefined;
+          const overnight = end != null && end <= start;
+          setPreviewScheds((prev) =>
+            [
+              ...prev,
+              {
+                id: genId("s"),
+                title: v.title,
+                date: v.date,
+                time: start,
+                ...(end ? { endTime: end } : {}),
+                note: v.note ?? "",
+                color: RCOL[prev.length % RCOL.length],
+                reminderMin: v.reminderMin,
+                ...(overnight ? { overnight: true } : {}),
+              } as Sched,
+            ].sort(sortSched)
+          );
+          toastMsg("Jadwal tersimpan");
+          setSelDate(v.date);
+          setSheet(null);
+          go("kalender");
+          return true;
+        }
+        try {
+          const ev = await apiCreateEvent(v, browserTz());
+          setRemoteEvents((prev) => [...prev, ev].sort(sortSched));
+          toastMsg("Jadwal tersimpan ke Google Calendar");
+        } catch (e) {
+          if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
+          else toastMsg("Gagal simpan ke Google");
+          return false;
+        }
         setSelDate(v.date);
         setSheet(null);
         go("kalender");
         return true;
+      } finally {
+        schedBusy.current = false;
       }
-      try {
-        const ev = await apiCreateEvent(v, browserTz());
-        setRemoteEvents((prev) => [...prev, ev].sort(sortSched));
-        toastMsg("Jadwal tersimpan ke Google Calendar");
-      } catch (e) {
-        if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("Gagal simpan ke Google");
-        return false;
-      }
-      setSelDate(v.date);
-      setSheet(null);
-      go("kalender");
-      return true;
     },
     [connected, toastMsg, markDisconnected, go, setPreviewScheds, browserTz]
   );
@@ -573,73 +584,87 @@ function Shell() {
         toastMsg("Jadwal tidak ditemukan");
         return false;
       }
-      if (!connected) {
-        const start = v.time && v.time.trim() ? v.time : "09:00";
-        // Akhir opsional: kosong / sama dengan mulai = sekilas (tak disimpan).
-        const rawEnd = v.endTime && v.endTime.trim() ? v.endTime.trim() : undefined;
-        const end = rawEnd && rawEnd !== start ? rawEnd : undefined;
-        const overnight = end != null && end <= start;
-        const id = editingSched.id;
-        setPreviewScheds((prev) =>
-          prev
-            .map((s) =>
-              s.id === id
-                ? ({
-                    ...s,
-                    title: v.title,
-                    date: v.date,
-                    time: start,
-                    ...(end ? { endTime: end } : { endTime: undefined }),
-                    note: v.note ?? "",
-                    reminderMin: v.reminderMin,
-                    ...(overnight ? { overnight: true } : {}),
-                  } as Sched)
-                : s
-            )
-            .sort(sortSched)
-        );
-        toastMsg("Jadwal diperbarui");
+      // Edit spam-klik: PATCH ganda = data balapan — tahan seperti save.
+      if (schedBusy.current) return false;
+      schedBusy.current = true;
+      try {
+        if (!connected) {
+          const start = v.time && v.time.trim() ? v.time : "09:00";
+          // Akhir opsional: kosong / sama dengan mulai = sekilas (tak disimpan).
+          const rawEnd = v.endTime && v.endTime.trim() ? v.endTime.trim() : undefined;
+          const end = rawEnd && rawEnd !== start ? rawEnd : undefined;
+          const overnight = end != null && end <= start;
+          const id = editingSched.id;
+          setPreviewScheds((prev) =>
+            prev
+              .map((s) =>
+                s.id === id
+                  ? ({
+                      ...s,
+                      title: v.title,
+                      date: v.date,
+                      time: start,
+                      ...(end ? { endTime: end } : { endTime: undefined }),
+                      note: v.note ?? "",
+                      reminderMin: v.reminderMin,
+                      ...(overnight ? { overnight: true } : {}),
+                    } as Sched)
+                  : s
+              )
+              .sort(sortSched)
+          );
+          toastMsg("Jadwal diperbarui");
+          setEditingSched(null);
+          setSelDate(v.date);
+          setSheet(null);
+          go("kalender");
+          return true;
+        }
+        try {
+          const ev = await apiUpdateEvent(editingSched.id, v, browserTz());
+          setRemoteEvents((prev) => prev.map((s) => (s.id === editingSched.id ? ev : s)).sort(sortSched));
+          toastMsg("Jadwal diperbarui di Google Calendar");
+        } catch (e) {
+          if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
+          else toastMsg(`Gagal ubah: ${e instanceof Error ? e.message : "unknown"}`);
+          return false;
+        }
         setEditingSched(null);
         setSelDate(v.date);
         setSheet(null);
         go("kalender");
         return true;
+      } finally {
+        schedBusy.current = false;
       }
-      try {
-        const ev = await apiUpdateEvent(editingSched.id, v, browserTz());
-        setRemoteEvents((prev) => prev.map((s) => (s.id === editingSched.id ? ev : s)).sort(sortSched));
-        toastMsg("Jadwal diperbarui di Google Calendar");
-      } catch (e) {
-        if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg(`Gagal ubah: ${e instanceof Error ? e.message : "unknown"}`);
-        return false;
-      }
-      setEditingSched(null);
-      setSelDate(v.date);
-      setSheet(null);
-      go("kalender");
-      return true;
     },
     [connected, editingSched, toastMsg, markDisconnected, go, setPreviewScheds, browserTz]
   );
 
   const saveMail = useCallback(
     async (to: string, subj: string, body: string): Promise<boolean> => {
-      if (!connected) {
-        // Satu-satunya guard login yang tersisa: sheet tetap terbuka, draf utuh.
-        toastMsg(PREVIEW_LOGIN_HINT);
-        return false;
-      }
+      // Anti double-kirim: spam-klik Kirim = 1 email, bukan N email ke dosen.
+      if (mailBusy.current) return false;
+      mailBusy.current = true;
       try {
-        await apiSendMail(to, subj, body);
-        toastMsg("Email terkirim via Gmail");
-      } catch (e) {
-        if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg(`Gagal kirim: ${e instanceof Error ? e.message : "unknown"}`);
-        return false;
+        if (!connected) {
+          // Satu-satunya guard login yang tersisa: sheet tetap terbuka, draf utuh.
+          toastMsg(PREVIEW_LOGIN_HINT);
+          return false;
+        }
+        try {
+          await apiSendMail(to, subj, body);
+          toastMsg("Email terkirim via Gmail");
+        } catch (e) {
+          if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
+          else toastMsg(`Gagal kirim: ${e instanceof Error ? e.message : "unknown"}`);
+          return false;
+        }
+        setSheet(null);
+        return true;
+      } finally {
+        mailBusy.current = false;
       }
-      setSheet(null);
-      return true;
     },
     [connected, toastMsg, markDisconnected]
   );
@@ -923,25 +948,32 @@ function Shell() {
           setSheet(null);
         }}
         onSave={(v) => {
-          const reminderMin =
-            (v as { reminderMin?: number }).reminderMin ?? DEFAULT_REMINDER_MIN;
-          if (editingTask) {
-            const id = editingTask.id;
-            setTasks((prev) =>
-              prev.map((x) =>
-                x.id === id ? { ...x, matkul: v.matkul, title: v.title, date: v.date, time: v.time, prio: v.prio, note: v.note, reminderMin } : x
-              )
-            );
-            setEditingTask(null);
+          // Anti double-tugas: spam-klik Simpan = 1 tugas, bukan N.
+          if (taskBusy.current) return;
+          taskBusy.current = true;
+          try {
+            const reminderMin =
+              (v as { reminderMin?: number }).reminderMin ?? DEFAULT_REMINDER_MIN;
+            if (editingTask) {
+              const id = editingTask.id;
+              setTasks((prev) =>
+                prev.map((x) =>
+                  x.id === id ? { ...x, matkul: v.matkul, title: v.title, date: v.date, time: v.time, prio: v.prio, note: v.note, reminderMin } : x
+                )
+              );
+              setEditingTask(null);
+              setSheet(null);
+              toastMsg("Tugas diperbarui");
+              go("tugas");
+              return;
+            }
+            setTasks((prev) => [...prev, { id: genId("t"), ...v, reminderMin, done: false }]);
             setSheet(null);
-            toastMsg("Tugas diperbarui");
+            toastMsg("Tugas tersimpan");
             go("tugas");
-            return;
+          } finally {
+            taskBusy.current = false;
           }
-          setTasks((prev) => [...prev, { id: genId("t"), ...v, reminderMin, done: false }]);
-          setSheet(null);
-          toastMsg("Tugas tersimpan");
-          go("tugas");
         }}
       />
       <RoutineSheet
