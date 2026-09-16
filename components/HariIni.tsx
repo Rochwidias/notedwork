@@ -1,8 +1,8 @@
 "use client";
 
-import type { CSSProperties, KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 import type { Mail, NavTarget, Routine, Sched, Task } from "@/lib/types";
-import { DAYS, fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, weekdayOf } from "@/lib/dates";
+import { fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, weekdayOf } from "@/lib/dates";
 import {
   IconBell,
   IconCalendarDays,
@@ -28,7 +28,7 @@ interface Props {
   onAdd: () => void;
 }
 
-const CHEV: CSSProperties = { color: "var(--muted)", fontWeight: 800, flex: "none" };
+const DOW3 = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
 /** Props keyboard untuk baris role=button: Enter/Spasi = klik. */
 function onKey(action: () => void): (e: KeyboardEvent) => void {
@@ -188,9 +188,9 @@ export default function HariIni({
         </small>
       </div>
 
-      {/* (a) kartu pengingat */}
+      {/* (a) kartu pengingat — slim: pill CTA di dalam kartu agar Hari Ini muat 1 layar */}
       <div
-        className="hero"
+        className="hero slim"
         role="button"
         tabIndex={0}
         aria-label={hero ? `Pengingat: ${hero.label}, ${hero.title}. Buka kalender.` : "Tidak ada pengingat. Buka kalender."}
@@ -207,9 +207,9 @@ export default function HariIni({
               {hero.label}: {hero.title}
             </b>
             <p>{hero.sub}</p>
-            <p style={{ fontWeight: 700 }}>
+            <span className="cta">
               Lihat kalender <span aria-hidden="true">›</span>
-            </p>
+            </span>
           </>
         ) : (
           <>
@@ -220,15 +220,15 @@ export default function HariIni({
               Tidak ada pengingat berikutnya
             </b>
             <p>Belum ada agenda atau deadline. Nikmati harimu!</p>
-            <p style={{ fontWeight: 700 }}>
+            <span className="cta">
               Lihat kalender <span aria-hidden="true">›</span>
-            </p>
+            </span>
           </>
         )}
       </div>
 
-      {/* (b) 3 terpenting */}
-      <div className="card">
+      {/* (b) 3 terpenting — baris slim tanpa kartu per-baris agar muat 1 layar */}
+      <div className="card mini">
         <div className="card-head">
           <h2>
             <span className="h-ic">
@@ -247,18 +247,18 @@ export default function HariIni({
             return (
               <div
                 key={t.id}
-                className="trow"
+                className="trow slim"
                 role="button"
                 tabIndex={0}
                 aria-label={`${i + 1}. ${t.title}. Ketuk untuk tandai selesai.`}
                 onClick={toggle}
                 onKeyDown={onKey(toggle)}
               >
-                <span className="pill blue" aria-hidden="true" style={{ margin: 0 }}>
+                <span className="pill blue num" aria-hidden="true">
                   {i + 1}
                 </span>
                 <button
-                  className="check"
+                  className="check sm"
                   title="Tandai selesai"
                   aria-label={`Tandai selesai: ${t.title}`}
                   onClick={(e) => {
@@ -272,13 +272,8 @@ export default function HariIni({
                     {t.matkul} • {fmtDateID(t.date)}
                     {t.time ? ` • ${t.time}` : ""}
                   </div>
-                  <div className="tags">
-                    <span className={`tag ${b.cls}`}>{b.txt}</span>
-                  </div>
                 </div>
-                <span aria-hidden="true" style={CHEV}>
-                  ›
-                </span>
+                <span className={`tag ${b.cls}`}>{b.txt}</span>
               </div>
             );
           })}
@@ -286,8 +281,8 @@ export default function HariIni({
         </div>
       </div>
 
-      {/* (c) strip minggu */}
-      <div className="card">
+      {/* (c) strip minggu — 7 chip sebaris tanpa scroll horizontal */}
+      <div className="card mini">
         <div className="card-head">
           <h2>
             <span className="h-ic">
@@ -299,7 +294,7 @@ export default function HariIni({
             Kalender <span aria-hidden="true">›</span>
           </button>
         </div>
-        <div className="chips">
+        <div className="wstrip">
           {week.map((iso, i) => {
             const isToday = iso === ts;
             const pick = () => {
@@ -309,20 +304,21 @@ export default function HariIni({
             return (
               <button
                 key={iso}
-                className={`chip${isToday ? " on" : ""}`}
+                className={`wchip${isToday ? " on" : ""}`}
                 onClick={pick}
                 aria-label={fmtDateID(iso)}
                 aria-current={isToday ? "date" : undefined}
               >
-                {DAYS[i].slice(0, 3)} • {Number(iso.slice(8, 10))}
+                {DOW3[i]}
+                <span className="dn">{Number(iso.slice(8, 10))}</span>
               </button>
             );
           })}
         </div>
       </div>
 
-      {/* (d) email penting */}
-      <div className="card">
+      {/* (d) email penting — max 2 baris kompak */}
+      <div className="card mini">
         <div className="card-head">
           <h2>
             <span className="h-ic">
@@ -335,28 +331,24 @@ export default function HariIni({
           </button>
         </div>
         <div>
-          {important.map((m) => {
+          {important.slice(0, 2).map((m) => {
             const open = () => onOpenMail(m.id);
             return (
               <div
                 key={m.id}
-                className="row"
+                className="erow"
                 role="button"
                 tabIndex={0}
                 aria-label={`Buka email: ${m.subj}`}
                 onClick={open}
                 onKeyDown={onKey(open)}
-                style={{ cursor: "pointer" }}
               >
                 <span className="dot" style={{ background: "var(--brand)" }} />
                 <div>
-                  <div className="t">{m.subj}</div>
-                  <div className="s">{m.from}</div>
+                  <div className="tt">{m.subj}</div>
+                  <div className="ss">{m.from}</div>
                 </div>
-                <div className="time">{m.time}</div>
-                <span aria-hidden="true" style={CHEV}>
-                  ›
-                </span>
+                <div className="tm">{m.time}</div>
               </div>
             );
           })}
@@ -369,13 +361,10 @@ export default function HariIni({
             </div>
           )}
         </div>
-        <button className="btn soft block" onClick={() => go("email")} style={{ marginTop: 10 }}>
-          Lihat semua email <span aria-hidden="true">›</span>
-        </button>
       </div>
 
       {/* (e) tambah konsisten: sheet pilihan dibuka induk via onAdd */}
-      <button className="btn primary block btn-ic" onClick={onAdd} style={{ marginTop: 12 }}>
+      <button className="btn primary block btn-ic" onClick={onAdd} style={{ marginTop: 8 }}>
         <IconPlus size={16} />
         Tambah
       </button>
