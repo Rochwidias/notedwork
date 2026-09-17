@@ -206,6 +206,8 @@ const FOOTER_MARKS = [
   "because you subscribed",
   "unsubscribe",
   "berhenti berlangganan",
+  "lebih aman dengan google",
+  "melindungi privasi anda",
   "kelola preferensi email",
   "manage preferences",
   "update preferences",

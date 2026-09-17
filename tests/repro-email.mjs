@@ -110,5 +110,24 @@ const noLeak = (s) => !/\[TABLE\]|\[\/TABLE\]|\[R\]|\[H\]|\[PRE\]|\[\/PRE\]|<[^>
   check("regresi: autolink Label<url>", auto.includes("[portal](https://kampus.id/krs)"), JSON.stringify(auto));
 }
 
+// 7. MSO ter-escape (bug notifikasi Google: &lt;!--[if mso]&gt; + &lt;v:roundrect&gt;
+// bocor jadi teks karena decode jalan sesudah strip tag).
+{
+  const msoLeak = (s) => !/\[if mso|\[endif\]|v:roundrect|w:anchorlock|v:textbox|<!\[endif/i.test(s);
+  const out = htmlToText(`&lt;!--[if mso]&gt;&lt;v:roundrect href=&quot;https://c.gle/x&quot;&gt;Buka&lt;/v:roundrect&gt;&lt;![endif]--&gt;<p>Halo</p>`);
+  check("mso-escape: tak bocor", msoLeak(out) && noLeak(out), JSON.stringify(out));
+  check("mso-escape: isi tampil", out.includes("Halo"), JSON.stringify(out));
+  const down = htmlToText(`&lt;!--[if !mso]&gt;&lt;!--&gt;<p>Isi non-Outlook</p>&lt;!--&lt;![endif]--&gt;`);
+  check("mso-downlevel-escape: tak bocor", msoLeak(down) && noLeak(down), JSON.stringify(down));
+  check("mso-downlevel-escape: isi tampil", down.includes("Isi non-Outlook"), JSON.stringify(down));
+}
+
+// 8. Cabang MSO ganda (Outlook + non-Outlook isi sama) → tampil sekali.
+{
+  const out = htmlToText(`<!--[if mso]><p>Anda menerima email ini</p><![endif]--><!--[if !mso]><!--><p>Anda menerima email ini</p><!--<![endif]-->`);
+  const n = out.split("Anda menerima email ini").length - 1;
+  check("mso-duplikat: tampil sekali", n === 1, JSON.stringify(out));
+}
+
 console.log(failures ? `\n${failures} check(s) FAILED (bug email terreproduksi)` : "\nSemua checks email PASS");
 process.exit(failures ? 1 : 0);

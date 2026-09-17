@@ -36,7 +36,8 @@ interface GmailMessage {
 }
 
 function header(msg: GmailMessage, name: string): string {
-  return msg.payload?.headers?.find((h) => h.name.toLowerCase() === name)?.value ?? "";
+  const want = name.toLowerCase();
+  return msg.payload?.headers?.find((h) => h.name.toLowerCase() === want)?.value ?? "";
 }
 
 function b64ToText(b64: string): string {
@@ -72,10 +73,52 @@ function decodeEntities(s: string): string {
   });
 }
 
+/** Hapus artefak MSO/Outlook: conditional comments (asli maupun ter-escape
+ *  &lt;!--), tag VML/Office (v:/w:/o:), dan atribut xmlns yatim. */
+function stripMsoRaw(s: string): string {
+  let t = s;
+  // Blok MSO ter-escape dihapus UTUH (cabang Outlook menduplikat isi non-Outlook).
+  t = t.replace(/&lt;!--\[if mso\]&gt;[\s\S]*?&lt;!\[endif\]--&gt;/gi, " ");
+  // Sisa marker downlevel-revealed ter-escape — isinya dipertahankan.
+  t = t.replace(/&lt;!--\[if[^\]]*\]&gt;/gi, " ");
+  t = t.replace(/&lt;!\[endif\]--&gt;/gi, " ");
+  t = t.replace(/&lt;!--&gt;/gi, " ");
+  return t;
+}
+
+/** Sapuan kedua SETELAH decode: marker MSO/VML yang baru materialisasi
+ *  dari &lt;…&gt; dibuang di sini (strip tag umum sudah lewat). */
+function stripMsoDecoded(s: string): string {
+  let t = s;
+  t = t.replace(/<!--\[if[^\]]*\]><!-->/gi, " ");
+  t = t.replace(/<!--\[if[^\]]*\]>/gi, " ");
+  t = t.replace(/<!--<!\[endif\]-->/gi, " ");
+  t = t.replace(/<!\[endif\]-->/gi, " ");
+  t = t.replace(/<!--\[endif\]-->/gi, " ");
+  t = t.replace(/<\/?(?:v|w|o|st1):[^>]*>/gi, " ");
+  t = t.replace(/\sxmlns:(?:v|w|o)="[^"]*"/gi, " ");
+  t = t.replace(/\sxmlns:(?:v|w|o)='[^']*'/gi, " ");
+  return t;
+}
+
+/** Buang blok paragraf duplikat BERURUTAN (email MJML menyimpan cabang
+ *  Outlook + non-Outlook dgn isi sama → tampil dua kali). */
+function dedupeBlocks(text: string): string {
+  const blocks = text.split(/\n{2,}/);
+  const out: string[] = [];
+  for (const b of blocks) {
+    const norm = b.replace(/\s+/g, " ").trim().toLowerCase();
+    const last = out.length ? out[out.length - 1].replace(/\s+/g, " ").trim().toLowerCase() : "";
+    if (norm && norm === last) continue;
+    out.push(b);
+  }
+  return out.join("\n\n");
+}
+
 /** HTML → teks ber-token: link [label](url), tabel [TABLE]/[R]/[H], code [PRE], <img> dibuang.
  *  Diekspor agar bisa diuji langsung (tests/repro-email.mjs). */
 export function htmlToText(html: string): string {
-  let t = html;
+  let t = stripMsoRaw(html);
   // Komentar HTML (termasuk kondisional MSO <!--[if mso]>…<![endif]--> yang
   // menyembunyikan <table> hantu) + <head>/<style>/<script> dibuang dulu —
   // kalau tidak, CSS mentah MJML bocor jadi teks terlihat.
@@ -150,6 +193,8 @@ export function htmlToText(html: string): string {
   // Sisa tag → spasi agar kata tidak menempel.
   t = t.replace(/<[^>]*>/g, " ");
   t = decodeEntities(t);
+  // Marker MSO/VML yang baru muncul dari &lt;…&gt; sesudah decode dibuang di sini.
+  t = stripMsoDecoded(t);
   // Baris sisa token/atribut: ">" penutup tag yatim, "|" sisa <td>,
   // token [R]/[H]/[PRE] yatim, sisa atribut.
   // PENTING: baris token [TABLE]/[/TABLE] JANGAN dibuang di sini — EmailBody
@@ -208,6 +253,8 @@ export function htmlToText(html: string): string {
       return l;
     })
     .join("\n");
+  // Cabang MSO ganda (Outlook + non-Outlook) → paragraf kembar berurutan dibuang.
+  out = dedupeBlocks(out);
   return out.replace(/\n{3,}/g, "\n\n").trim();
 }
 
@@ -277,12 +324,22 @@ function stripImageLines(text: string): string {
 
 /** Normalisasi ringan teks polos: satukan line-ending, rapikan spasi akhir baris. */
 function cleanPlain(text: string): string {
-  return stripImageLines(text.replace(/\r\n?/g, "\n"))
-    .split("\n")
-    .map((l) => l.replace(/[ \t]+$/g, ""))
-    .join("\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
+  // Part text/plain email marketing kadang membawa sisa MSO/VML mentah —
+  // bersihkan dulu agar tak tampil sebagai teks (kasus notifikasi Google).
+  const demsod = stripMsoDecoded(stripMsoRaw(text));
+  return dedupeBlocks(
+    stripImageLines(demsod.replace(/\r\n?/g, "\n"))
+      .split("\n")
+      .map((l) => {
+        const x = l.replace(/[ \t]+$/g, "");
+        // Baris murni marker kondisional / VML / atribut xmlns yatim → buang.
+        if (/^\s*(<!--\[if|<!--<!\[endif\]|<!\[endif\]|<\/?(?:v|w|o|st1):|xmlns:(?:v|w|o))/i.test(x)) return "";
+        return x;
+      })
+      .join("\n")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim()
+  );
 }
 
 /** Potong maks 6000 char di batas baris/spasi; sadar-token (tak penggal [...](...) / [TABLE] / [PRE]). */
@@ -336,8 +393,12 @@ function extractBody(msg: GmailMessage): string {
     }
     if (part.parts) {
       // Plain dulu di seluruh subtree, baru HTML — jangan campur walk generik yang
-      // bisa menelan HTML mentah sebagai teks.
-      return pickPlain(part) || pickHtml(part);
+      // bisa menelan HTML mentah sebagai teks. Kecuali plain-nya rusak (sisa MSO/VML
+      // khas part text/plain email marketing) sementara HTML bersih → pakai HTML.
+      const plain = pickPlain(part);
+      const html = pickHtml(part);
+      if (plain && html && /<!--\[if|<!\[endif|&lt;!--|<(?:v|w|o):/i.test(plain)) return html;
+      return plain || html;
     }
     if (part.body?.data && part.mimeType?.startsWith("text/")) {
       return part.mimeType === "text/html" ? htmlToText(b64ToText(part.body.data)) : cleanPlain(b64ToText(part.body.data));
