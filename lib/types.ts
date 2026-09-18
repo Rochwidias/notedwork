@@ -62,8 +62,8 @@ export interface Task {
   reminderMin?: number;
 }
 
-/** Layar utama: beranda (Hari Ini) + email + tugas + kalender + profil. */
-export type ViewName = "beranda" | "email" | "tugas" | "kalender" | "profil";
+/** Layar utama: beranda (Hari Ini) + email + tugas + kalender + catatan + profil. */
+export type ViewName = "beranda" | "email" | "tugas" | "kalender" | "catatan" | "profil";
 
 /** Target navigasi: pindah view, atau buka sheet tambah jadwal. */
 export type NavTarget = ViewName | "tambah";

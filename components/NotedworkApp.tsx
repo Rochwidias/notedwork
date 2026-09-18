@@ -16,6 +16,7 @@ import HariIni from "./HariIni";
 import EmailView from "./EmailView";
 import TasksView from "./TasksView";
 import CalendarView from "./CalendarView";
+import NotesView from "./NotesView";
 import ProfileView from "./ProfileView";
 import { MailSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type SheetId } from "./Sheets";
 import {
@@ -885,6 +886,7 @@ function Shell() {
                 onToggleTask={toggleTask}
               />
             )}
+            {view === "catatan" && <NotesView />}
             {view === "profil" && (
               <ProfileView
                 connected={connected}
