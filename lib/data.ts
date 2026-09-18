@@ -20,7 +20,7 @@ export const MIGRATED_KEY = "notedwork.v3migrated";
 /** Suffix kunci tamu preview — terisolasi dari akun asli & dari kunci telanjang. */
 export const GUEST_SUFFIX = ":preview";
 
-/** Nama tampilan tamu (lokal, bisa diubah di Profil). */
+/** Nama tampilan tamu (lokal, bisa diubah di Pengaturan). */
 export const GUEST_NAME_KEY = "notedwork.guestName";
 
 /** Accent warna pilihan user (hex, default coklat brand). */

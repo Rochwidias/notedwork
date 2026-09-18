@@ -62,13 +62,13 @@ export default function TopBar({ connected, email, onProfile, preview }: Props) 
             )}
           </button>
           {/* Avatar satu perilaku: preview (ikon mata) → koneksi/login,
-              connected (inisial) → profil. Cabang IconUser mati dihapus
+              connected (inisial) → settings. Cabang IconUser mati dihapus
               karena preview = !connected membuatnya tak terjangkau. */}
           <button
             className="avatar"
             onClick={onProfile}
-            title={preview ? t("topbar.connect") : t("topbar.profile")}
-            aria-label={preview ? t("topbar.connect") : t("topbar.profile")}
+            title={preview ? t("topbar.connect") : t("topbar.settings")}
+            aria-label={preview ? t("topbar.connect") : t("topbar.settings")}
           >
             {connected && initial ? initial : <IconEye size={18} />}
           </button>

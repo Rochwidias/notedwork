@@ -70,8 +70,8 @@ export interface Note {
   updatedAt: number;
 }
 
-/** Layar utama: beranda (Hari Ini) + email + tugas + kalender + catatan + profil. */
-export type ViewName = "beranda" | "email" | "tugas" | "kalender" | "catatan" | "profil";
+/** Layar utama: beranda (Hari Ini) + email + tugas + kalender + catatan + pengaturan. */
+export type ViewName = "beranda" | "email" | "tugas" | "kalender" | "catatan" | "settings";
 
 /** Target navigasi: pindah view, atau buka sheet tambah jadwal. */
 export type NavTarget = ViewName | "tambah";

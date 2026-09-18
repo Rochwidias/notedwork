@@ -11,7 +11,7 @@ const checks = [
   ["lang aktif ikut lang", topbar.includes('lang === "id" ? "on" : "off"') && topbar.includes('lang === "en" ? "on" : "off"')],
   ["aria bahasa via t()", topbar.includes('aria-label={lang === "id" ? t("topbar.langToEn") : t("topbar.langToId")}')],
   ["tema via t()", topbar.includes('title={t("topbar.theme")}') && topbar.includes('t("topbar.themeToLight")') && topbar.includes('t("topbar.themeToDark")')],
-  ["avatar via t()", topbar.includes('t("topbar.profile")') && topbar.includes('t("topbar.connect")')],
+  ["avatar via t()", topbar.includes('t("topbar.settings")') && topbar.includes('t("topbar.connect")')],
   ["tagline via t()", topbar.includes('t("topbar.tagline")')],
   ["tanpa hardcode ID di TopBar", !topbar.includes("Ganti tema") && !topbar.includes("Mode terang") && !topbar.includes("Koneksi Google") && !topbar.includes("lang.toUpperCase()")],
   ["note-sheet simpan via t()", sheets.includes('t("notes.saving")') && sheets.includes('t("notes.saveChanges")')],

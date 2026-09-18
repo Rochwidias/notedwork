@@ -30,7 +30,7 @@ interface Props {
   onExitPreview: () => void;
 }
 
-export default function ProfileView({
+export default function SettingsView({
   connected,
   email,
   notif,
@@ -46,7 +46,7 @@ export default function ProfileView({
   const [info, setInfo] = useState<InfoSheetId>(null);
 
   return (
-    <section className="view active" id="v-profil">
+    <section className="view active" id="v-settings">
       <div className="greet">
         Profil<small>{connected ? "Akun Google yang tersambung" : "Mode pratinjau — data contoh"}</small>
       </div>

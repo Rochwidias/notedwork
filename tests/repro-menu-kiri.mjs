@@ -1,4 +1,4 @@
-// RED test (TDD): menu rata kiri konsisten + navigasi 5 tab + baris keyboard-accessible.
+// RED test (TDD): menu rata kiri konsisten + navigasi 6 tab + baris keyboard-accessible.
 // Jalankan: node tests/repro-menu-kiri.mjs
 // Harus GAGAL sebelum fix, PASS sesudah fix.
 import { readFileSync } from "node:fs";
@@ -13,23 +13,23 @@ const css = readFileSync(new URL("../app/globals.css", import.meta.url), "utf8")
 const nav = readFileSync(new URL("../components/AppNav.tsx", import.meta.url), "utf8");
 const tasks = readFileSync(new URL("../components/TasksView.tsx", import.meta.url), "utf8");
 const sheets = readFileSync(new URL("../components/Sheets.tsx", import.meta.url), "utf8");
-const profile = readFileSync(new URL("../components/ProfileView.tsx", import.meta.url), "utf8");
+const settingsView = readFileSync(new URL("../components/SettingsView.tsx", import.meta.url), "utf8");
 
 const block = (sel) => {
   const m = css.match(new RegExp(sel + "\\s*\\{[^}]*\\}"));
   return m ? m[0] : "";
 };
 
-// 1. Navigasi: 5 tab utama (Hari Ini, Email, Tugas, Kalender, Catatan); Profil via avatar, bukan tab.
+// 1. Navigasi: 6 tab utama (Hari Ini, Email, Tugas, Kalender, Catatan, Pengaturan).
 check(
   "TabBar grid 5 kolom",
   /repeat\(5/.test(block("\\.tabbar-inner")),
   "masih repeat(4 — tab ke-5 wrap ke baris 2"
 );
 check(
-  "AppNav TABS 5 item",
-  (nav.match(/id:\s*"(beranda|email|tugas|kalender|catatan)"/g) || []).length === 5,
-  `dapat ${(nav.match(/id:\s*"(beranda|email|tugas|kalender|catatan)"/g) || []).length}`
+  "AppNav TABS 6 item",
+  (nav.match(/id:\s*"(beranda|email|tugas|kalender|catatan|settings)"/g) || []).length === 6,
+  `dapat ${(nav.match(/id:\s*"(beranda|email|tugas|kalender|catatan|settings)"/g) || []).length}`
 );
 check(
   "AppNav tab catatan pakai nav.notes",
@@ -50,6 +50,11 @@ check(
   "AppNav TABS tanpa profil",
   !/id:\s*"profil"/.test(nav),
   "TABS masih berisi profil"
+);
+check(
+  "AppNav tab settings keenam",
+  /id:\s*"settings"/.test(nav) && nav.includes('labelKey: "nav.settings"'),
+  'tab settings tanpa labelKey "nav.settings"'
 );
 
 // 2. Sidebar rata kiri (reset warisan base .tab yang tengah).
@@ -126,11 +131,12 @@ check("TasksView tabIndex", /tabIndex/.test(tasks), "tanpa tabIndex");
 check("TasksView onKeyDown", /onKeyDown/.test(tasks), "tanpa onKeyDown");
 check("TasksView affordance ›", /›/.test(tasks), "tanpa ›");
 
-// 7. Profil: seksi Galeri Tema.
+// 7. Pengaturan (ex-Profil): seksi Galeri Tema — masih hardcode "Galeri Tema"
+// sampai Task 10 menerjemahkannya via t("settings.themeGallery").
 check(
-  "ProfileView Galeri Tema",
-  /Galeri Tema/.test(profile),
-  'masih berjudul "Pengaturan"'
+  "SettingsView Galeri Tema",
+  /Galeri Tema/.test(settingsView) || /settings\.themeGallery/.test(settingsView),
+  'seksi galeri tema hilang dari SettingsView'
 );
 
 // 8. Tabbar HP ikon saja (Android/iOS): label visual disembunyikan biar muat

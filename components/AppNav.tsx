@@ -2,16 +2,17 @@
 
 import type { ComponentType } from "react";
 import type { NavTarget, ViewName } from "@/lib/types";
-import { IconCalendar, IconHome, IconMail, IconTask, IconPlus, IconNote } from "./icons";
+import { IconCalendar, IconGear, IconHome, IconMail, IconTask, IconPlus, IconNote } from "./icons";
 
 type IconComp = ComponentType<{ size?: number; className?: string }>;
 
-const MAIN_TABS: { id: Exclude<ViewName, "profil">; Icon: IconComp; labelKey: string }[] = [
+const MAIN_TABS: { id: ViewName; Icon: IconComp; labelKey: string }[] = [
   { id: "beranda", Icon: IconHome, labelKey: "nav.home" },
   { id: "email", Icon: IconMail, labelKey: "nav.email" },
   { id: "tugas", Icon: IconTask, labelKey: "nav.tasks" },
   { id: "kalender", Icon: IconCalendar, labelKey: "nav.calendar" },
   { id: "catatan", Icon: IconNote, labelKey: "nav.notes" },
+  { id: "settings", Icon: IconGear, labelKey: "nav.settings" },
 ];
 
 export function Sidebar({
@@ -25,7 +26,7 @@ export function Sidebar({
 }) {
   return (
     <nav className="sidebar" aria-label="Navigasi utama">
-      <div className="cap">MENU</div>
+      <div className="cap">{t("nav.menu")}</div>
       {MAIN_TABS.map((n) => (
         <button key={n.id} className={`tab${view === n.id ? " active" : ""}`} onClick={() => go(n.id)}>
           <span className="ic">
@@ -34,12 +35,12 @@ export function Sidebar({
           {t(n.labelKey)}
         </button>
       ))}
-      <div className="cap">TAMBAH</div>
+      <div className="cap">{t("nav.addSection")}</div>
       <button className="tab" onClick={() => go("tambah")}>
         <span className="ic">
           <IconPlus size={20} />
         </span>
-        Tambah Baru
+        {t("nav.addNew")}
       </button>
     </nav>
   );
@@ -79,9 +80,9 @@ export function TabBar({
   );
 }
 
-export function Fab({ onAdd }: { onAdd: () => void }) {
+export function Fab({ onAdd, t = (k: string) => k }: { onAdd: () => void; t?: (k: string) => string }) {
   return (
-    <button className="fab" onClick={onAdd} title="Tambah baru" aria-label="Tambah baru">
+    <button className="fab" onClick={onAdd} title={t("nav.addNew")} aria-label={t("nav.addNew")}>
       <IconPlus size={26} />
     </button>
   );

@@ -18,7 +18,7 @@ import EmailView from "./EmailView";
 import TasksView from "./TasksView";
 import CalendarView from "./CalendarView";
 import NotesView from "./NotesView";
-import ProfileView from "./ProfileView";
+import SettingsView from "./SettingsView";
 import { MailSheet, NoteSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type SheetId } from "./Sheets";
 import {
   NOT_CONNECTED,
@@ -681,7 +681,7 @@ function NotedworkShell() {
   const logoutGoogle = useCallback(async () => {
     const ok = await apiLogout();
     markDisconnected();
-    setView("profil");
+    setView("settings");
     // Bila server menolak (403 Origin) sesi+grant masih hidup: katakan jujur
     // agar user tak merasa sudah keluar lalu diam-diam terautentikasi lagi.
     toastMsg(ok ? "Keluar dari Google" : "Keluar lokal; sesi server mungkin masih aktif — coba lagi");
@@ -798,7 +798,7 @@ function NotedworkShell() {
 
   return (
     <>
-      <TopBar connected={connected} email={connEmail} onProfile={() => go("profil")} preview={preview} />
+      <TopBar connected={connected} email={connEmail} onProfile={() => go("settings")} preview={preview} />
       <div className="shell">
         <div className="app">
           <Sidebar view={view} go={go} t={t} />
@@ -903,8 +903,8 @@ function NotedworkShell() {
                 onDelete={(id) => setNotes((prev) => prev.filter((n) => n.id !== id))}
               />
             )}
-            {view === "profil" && (
-              <ProfileView
+            {view === "settings" && (
+              <SettingsView
                 connected={connected}
                 email={connEmail}
                 notif={notif}
@@ -924,7 +924,7 @@ function NotedworkShell() {
       </div>
       <TabBar view={view} go={go} t={t} />
       {/* Fab satu jalur via go("tambah"): sheet pilihan Email/Tugas/Jadwal. */}
-      <Fab onAdd={() => go("tambah")} />
+      <Fab onAdd={() => go("tambah")} t={t} />
 
       {/* Semua sheet selalu dirender (login maupun preview); isi yang menentukan sumber data. */}
       <TambahSheet
