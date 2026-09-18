@@ -6,6 +6,7 @@ const dates = readFileSync("lib/dates.ts", "utf8");
 const hari = readFileSync("components/HariIni.tsx", "utf8");
 const emailV = readFileSync("components/EmailView.tsx", "utf8");
 const tasksV = readFileSync("components/TasksView.tsx", "utf8");
+const calV = readFileSync("components/CalendarView.tsx", "utf8");
 const checks = [
   ["tab settings keenam", /id:\s*"settings"/.test(nav) && nav.includes('labelKey: "nav.settings"')],
   ["tanpa profil di nav", !/id:\s*"profil"/.test(nav)],
@@ -22,6 +23,8 @@ const checks = [
   ["emailview tanpa hardcode", !emailV.includes("Belum dibaca") && !emailV.includes("Cari email") && !emailV.includes("Muat lagi") && !emailV.includes("Arsipkan") && !emailV.includes("Kembali ke daftar") && !emailV.includes("Tandai belum dibaca") && !emailV.includes("Beri bintang") && !emailV.includes("Tanpa label")],
   ["tasksview useLang", tasksV.includes("useLang()")],
   ["tasksview tanpa hardcode", !tasksV.includes("Tidak ada tugas") && !tasksV.includes("Tambah tugas") && !tasksV.includes('"Aktif"') && !tasksV.includes('"Telat"') && !tasksV.includes("Ketuk untuk ubah status") && !tasksV.includes("tersimpan lokal")],
+  ["calendar useLang", calV.includes("useLang()")],
+  ["calendar tanpa hardcode", !calV.includes("Bulan sebelumnya") && !calV.includes("Jadwal rutin mingguan") && !calV.includes("Tidak ada agenda") && !calV.includes("Kelola jadwal rutin") && !calV.includes("MONTHS[") && !calV.includes("DAYS[")],
 ];
 let fail = 0;
 for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`), ok || fail++;

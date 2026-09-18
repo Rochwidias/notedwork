@@ -2,7 +2,8 @@
 
 import { useMemo, useState } from "react";
 import type { Routine, Sched, Task } from "@/lib/types";
-import { DAYS, MONTHS, fmtDateID, fmtSchedRange, taskBadge, todayStr, weekdayOf } from "@/lib/dates";
+import { dayNames, monthNames, dowInitials, fmtDateID, fmtSchedRange, taskBadge, todayStr, weekdayOf } from "@/lib/dates";
+import { useLang } from "./LangProvider";
 import {
   IconAlarm,
   IconBook,
@@ -45,6 +46,7 @@ export default function CalendarView({
   preview,
   onToggleTask,
 }: Props) {
+  const { lang, t } = useLang();
   const [cursor, setCursor] = useState(() => {
     const d = new Date();
     d.setDate(1);
@@ -91,30 +93,30 @@ export default function CalendarView({
   return (
     <section className="view active" id="v-kalender">
       <div className="greet">
-        Kalender<small>{preview ? "Mode pratinjau — data contoh. Bukan data aslimu." : "Gmail & Kalender asli — ketuk tanggal untuk melihat agenda"}</small>
+        {t("nav.calendar")}<small>{preview ? t("cal.previewSub") : t("cal.liveSub")}</small>
       </div>
       <div className="cal">
         <div className="cal-head">
           <button
             className="nav-btn"
-            aria-label="Bulan sebelumnya"
+            aria-label={t("cal.prevMonth")}
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() - 1, 1))}
           >
             <IconChevronLeft size={16} />
           </button>
           <b>
-            {MONTHS[mo]} {y}
+            {monthNames(lang)[mo]} {y}
           </b>
           <button
             className="nav-btn"
-            aria-label="Bulan berikutnya"
+            aria-label={t("cal.nextMonth")}
             onClick={() => setCursor((c) => new Date(c.getFullYear(), c.getMonth() + 1, 1))}
           >
             <IconChevronRight size={16} />
           </button>
         </div>
         <div className="grid">
-          {["S", "S", "R", "K", "J", "S", "M"].map((d, i) => (
+          {dowInitials(lang).map((d, i) => (
             <div className="dow" key={i}>
               {d}
             </div>
@@ -150,15 +152,15 @@ export default function CalendarView({
         <div className="legend">
           <span>
             <i className="dot" style={{ background: "var(--brand)" }} />
-            Rutin
+            {t("cal.routine")}
           </span>
           <span>
             <i className="dot" style={{ background: "#22c55e" }} />
-            Agenda
+            {t("cal.agenda")}
           </span>
           <span>
             <i className="dot" style={{ background: "#ef4444" }} />
-            Deadline
+            {t("cal.deadline")}
           </span>
         </div>
       </div>
@@ -168,11 +170,11 @@ export default function CalendarView({
             <span className="h-ic">
               <IconCalendarDays size={15} />
             </span>
-            Agenda • {fmtDateID(selDate)}
+            {t("cal.agenda")} • {fmtDateID(selDate, lang)}
           </h2>
           {offToday && (
-            <button className="link link-ic" onClick={() => onSelectDate(ts)} aria-label="Kembali ke hari ini">
-              Hari ini <span aria-hidden="true">›</span>
+            <button className="link link-ic" onClick={() => onSelectDate(ts)} aria-label={t("cal.backToday")}>
+              {t("cal.today")} <span aria-hidden="true">›</span>
             </button>
           )}
         </div>
@@ -182,11 +184,11 @@ export default function CalendarView({
               <span className="dot" style={{ background: x.color || "var(--brand)" }} />
               <div>
                 <div className="t">
-                  {x.course} <span className="pill blue" style={{ margin: 0 }}>Rutin</span>
+                  {x.course} <span className="pill blue" style={{ margin: 0 }}>{t("cal.routine")}</span>
                 </div>
                 <div className="s">
                   {x.start}–{x.end}
-                  {x.room ? ` • Ruang ${x.room}` : ""}
+                  {x.room ? ` • ${t("cal.room")} ${x.room}` : ""}
                   {x.lect ? ` • ${x.lect}` : ""}
                 </div>
               </div>
@@ -197,20 +199,20 @@ export default function CalendarView({
               <span className="dot" style={{ background: s.color || "#22c55e" }} />
               <div>
                 <div className="t">
-                  {s.title} <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {fmtSchedRange(s)}</span>
+                  {s.title} <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {fmtSchedRange(s, lang)}</span>
                 </div>
                 {s.note && <div className="s">{s.note}</div>}
               </div>
-              <button className="edit del-ic" aria-label={`Ubah ${s.title}`} onClick={() => onEditSched(s.id)}>
+              <button className="edit del-ic" aria-label={`${t("common.edit")} ${s.title}`} onClick={() => onEditSched(s.id)}>
                 <IconPencil size={15} />
               </button>
-              <button className="del del-ic" aria-label={`Hapus ${s.title}`} onClick={() => onDeleteSched(s.id)}>
+              <button className="del del-ic" aria-label={`${t("common.delete")} ${s.title}`} onClick={() => onDeleteSched(s.id)}>
                 <IconTrash size={15} />
               </button>
             </div>
           ))}
           {dayTasks.map((x) => {
-            const b = taskBadge(x);
+            const b = taskBadge(x, lang);
             const toggle = () => onToggleTask?.(x.id);
             return (
               <div
@@ -218,7 +220,7 @@ export default function CalendarView({
                 key={x.id}
                 role="button"
                 tabIndex={0}
-                aria-label={`${x.title}. Ketuk untuk tandai selesai.`}
+                aria-label={`${x.title}${t("common.tapToComplete")}`}
                 onClick={toggle}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
@@ -235,7 +237,7 @@ export default function CalendarView({
                     {x.title} {x.done && <IconCheck size={14} />} <span className={`tag ${b.cls}`}>{b.txt}</span>
                   </div>
                   <div className="s">
-                    {x.matkul} • deadline {x.time}
+                    {x.matkul}{t("cal.deadlineAt")}{x.time}
                   </div>
                 </div>
                 <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
@@ -244,15 +246,15 @@ export default function CalendarView({
           })}
           {dayRoutines.length + daySched.length + dayTasks.length === 0 && (
             <div className="empty">
-              Tidak ada agenda di tanggal ini.
+              {t("cal.emptyDate")}
               <br />
-              Nikmati harimu!
+              {t("cal.enjoyDay")}
             </div>
           )}
         </div>
         <button className="btn primary block btn-ic" onClick={onAddSched} style={{ marginTop: 10 }}>
           <IconPlus size={16} />
-          Tambah Jadwal
+          {t("cal.addSched")}
         </button>
       </div>
       <div className="card">
@@ -261,7 +263,7 @@ export default function CalendarView({
             <span className="h-ic">
               <IconBook size={15} />
             </span>
-            Jadwal rutin mingguan
+            {t("cal.weeklyRoutine")}
           </h2>
         </div>
         <div>
@@ -272,23 +274,23 @@ export default function CalendarView({
                 <div>
                   <div className="t">{r.course}</div>
                   <div className="s">
-                    {DAYS[r.day - 1]} • {r.start}–{r.end}
-                    {r.room ? ` • Ruang ${r.room}` : ""}
+                    {dayNames(lang)[r.day - 1]} • {r.start}–{r.end}
+                    {r.room ? ` • ${t("cal.room")} ${r.room}` : ""}
                     {r.lect ? ` • ${r.lect}` : ""}
                   </div>
                 </div>
-                <button className="del del-ic" aria-label={`Hapus ${r.course}`} onClick={() => onDeleteRoutine(r.id)}>
+                <button className="del del-ic" aria-label={`${t("common.delete")} ${r.course}`} onClick={() => onDeleteRoutine(r.id)}>
                   <IconTrash size={15} />
                 </button>
               </div>
             ))
           ) : (
-            <div className="empty">Belum ada jadwal rutin.</div>
+            <div className="empty">{t("cal.noRoutine")}</div>
           )}
         </div>
         <button className="btn ghost block btn-ic" onClick={onManageRoutine} style={{ marginTop: 10 }}>
           <IconGear size={15} />
-          Kelola jadwal rutin
+          {t("cal.manageRoutine")}
         </button>
       </div>
     </section>
