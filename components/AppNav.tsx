@@ -2,7 +2,7 @@
 
 import type { ComponentType } from "react";
 import type { NavTarget, ViewName } from "@/lib/types";
-import { IconCalendar, IconHome, IconMail, IconTask, IconPlus } from "./icons";
+import { IconCalendar, IconHome, IconMail, IconTask, IconPlus, IconNote } from "./icons";
 
 type IconComp = ComponentType<{ size?: number; className?: string }>;
 
@@ -11,7 +11,7 @@ const MAIN_TABS: { id: Exclude<ViewName, "profil">; Icon: IconComp; label: strin
   { id: "email", Icon: IconMail, label: "Email" },
   { id: "tugas", Icon: IconTask, label: "Tugas" },
   { id: "kalender", Icon: IconCalendar, label: "Kalender" },
-  { id: "catatan", Icon: IconNote, label: "Catatan" }, // Fixed type error
+  { id: "catatan", Icon: IconNote, label: "Catatan" },
 ];
 
 export function Sidebar({ view, go }: { view: ViewName; go: (v: NavTarget) => void }) {
