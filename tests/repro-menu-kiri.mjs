@@ -133,5 +133,28 @@ check(
   'masih berjudul "Pengaturan"'
 );
 
+// 8. Tabbar HP ikon saja (Android/iOS): label visual disembunyikan biar muat
+// 5 kolom di 360px; nama aksesibel wajib tetap ada via aria-label.
+check(
+  "TabBar tombol punya aria-label",
+  /aria-label=\{t\(n\.labelKey\)\}/.test(nav),
+  "label hilang total bagi screen reader saat teks disembunyikan"
+);
+check(
+  "TabBar label dibungkus .lbl",
+  /className="lbl"/.test(nav),
+  "teks label mentah, tidak bisa di-hide via CSS tanpa mematikan ikon"
+);
+check(
+  "CSS sembunyikan label tabbar",
+  /\.tabbar\s+\.tab\s+\.lbl\s*\{[^}]*display\s*:\s*none/.test(css),
+  "label masih tampil di HP, tab kepotong di 390px"
+);
+check(
+  "CSS tabbar ikon center",
+  /\.tabbar\s+\.tab\s*\{[^}]*justify-content\s*:\s*center/.test(css),
+  "ikon tidak center saat label disembunyikan"
+);
+
 console.log(failures ? `\n${failures} check(s) FAILED (bug terreproduksi)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);

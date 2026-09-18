@@ -62,12 +62,16 @@ export function TabBar({
             key={n.id}
             className={`tab${view === n.id ? " active" : ""}`}
             aria-current={view === n.id ? "page" : undefined}
+            aria-label={t(n.labelKey)}
+            title={t(n.labelKey)}
             onClick={() => go(n.id)}
           >
-            <span className="ic">
+            <span className="ic" aria-hidden="true">
               <n.Icon size={20} />
             </span>
-            {t(n.labelKey)}
+            <span className="lbl" aria-hidden="true">
+              {t(n.labelKey)}
+            </span>
           </button>
         ))}
       </div>

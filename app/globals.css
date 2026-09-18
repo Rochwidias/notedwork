@@ -1500,6 +1500,15 @@ button {
   width: 18px;
   height: 18px;
 }
+/* Tabbar HP (Android/iOS): ikon saja — label visual disembunyikan biar 5 tab
+   muat satu baris di 360px. Sidebar desktop tak tersentuh (labelnya bukan .lbl).
+   Nama aksesibel tetap ada via aria-label di tombol. */
+.tabbar .tab {
+  justify-content: center;
+}
+.tabbar .tab .lbl {
+  display: none;
+}
 .tab {
   border: none;
   background: none;
@@ -1991,7 +2000,7 @@ textarea.f.compose-body {
   .quick {
     grid-template-columns: 1fr;
   }
-  /* 5 tab sejajar satu baris di HP mungil: hanya tabbar (sidebar desktop tak tersentuh). */
+  /* 5 tab ikon saja sejajar satu baris di HP mungil: hanya tabbar (sidebar desktop tak tersentuh). */
   .tabbar {
     padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
   }
