@@ -9,6 +9,7 @@ import { stripMailTokens } from "@/lib/emailBody";
 import { useLocalStorage } from "@/lib/store";
 import { DEFAULT_REMINDER_MIN, dueReminders, type ReminderItem } from "@/lib/reminders";
 import ThemeProvider from "./ThemeProvider";
+import LangProvider from "./LangProvider";
 import TopBar from "./TopBar";
 import { Fab, Sidebar, TabBar } from "./AppNav";
 import { IconEye } from "./icons";
@@ -51,12 +52,14 @@ const sortSched = (a: Sched, b: Sched) => (a.date + a.time).localeCompare(b.date
 export default function NotedworkApp() {
   return (
     <ThemeProvider>
-      <Shell />
+      <LangProvider>
+        <NotedworkShell />
+      </LangProvider>
     </ThemeProvider>
   );
 }
 
-function Shell() {
+function NotedworkShell() {
   const [view, setView] = useState<ViewName>("beranda");
   const [sheet, setSheet] = useState<SheetId>(null);
   const [compose, setCompose] = useState<ComposePreset | null>(null);
