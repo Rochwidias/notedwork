@@ -131,11 +131,10 @@ check("TasksView tabIndex", /tabIndex/.test(tasks), "tanpa tabIndex");
 check("TasksView onKeyDown", /onKeyDown/.test(tasks), "tanpa onKeyDown");
 check("TasksView affordance ›", /›/.test(tasks), "tanpa ›");
 
-// 7. Pengaturan (ex-Profil): seksi Galeri Tema — masih hardcode "Galeri Tema"
-// sampai Task 10 menerjemahkannya via t("settings.themeGallery").
+// 7. Pengaturan (ex-Profil): seksi Galeri Tema via t("settings.themeGallery").
 check(
   "SettingsView Galeri Tema",
-  /Galeri Tema/.test(settingsView) || /settings\.themeGallery/.test(settingsView),
+  settingsView.includes('t("settings.themeGallery")'),
   'seksi galeri tema hilang dari SettingsView'
 );
 

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { DEFAULT_ACCENT, ACCENT_PRESETS, useTheme } from "./ThemeProvider";
+import { useLang } from "./LangProvider";
 import { InfoSheet, type InfoSheetId } from "./Sheets";
 import {
   IconArrowRight,
@@ -42,22 +43,22 @@ export default function SettingsView({
   onExitPreview,
 }: Props) {
   const { theme, setTheme, accent, setAccent } = useTheme();
+  const { t } = useLang();
   const initial = (email?.trim()?.[0] ?? "").toUpperCase();
   const [info, setInfo] = useState<InfoSheetId>(null);
 
   return (
     <section className="view active" id="v-settings">
       <div className="greet">
-        Profil<small>{connected ? "Akun Google yang tersambung" : "Mode pratinjau — data contoh"}</small>
+        Profil<small>{connected ? t("settings.accountOn") : t("settings.previewMode")}</small>
       </div>
 
-      {/* ── Akun ── */}
       <div className="card">
         <h2>
           <span className="h-ic">
             <IconUser size={15} />
           </span>
-          Akun
+          {t("settings.account")}
         </h2>
         <div className="profile-head">
           <div className="profile-ava">
@@ -69,15 +70,15 @@ export default function SettingsView({
                 <div style={{ fontWeight: 800, fontSize: 17, overflowWrap: "anywhere" }}>{email}</div>
                 <div style={{ fontSize: 13, color: "var(--muted)" }}>
                   <span className="dot" style={{ background: "var(--green)", display: "inline-block", marginRight: 6 }} />
-                  Login via Google
+                  {t("settings.loggedSub")}
                 </div>
               </>
             ) : (
               <>
-                <div style={{ fontWeight: 800, fontSize: 17 }}>Mode tamu</div>
+                <div style={{ fontWeight: 800, fontSize: 17 }}>{t("settings.guestMode")}</div>
                 <div style={{ fontSize: 13, color: "var(--muted)" }}>
                   <span className="dot" style={{ background: "var(--amber)", display: "inline-block", marginRight: 6 }} />
-                  Pratinjau dengan data contoh
+                  {t("settings.guestSub")}
                 </div>
               </>
             )}
@@ -85,12 +86,12 @@ export default function SettingsView({
         </div>
         {!connected && (
           <>
-            <label className="f" htmlFor="guestName">Nama tampilan</label>
+            <label className="f" htmlFor="guestName">{t("settings.displayName")}</label>
             <input
               className="f"
               id="guestName"
               maxLength={30}
-              placeholder="cth: Budi"
+              placeholder={t("settings.namePh")}
               value={guestName}
               onChange={(e) => onGuestName(e.target.value)}
             />
@@ -99,7 +100,7 @@ export default function SettingsView({
         {connected ? (
           <div className="btn-pair" style={{ marginTop: 14 }}>
             <button className="btn danger" onClick={onLogout}>
-              Keluar
+              {t("settings.logout")}
             </button>
           </div>
         ) : (
@@ -109,33 +110,32 @@ export default function SettingsView({
               href="/api/auth/login"
               style={{ marginTop: 14, textDecoration: "none", textAlign: "center", display: "block" }}
             >
-              Hubungkan Google
+              {t("settings.connectGoogle")}
             </a>
             <button className="btn ghost block" onClick={onExitPreview} style={{ marginTop: 8 }}>
-              Keluar dari pratinjau (hapus data tamu)
+              {t("settings.exitPreview")}
             </button>
           </>
         )}
       </div>
 
-      {/* ── Galeri Tema ── */}
       <div className="card">
         <h2>
           <span className="h-ic">
             <IconGear size={15} />
           </span>
-          Galeri Tema
+          {t("settings.themeGallery")}
         </h2>
         <div className="set-row">
           <div>
             <div className="t row-ic">
               <IconMoon size={14} />
-              Tampilan
+              {t("settings.appearance")}
             </div>
-            <div className="s">Terang, gelap, atau ikut sistem</div>
+            <div className="s">{t("settings.appearanceSub")}</div>
           </div>
         </div>
-        <div className="chips" role="group" aria-label="Mode tampilan" style={{ paddingBottom: 8 }}>
+        <div className="chips" role="group" aria-label={t("settings.modeGroup")} style={{ paddingBottom: 8 }}>
           {(["light", "dark", "auto"] as const).map((m) => (
             <button
               key={m}
@@ -144,7 +144,7 @@ export default function SettingsView({
               aria-pressed={theme === m}
               onClick={() => setTheme(m)}
             >
-              {m === "light" ? "Terang" : m === "dark" ? "Gelap" : "Otomatis"}
+              {m === "light" ? t("settings.light") : m === "dark" ? t("settings.dark") : t("settings.auto")}
             </button>
           ))}
         </div>
@@ -152,9 +152,9 @@ export default function SettingsView({
           <div>
             <div className="t row-ic">
               <IconPalette size={14} />
-              Warna tampilan
+              {t("settings.accentColor")}
             </div>
-            <div className="s">Aksen tombol, badge &amp; logo — pilihanmu, tersimpan di perangkat</div>
+            <div className="s">{t("settings.accentSub")}</div>
           </div>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", padding: "2px 0 8px" }}>
@@ -162,7 +162,7 @@ export default function SettingsView({
             <button
               key={c}
               title={c}
-              aria-label={`Warna ${c}`}
+              aria-label={`${t("settings.colorOf")}${c}`}
               aria-pressed={accent.toUpperCase() === c}
               onClick={() => setAccent(c)}
               style={{
@@ -177,7 +177,7 @@ export default function SettingsView({
             />
           ))}
           <label
-            title="Warna custom"
+            title={t("settings.customColor")}
             style={{
               width: 36,
               height: 36,
@@ -196,7 +196,7 @@ export default function SettingsView({
             </span>
             <input
               type="color"
-              aria-label="Warna custom"
+              aria-label={t("settings.customColor")}
               value={accent}
               onChange={(e) => setAccent(e.target.value)}
               style={{ opacity: 0, position: "absolute", inset: 0, cursor: "pointer" }}
@@ -204,7 +204,7 @@ export default function SettingsView({
           </label>
           {accent.toUpperCase() !== DEFAULT_ACCENT && (
             <button className="link" onClick={() => setAccent(DEFAULT_ACCENT)}>
-              Reset
+              {t("settings.reset")}
             </button>
           )}
         </div>
@@ -212,15 +212,15 @@ export default function SettingsView({
           <div>
             <div className="t row-ic">
               <IconBell size={14} />
-              Pengingat jadwal
+              {t("settings.reminderTitle")}
             </div>
-            <div className="s">Notifikasi pengingat dari aplikasi</div>
+            <div className="s">{t("settings.reminderSub")}</div>
           </div>
           <button
             className="switch"
             role="switch"
             aria-checked={notif ? "true" : "false"}
-            aria-label="Pengingat jadwal"
+            aria-label={t("settings.reminderTitle")}
             onClick={onToggleNotif}
           />
         </div>
@@ -228,13 +228,13 @@ export default function SettingsView({
           <div>
             <div className="t row-ic">
               <IconPlug size={14} />
-              Koneksi Google
+              {t("settings.connTitle")}
             </div>
-            <div className="s">{connected ? `Tersambung sebagai ${email}` : preview ? "Mode pratinjau — data contoh" : "Belum tersambung"}</div>
+            <div className="s">{connected ? t("settings.connLive").replace("{email}", email ?? "") : preview ? t("settings.previewMode") : t("settings.connNone")}</div>
           </div>
           {connected ? (
             <button className="btn danger" style={{ marginLeft: "auto", padding: "10px 16px" }} onClick={onLogout}>
-              Keluar
+              {t("settings.logout")}
             </button>
           ) : (
             <a
@@ -242,31 +242,30 @@ export default function SettingsView({
               style={{ marginLeft: "auto", textDecoration: "none" }}
               href="/api/auth/login"
             >
-              Login dengan Google
+              {t("settings.loginGoogle")}
               <IconArrowRight size={14} />
             </a>
           )}
         </div>
       </div>
 
-      {/* ── Info: Kredit / Privasi / Syarat ── */}
       <div className="card">
         <h2>
           <span className="h-ic">
             <IconInfo size={15} />
           </span>
-          Info
+          {t("settings.info")}
         </h2>
         <div className="set-row">
           <div>
             <div className="t row-ic">
               <IconStar size={14} />
-              Kredit
+              {t("settings.credit")}
             </div>
-            <div className="s">Pembuat &amp; teknologi notedwork</div>
+            <div className="s">{t("settings.creditSub")}</div>
           </div>
           <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={() => setInfo("credit")}>
-            Buka
+            {t("settings.open")}
             <IconArrowRight size={14} />
           </button>
         </div>
@@ -274,12 +273,12 @@ export default function SettingsView({
           <div>
             <div className="t row-ic">
               <IconShield size={14} />
-              Privasi
+              {t("settings.privacy")}
             </div>
-            <div className="s">Data apa yang disimpan &amp; di mana</div>
+            <div className="s">{t("settings.privacySub")}</div>
           </div>
           <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={() => setInfo("privacy")}>
-            Buka
+            {t("settings.open")}
             <IconArrowRight size={14} />
           </button>
         </div>
@@ -287,12 +286,12 @@ export default function SettingsView({
           <div>
             <div className="t row-ic">
               <IconDoc size={14} />
-              Syarat
+              {t("settings.terms")}
             </div>
-            <div className="s">Aturan pakai aplikasi ini</div>
+            <div className="s">{t("settings.termsSub")}</div>
           </div>
           <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={() => setInfo("terms")}>
-            Buka
+            {t("settings.open")}
             <IconArrowRight size={14} />
           </button>
         </div>
@@ -303,12 +302,12 @@ export default function SettingsView({
           <span className="h-ic">
             <IconInfo size={15} />
           </span>
-          Tentang
+          {t("settings.about")}
         </h2>
         <div style={{ fontSize: 13.5, color: "var(--muted)", lineHeight: 1.7 }}>
-          notedwork — email, tugas &amp; kalender untuk mahasiswa.
+          {t("settings.aboutBody1")}
           <br />
-          Bisa dipasang ke layar utama HP.
+          {t("settings.aboutBody2")}
         </div>
       </div>
 
