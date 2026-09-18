@@ -801,7 +801,7 @@ function NotedworkShell() {
       <TopBar connected={connected} email={connEmail} onProfile={() => go("profil")} preview={preview} />
       <div className="shell">
         <div className="app">
-          <Sidebar view={view} go={go} />
+          <Sidebar view={view} go={go} t={t} />
           <main>
             {preview && (view === "beranda" || view === "email" || view === "tugas" || view === "kalender") && (
               <div className="banner" role="status">
@@ -922,7 +922,7 @@ function NotedworkShell() {
           </main>
         </div>
       </div>
-      <TabBar view={view} go={go} />
+      <TabBar view={view} go={go} t={t} />
       {/* Fab satu jalur via go("tambah"): sheet pilihan Email/Tugas/Jadwal. */}
       <Fab onAdd={() => go("tambah")} />
 
