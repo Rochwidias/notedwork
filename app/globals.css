@@ -1998,3 +1998,48 @@ textarea.f.compose-body {
     grid-template-columns: 1.2fr 0.8fr;
   }
 }
+
+/* ── Catatan (NotesView): hanya kelas yang belum ada, meniru gaya sejenis ── */
+.view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.view-head h1 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.note-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.note-list .card {
+  margin-top: 0;
+}
+.note-list .t {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.note-list .s {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.empty .hint {
+  font-size: 12.5px;
+}
