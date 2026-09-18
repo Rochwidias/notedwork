@@ -7,6 +7,9 @@ const hari = readFileSync("components/HariIni.tsx", "utf8");
 const emailV = readFileSync("components/EmailView.tsx", "utf8");
 const tasksV = readFileSync("components/TasksView.tsx", "utf8");
 const calV = readFileSync("components/CalendarView.tsx", "utf8");
+const sheets = readFileSync("components/Sheets.tsx", "utf8");
+const schedBlock = sheets.slice(sheets.indexOf("export function SchedSheet"), sheets.indexOf("export function MailSheet"));
+const taskBlock = sheets.slice(sheets.indexOf("export function TaskSheet"), sheets.indexOf("export function RoutineSheet"));
 const checks = [
   ["tab settings keenam", /id:\s*"settings"/.test(nav) && nav.includes('labelKey: "nav.settings"')],
   ["tanpa profil di nav", !/id:\s*"profil"/.test(nav)],
@@ -25,6 +28,10 @@ const checks = [
   ["tasksview tanpa hardcode", !tasksV.includes("Tidak ada tugas") && !tasksV.includes("Tambah tugas") && !tasksV.includes('"Aktif"') && !tasksV.includes('"Telat"') && !tasksV.includes("Ketuk untuk ubah status") && !tasksV.includes("tersimpan lokal")],
   ["calendar useLang", calV.includes("useLang()")],
   ["calendar tanpa hardcode", !calV.includes("Bulan sebelumnya") && !calV.includes("Jadwal rutin mingguan") && !calV.includes("Tidak ada agenda") && !calV.includes("Kelola jadwal rutin") && !calV.includes("MONTHS[") && !calV.includes("DAYS[")],
+  ["sched/task useLang", schedBlock.includes("useLang()") && taskBlock.includes("useLang()")],
+  ["sched tanpa hardcode", !schedBlock.includes("Ubah Jadwal") && !schedBlock.includes("Tambah Jadwal") && !schedBlock.includes("Isi judul dulu") && !schedBlock.includes("Jam selesai")],
+  ["task tanpa hardcode", !taskBlock.includes("Ubah Tugas") && !taskBlock.includes("Mata kuliah") && !taskBlock.includes("Dikosongkan = akhir hari") && !taskBlock.includes("Prioritas")],
+  ["reminder values", sheets.includes("REMINDER_VALUES") && !sheets.includes("REMINDER_OPTIONS")],
 ];
 let fail = 0;
 for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`), ok || fail++;

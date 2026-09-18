@@ -4,6 +4,8 @@ import { useEffect, useRef, useState } from "react";
 import type { ComposePreset, Note, Prio, Routine, Sched, Task } from "@/lib/types";
 import { IconBook, IconForward, IconMail, IconNote, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
+import { prioLabel } from "@/lib/dates";
+import { useLang } from "./LangProvider";
 
 export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | null;
 export type InfoSheetId = LegalId | null;
@@ -71,13 +73,7 @@ export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => voi
   );
 }
 
-export const REMINDER_OPTIONS: { value: number; label: string }[] = [
-  { value: 0, label: "Mati" },
-  { value: 5, label: "5 mnt" },
-  { value: 15, label: "15 mnt" },
-  { value: 30, label: "30 mnt" },
-  { value: 60, label: "60 mnt" },
-];
+export const REMINDER_VALUES = [0, 5, 15, 30, 60];
 
 /** Pemilih pengingat chips [Mati,5,15,30,60 mnt] — dipakai SchedSheet + TaskSheet. */
 export function ReminderChips({
@@ -89,18 +85,19 @@ export function ReminderChips({
   onChange: (v: number) => void;
   idPrefix: string;
 }) {
+  const { t } = useLang();
   return (
-    <div className="chips" role="group" aria-label="Pengingat" style={{ paddingBottom: 4 }}>
-      {REMINDER_OPTIONS.map((o) => (
+    <div className="chips" role="group" aria-label={t("reminder.title")} style={{ paddingBottom: 4 }}>
+      {REMINDER_VALUES.map((v) => (
         <button
-          key={o.value}
+          key={v}
           type="button"
-          id={`${idPrefix}-${o.value}`}
-          className={`chip${value === o.value ? " on" : ""}`}
-          aria-pressed={value === o.value}
-          onClick={() => onChange(o.value)}
+          id={`${idPrefix}-${v}`}
+          className={`chip${value === v ? " on" : ""}`}
+          aria-pressed={value === v}
+          onClick={() => onChange(v)}
         >
-          {o.label}
+          {v === 0 ? t("reminder.off") : `${v}${t("reminder.min")}`}
         </button>
       ))}
     </div>
@@ -121,6 +118,7 @@ export function SchedSheet({
   /** false = gagal: sheet tetap terbuka, draf utuh (tidak di-clear). */
   onSave: (v: { title: string; date: string; time: string; endTime?: string; note: string; reminderMin?: number }) => Promise<boolean | void> | boolean | void;
 }) {
+  const { t } = useLang();
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selDate);
   const [time, setTime] = useState("");
@@ -156,8 +154,8 @@ export function SchedSheet({
 
   return (
     <Shell id="ovSched" open={open} onClose={onClose}>
-      <h2><span className="h-ic"><IconPlus size={15} /></span>{editing ? "Ubah Jadwal" : "Tambah Jadwal"}</h2>
-      <p className="hint">Agenda sekali saja. Untuk matkul tiap minggu, pakai jadwal rutin.</p>
+      <h2><span className="h-ic"><IconPlus size={15} /></span>{editing ? t("sched.editTitle") : t("sched.addTitle")}</h2>
+      <p className="hint">{t("sched.hint")}</p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -165,16 +163,16 @@ export function SchedSheet({
           // Error inline (bukan diam): judul wajib, akhir valid bila diisi.
           const jt = title.trim();
           if (!jt) {
-            setTitleErr("Isi judul dulu — cth: Seminar proposal");
+            setTitleErr(t("sched.titleRequired"));
             return;
           }
           setTitleErr("");
-          const t = time.trim() || "09:00";
+          const tm = time.trim() || "09:00";
           const end = endTime.trim();
-          // Jam selesai: opsional — kosongkan bila sekilas (pakai jam mulai saja).
+          // Waktu akhir: opsional — kosongkan bila sekilas (pakai jam mulai saja).
           // format jam browser = "HH:MM"; string kosong = tak diisi.
           if (end && !/^\d{2}:\d{2}$/.test(end)) {
-            setEndErr("Format jam selesai tidak valid — kosongkan bila sekilas");
+            setEndErr(t("sched.endInvalid"));
             return;
           }
           setEndErr("");
@@ -187,8 +185,8 @@ export function SchedSheet({
             ok = await onSave({
               title: jt,
               date,
-              time: t,
-              ...(end && end !== t ? { endTime: end } : {}),
+              time: tm,
+              ...(end && end !== tm ? { endTime: end } : {}),
               note: note.trim(),
               reminderMin,
             });
@@ -207,12 +205,12 @@ export function SchedSheet({
           setReminderMin(15);
         }}
       >
-        <label className="f" htmlFor="fTitle">Judul</label>
+        <label className="f" htmlFor="fTitle">{t("sched.fieldTitle")}</label>
         <input
           className="f"
           id="fTitle"
           maxLength={80}
-          placeholder="cth: Seminar proposal"
+          placeholder={t("sched.titlePh")}
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
@@ -228,15 +226,15 @@ export function SchedSheet({
         )}
         <div className="frow">
           <div>
-            <label className="f" htmlFor="fDate">Tanggal</label>
+            <label className="f" htmlFor="fDate">{t("sched.fieldDate")}</label>
             <input className="f" id="fDate" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div>
-            <label className="f" htmlFor="fTime">Jam mulai <span style={{ fontWeight: 500, color: "var(--muted)" }}>(opsional)</span></label>
+            <label className="f" htmlFor="fTime">{t("sched.startLabel")}<span style={{ fontWeight: 500, color: "var(--muted)" }}>{t("common.optional")}</span></label>
             <input className="f" id="fTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} />
           </div>
         </div>
-        <label className="f" htmlFor="fEnd">Jam selesai <span style={{ fontWeight: 500, color: "var(--muted)" }}>(opsional)</span></label>
+        <label className="f" htmlFor="fEnd">{t("sched.endLabel")}<span style={{ fontWeight: 500, color: "var(--muted)" }}>{t("common.optional")}</span></label>
         <input
           className="f"
           id="fEnd"
@@ -254,17 +252,17 @@ export function SchedSheet({
             {endErr}
           </p>
         )}
-        <p className="hint" id="fEndHint" style={{ marginTop: 4 }}>Dikosongkan = sekilas (pakai jam mulai saja). Diisi = tampil rentang 09.00–10.40. Jam selesai lebih kecil = lewat tengah malam (besok).</p>
-        <label className="f">Pengingat</label>
+        <p className="hint" id="fEndHint" style={{ marginTop: 4 }}>{t("sched.endHint")}</p>
+        <label className="f">{t("reminder.title")}</label>
         <ReminderChips value={reminderMin} onChange={setReminderMin} idPrefix="sRem" />
-        <label className="f" htmlFor="fNote">Keterangan</label>
-        <input className="f" id="fNote" placeholder="Ruang, dosen, link meeting…" value={note} onChange={(e) => setNote(e.target.value)} />
+        <label className="f" htmlFor="fNote">{t("sched.fieldNote")}</label>
+        <input className="f" id="fNote" placeholder={t("sched.notePh")} value={note} onChange={(e) => setNote(e.target.value)} />
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
-            Tutup
+            {t("common.close")}
           </button>
           <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
-            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan"}
+            {saving ? t("sched.saving") : editing ? t("sched.saveChanges") : t("common.save")}
           </button>
         </div>
       </form>
@@ -491,6 +489,7 @@ export function TaskSheet({
   onClose: () => void;
   onSave: (v: { matkul: string; title: string; date: string; time: string; prio: Prio; note: string; reminderMin?: number }) => Promise<boolean | void> | boolean | void;
 }) {
+  const { lang, t } = useLang();
   const [matkul, setMatkul] = useState("");
   const [title, setTitle] = useState("");
   const [date, setDate] = useState(selDate);
@@ -525,8 +524,8 @@ export function TaskSheet({
 
   return (
     <Shell id="ovTask" open={open} onClose={onClose}>
-      <h2><span className="h-ic"><IconTask size={15} /></span>{editing ? "Ubah Tugas" : "Tambah Tugas"}</h2>
-      <p className="hint">Deadline otomatis muncul di Kalender &amp; Dashboard.</p>
+      <h2><span className="h-ic"><IconTask size={15} /></span>{editing ? t("task.editTitle") : t("task.addTitle")}</h2>
+      <p className="hint">{t("task.hint")}</p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
@@ -534,7 +533,7 @@ export function TaskSheet({
           // Error inline (bukan diam): judul wajib.
           const jt = title.trim();
           if (!jt) {
-            setTitleErr("Isi judul tugas dulu — cth: Laporan modul 6");
+            setTitleErr(t("task.titleRequired"));
             return;
           }
           setTitleErr("");
@@ -566,14 +565,14 @@ export function TaskSheet({
           setReminderMin(15);
         }}
       >
-        <label className="f" htmlFor="tMatkul">Mata kuliah</label>
+        <label className="f" htmlFor="tMatkul">{t("task.fieldCourse")}</label>
         <input
           className="f"
           id="tMatkul"
           list="matkulListSheet"
           required
           maxLength={60}
-          placeholder="cth: Basis Data"
+          placeholder={t("task.coursePh")}
           value={matkul}
           onChange={(e) => setMatkul(e.target.value)}
         />
@@ -582,12 +581,12 @@ export function TaskSheet({
             <option key={c} value={c} />
           ))}
         </datalist>
-        <label className="f" htmlFor="tTitle">Judul tugas</label>
+        <label className="f" htmlFor="tTitle">{t("task.fieldTitle")}</label>
         <input
           className="f"
           id="tTitle"
           maxLength={100}
-          placeholder="cth: Laporan modul 6"
+          placeholder={t("task.titlePh")}
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
@@ -603,31 +602,31 @@ export function TaskSheet({
         )}
         <div className="frow">
           <div>
-            <label className="f" htmlFor="tDate">Deadline tanggal</label>
+            <label className="f" htmlFor="tDate">{t("task.fieldDate")}</label>
             <input className="f" id="tDate" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
           </div>
           <div>
-            <label className="f" htmlFor="tTime">Jam <span style={{ fontWeight: 500, color: "var(--muted)" }}>(opsional)</span></label>
+            <label className="f" htmlFor="tTime">{t("task.fieldTime")}<span style={{ fontWeight: 500, color: "var(--muted)" }}>{t("common.optional")}</span></label>
             <input className="f" id="tTime" type="time" value={time} onChange={(e) => setTime(e.target.value)} aria-describedby="tTimeHint" />
           </div>
         </div>
-        <p className="hint" id="tTimeHint" style={{ marginTop: 4 }}>Dikosongkan = akhir hari 23.59.</p>
-        <label className="f" htmlFor="tPrio">Prioritas</label>
+        <p className="hint" id="tTimeHint" style={{ marginTop: 4 }}>{t("task.timeHint")}</p>
+        <label className="f" htmlFor="tPrio">{t("task.fieldPrio")}</label>
         <select className="f" id="tPrio" value={prio} onChange={(e) => setPrio(e.target.value as Prio)}>
-          <option value="tinggi">Tinggi</option>
-          <option value="sedang">Sedang</option>
-          <option value="rendah">Rendah</option>
+          <option value="tinggi">{prioLabel("tinggi", lang)}</option>
+          <option value="sedang">{prioLabel("sedang", lang)}</option>
+          <option value="rendah">{prioLabel("rendah", lang)}</option>
         </select>
-        <label className="f" htmlFor="tNote">Catatan</label>
-        <input className="f" id="tNote" maxLength={140} placeholder="Cara kumpul, link, dsb…" value={note} onChange={(e) => setNote(e.target.value)} />
-        <label className="f">Pengingat</label>
+        <label className="f" htmlFor="tNote">{t("task.fieldNote")}</label>
+        <input className="f" id="tNote" maxLength={140} placeholder={t("task.notePh")} value={note} onChange={(e) => setNote(e.target.value)} />
+        <label className="f">{t("reminder.title")}</label>
         <ReminderChips value={reminderMin} onChange={setReminderMin} idPrefix="tRem" />
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
-            Tutup
+            {t("common.close")}
           </button>
           <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
-            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan"}
+            {saving ? t("task.saving") : editing ? t("task.saveChanges") : t("common.save")}
           </button>
         </div>
       </form>
