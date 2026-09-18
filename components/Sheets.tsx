@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ComposePreset, Prio, Routine, Sched, Task } from "@/lib/types";
-import { IconBook, IconForward, IconMail, IconPlus, IconReply, IconTask } from "./icons";
+import type { ComposePreset, Note, Prio, Routine, Sched, Task } from "@/lib/types";
+import { IconBook, IconForward, IconMail, IconNote, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 
-export type SheetId = "sched" | "mail" | "task" | "routine" | "tambah" | null;
+export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | null;
 export type InfoSheetId = LegalId | null;
 
 function Shell({
@@ -282,9 +282,9 @@ export function TambahSheet({
 }: {
   open: boolean;
   onClose: () => void;
-  onPick: (kind: "mail" | "task" | "sched") => void;
+  onPick: (kind: "mail" | "task" | "sched" | "note") => void;
 }) {
-  const pick = (kind: "mail" | "task" | "sched", label: string) => ({
+  const pick = (kind: "mail" | "task" | "sched" | "note", label: string) => ({
     onClick: () => onPick(kind),
     onKeyDown: (e: React.KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -322,6 +322,14 @@ export function TambahSheet({
           <div>
             <div className="t">Tambah Jadwal</div>
             <div className="s">Agenda sekali saja</div>
+          </div>
+          <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
+        </div>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("note", "Tambah catatan baru")}>
+          <span className="h-ic"><IconNote size={18} /></span>
+          <div>
+            <div className="t">Tambah Catatan</div>
+            <div className="s">Ide cepat tersimpan lokal</div>
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
@@ -612,6 +620,108 @@ export function TaskSheet({
         <input className="f" id="tNote" maxLength={140} placeholder="Cara kumpul, link, dsb…" value={note} onChange={(e) => setNote(e.target.value)} />
         <label className="f">Pengingat</label>
         <ReminderChips value={reminderMin} onChange={setReminderMin} idPrefix="tRem" />
+        <div className="actions">
+          <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
+            Tutup
+          </button>
+          <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
+            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan"}
+          </button>
+        </div>
+      </form>
+    </Shell>
+  );
+}
+
+interface NoteSheetProps {
+  open: boolean;
+  initial: Note | null;   // null = tambah; terisi = ubah
+  t: (key: string) => string;
+  onClose: () => void;
+  /** return false = gagal, sheet tetap terbuka. */
+  onSave: (v: { title: string; body: string }) => Promise<boolean | void> | boolean | void;
+}
+
+export function NoteSheet({ open, initial, t, onClose, onSave }: NoteSheetProps) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [titleErr, setTitleErr] = useState("");
+  // Anti-spam simpan: ref sinkron validasi SEKARANG (state telat satu render).
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      // Mode edit: isi form dari data lama; mode tambah: reset field.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form default saat sheet dibuka
+      setTitle(initial?.title ?? "");
+      setBody(initial?.body ?? "");
+      setTitleErr("");
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }, [open, initial]);
+
+  const editing = !!initial;
+
+  return (
+    <Shell id="ovNote" open={open} onClose={onClose}>
+      <h2><span className="h-ic"><IconNote size={15} /></span>{editing ? t("notes.sheetEdit") : t("notes.sheetAdd")}</h2>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (savingRef.current) return;
+          // Error inline (bukan diam): judul wajib.
+          const jt = title.trim();
+          if (!jt) {
+            setTitleErr(t("notes.titleRequired"));
+            return;
+          }
+          setTitleErr("");
+          savingRef.current = true;
+          setSaving(true);
+          let ok: boolean | void = false;
+          try {
+            ok = await onSave({ title: jt, body: body.trim() });
+          } finally {
+            savingRef.current = false;
+            setSaving(false);
+          }
+          // Form tetap utuh bila simpan gagal (false): jangan clear draf.
+          if (ok === false) return;
+          setTitle("");
+          setBody("");
+          setTitleErr("");
+        }}
+      >
+        <label className="f" htmlFor="nTitle">Judul</label>
+        <input
+          className="f"
+          id="nTitle"
+          maxLength={100}
+          placeholder="cth: Ide cepat"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (titleErr) setTitleErr("");
+          }}
+          aria-invalid={!!titleErr}
+          aria-describedby={titleErr ? "nTitleErr" : undefined}
+        />
+        {titleErr && (
+          <p id="nTitleErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5, marginTop: 4 }}>
+            {titleErr}
+          </p>
+        )}
+        <label className="f" htmlFor="nBody">Isi</label>
+        <textarea
+          className="f"
+          id="nBody"
+          rows={6}
+          placeholder="Tulis catatan…"
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
             Tutup
