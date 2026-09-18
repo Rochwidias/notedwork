@@ -39,7 +39,7 @@ const checks = [
   ["mail tanpa hardcode", !mailBlock.includes("Tulis Email") && !mailBlock.includes("Kepada") && !mailBlock.includes("Mengirim") && !mailBlock.includes("Terkirim langsung")],
   ["routine tanpa hardcode", !routineBlock.includes("Kelola Jadwal Rutin") && !routineBlock.includes("Mata kuliah") && !routineBlock.includes("Jadwal buatanmu (") && !routineBlock.includes("Menambah")],
   ["settings useLang", settingsV.includes("useLang()")],
-  ["settings tanpa hardcode", !settingsV.includes("Galeri Tema") && !settingsV.includes("Hubungkan Google") && !settingsV.includes("Akun Google yang tersambung") && !settingsV.includes("Nama tampilan") && !settingsV.includes("Warna tampilan") && !settingsV.includes("Terang, gelap") && !settingsV.includes("Login dengan Google") && !settingsV.includes("Keluar dari pratinjau") && !settingsV.includes("Tersambung sebagai") && !settingsV.includes("Pembuat &")],
+  ["settings tanpa hardcode", !settingsV.includes("Galeri Tema") && !settingsV.includes("Hubungkan Google") && !settingsV.includes("Akun Google yang tersambung") && !settingsV.includes("Nama tampilan") && !settingsV.includes("Warna tampilan") && !settingsV.includes("Terang, gelap") && !settingsV.includes("Login dengan Google") && !settingsV.includes("Keluar dari pratinjau") && !settingsV.includes("Tersambung sebagai") && !settingsV.includes("Pembuat &") && !settingsV.includes(">Profil<")],
 ];
 let fail = 0;
 for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`), ok || fail++;

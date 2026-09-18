@@ -50,7 +50,7 @@ export default function SettingsView({
   return (
     <section className="view active" id="v-settings">
       <div className="greet">
-        Profil<small>{connected ? t("settings.accountOn") : t("settings.previewMode")}</small>
+        {t("settings.title")}<small>{connected ? t("settings.accountOn") : t("settings.previewMode")}</small>
       </div>
 
       <div className="card">
