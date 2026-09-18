@@ -901,6 +901,7 @@ function NotedworkShell() {
                 onAdd={() => { setEditingNote(null); setSheet("note"); }}
                 onEdit={(n) => { setEditingNote(n); setSheet("note"); }}
                 onDelete={(id) => setNotes((prev) => prev.filter((n) => n.id !== id))}
+                onOpenSettings={() => go("settings")}
               />
             )}
             {view === "settings" && (
