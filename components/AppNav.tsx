@@ -11,6 +11,7 @@ const MAIN_TABS: { id: Exclude<ViewName, "profil">; Icon: IconComp; label: strin
   { id: "email", Icon: IconMail, label: "Email" },
   { id: "tugas", Icon: IconTask, label: "Tugas" },
   { id: "kalender", Icon: IconCalendar, label: "Kalender" },
+  { id: "catatan", Icon: IconNote, label: "Catatan" }, // Fixed type error
 ];
 
 export function Sidebar({ view, go }: { view: ViewName; go: (v: NavTarget) => void }) {
