@@ -96,6 +96,7 @@ function NotedworkShell() {
   const [tasks, setTasks] = useLocalStorage<Task[]>(`${LS.tasks}${userSuffix}`, []);
   const [routines, setRoutines] = useLocalStorage<Routine[]>(`${LS.routine}${userSuffix}`, []);
   const [notes, setNotes] = useLocalStorage<Note[]>(`${LS.notes}${userSuffix}`, []);
+  // Catatan yang sedang diedit (null = mode tambah). Sheet dibuka via onEdit/onAdd.
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [notif, setNotif] = useLocalStorage<boolean>(LS.notif, true);
   const [guestName, setGuestName] = useLocalStorage<string>(GUEST_NAME_KEY, "Tamu");
@@ -148,7 +149,6 @@ function NotedworkShell() {
   const [editingSched, setEditingSched] = useState<Sched | null>(null);
   // Tugas yang sedang diedit (null = mode tambah). Sheet dibuka via onEditTask.
   const [editingTask, setEditingTask] = useState<Task | null>(null);
-  // Catatan yang sedang diedit (null = mode tambah). Sheet dibuka via onEdit/onAdd.
 
   const markDisconnected = useCallback(() => {
     setConnected(false);
@@ -159,6 +159,7 @@ function NotedworkShell() {
     setCurrentMail(null);
     setEditingSched(null);
     setEditingTask(null);
+    setEditingNote(null);
     setSheet(null);
     setCompose(null);
   }, []);
