@@ -10,6 +10,8 @@ const calV = readFileSync("components/CalendarView.tsx", "utf8");
 const sheets = readFileSync("components/Sheets.tsx", "utf8");
 const schedBlock = sheets.slice(sheets.indexOf("export function SchedSheet"), sheets.indexOf("export function MailSheet"));
 const taskBlock = sheets.slice(sheets.indexOf("export function TaskSheet"), sheets.indexOf("export function RoutineSheet"));
+const mailBlock = sheets.slice(sheets.indexOf("export function MailSheet"), sheets.indexOf("export function TaskSheet"));
+const routineBlock = sheets.slice(sheets.indexOf("export function RoutineSheet"));
 const checks = [
   ["tab settings keenam", /id:\s*"settings"/.test(nav) && nav.includes('labelKey: "nav.settings"')],
   ["tanpa profil di nav", !/id:\s*"profil"/.test(nav)],
@@ -32,6 +34,9 @@ const checks = [
   ["sched tanpa hardcode", !schedBlock.includes("Ubah Jadwal") && !schedBlock.includes("Tambah Jadwal") && !schedBlock.includes("Isi judul dulu") && !schedBlock.includes("Jam selesai")],
   ["task tanpa hardcode", !taskBlock.includes("Ubah Tugas") && !taskBlock.includes("Mata kuliah") && !taskBlock.includes("Dikosongkan = akhir hari") && !taskBlock.includes("Prioritas")],
   ["reminder values", sheets.includes("REMINDER_VALUES") && !sheets.includes("REMINDER_OPTIONS")],
+  ["mail/routine useLang", mailBlock.includes("useLang()") && routineBlock.includes("useLang()")],
+  ["mail tanpa hardcode", !mailBlock.includes("Tulis Email") && !mailBlock.includes("Kepada") && !mailBlock.includes("Mengirim") && !mailBlock.includes("Terkirim langsung")],
+  ["routine tanpa hardcode", !routineBlock.includes("Kelola Jadwal Rutin") && !routineBlock.includes("Mata kuliah") && !routineBlock.includes("Jadwal buatanmu (") && !routineBlock.includes("Menambah")],
 ];
 let fail = 0;
 for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`), ok || fail++;

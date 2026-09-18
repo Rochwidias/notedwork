@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import type { ComposePreset, Note, Prio, Routine, Sched, Task } from "@/lib/types";
 import { IconBook, IconForward, IconMail, IconNote, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
-import { prioLabel } from "@/lib/dates";
+import { dayNames, prioLabel } from "@/lib/dates";
 import { useLang } from "./LangProvider";
 
 export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | null;
@@ -358,6 +358,7 @@ export function MailSheet({
   /** false = gagal: draf dipertahankan, sheet tetap terbuka. */
   onSave: (to: string, subj: string, body: string) => Promise<boolean | void> | boolean | void;
 }) {
+  const { t } = useLang();
   const [to, setTo] = useState("");
   const [subj, setSubj] = useState("");
   const [body, setBody] = useState("");
@@ -384,21 +385,21 @@ export function MailSheet({
   const effMode: MailMode = mode ?? (preset ? (preset.to ? "balas" : "teruskan") : "tulis");
   const head =
     effMode === "balas"
-      ? { icon: <IconReply size={15} />, title: "Balas Email" }
+      ? { icon: <IconReply size={15} />, title: t("mail.replyTitle") }
       : effMode === "teruskan"
-        ? { icon: <IconForward size={15} />, title: "Teruskan Email" }
-        : { icon: <IconMail size={15} />, title: "Tulis Email" };
+        ? { icon: <IconForward size={15} />, title: t("mail.fwdTitle") }
+        : { icon: <IconMail size={15} />, title: t("mail.composeTitle") };
   return (
     <Shell id="ovMail" open={open} onClose={onClose}>
       <h2><span className="h-ic">{head.icon}</span>{head.title}</h2>
-      <p className="hint">Terkirim langsung via Gmail.</p>
+      <p className="hint">{t("mail.hint")}</p>
       <form
         onSubmit={async (e) => {
           e.preventDefault();
           if (sendingRef.current) return;
           const dest = to.trim();
           if (!/^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(dest)) {
-            setToErr("Format email tujuan tidak valid");
+            setToErr(t("mail.toInvalid"));
             return;
           }
           setToErr("");
@@ -418,13 +419,13 @@ export function MailSheet({
           setBody("");
         }}
       >
-        <label className="f" htmlFor="mTo">Kepada</label>
+        <label className="f" htmlFor="mTo">{t("mail.fieldTo")}</label>
         <input
           className="f"
           id="mTo"
           type="email"
           required
-          placeholder="dosen@univ.ac.id"
+          placeholder={t("mail.toPh")}
           value={to}
           onChange={(e) => {
             setTo(e.target.value);
@@ -439,33 +440,33 @@ export function MailSheet({
           </p>
         )}
         <label className="f" htmlFor="mSubj">
-          Subjek <span style={{ fontWeight: 500, color: "var(--muted)", float: "right" }}>{subj.length}/100</span>
+          {t("mail.fieldSubj")}<span style={{ fontWeight: 500, color: "var(--muted)", float: "right" }}>{subj.length}/100</span>
         </label>
         <input
           className="f"
           id="mSubj"
           required
           maxLength={100}
-          placeholder="Izin / konsultasi / tugas…"
+          placeholder={t("mail.subjPh")}
           value={subj}
           onChange={(e) => setSubj(e.target.value)}
         />
-        <label className="f" htmlFor="mBody">Isi</label>
+        <label className="f" htmlFor="mBody">{t("mail.fieldBody")}</label>
         <textarea
           className="f compose-body"
           id="mBody"
           required
           rows={7}
-          placeholder="Tulis pesan…"
+          placeholder={t("mail.bodyPh")}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onClose} disabled={sending}>
-            Tutup
+            {t("common.close")}
           </button>
           <button type="submit" className="btn primary" disabled={sending} aria-busy={sending}>
-            {sending ? "Mengirim…" : "Kirim"}
+            {sending ? t("mail.sending") : t("mail.send")}
           </button>
         </div>
       </form>
@@ -749,6 +750,7 @@ export function RoutineSheet({
   onSave: (v: { course: string; day: number; start: string; end: string; room: string; lect: string }) => void;
   onDelete: (id: string) => void;
 }) {
+  const { lang, t } = useLang();
   const [course, setCourse] = useState("");
   const [day, setDay] = useState("1");
   const [room, setRoom] = useState("");
@@ -760,12 +762,10 @@ export function RoutineSheet({
   const addingRef = useRef(false);
   const [adding, setAdding] = useState(false);
 
-  const dayName = (d: number) => ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"][d - 1] ?? "";
-
   return (
     <Shell id="ovRoutine" open={open} onClose={onClose}>
-      <h2><span className="h-ic"><IconBook size={15} /></span>Kelola Jadwal Rutin</h2>
-      <p className="hint">Matkul tetap tiap minggu — otomatis muncul di Kalender.</p>
+      <h2><span className="h-ic"><IconBook size={15} /></span>{t("routine.title")}</h2>
+      <p className="hint">{t("routine.hint")}</p>
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -792,57 +792,57 @@ export function RoutineSheet({
           }, 0);
         }}
       >
-        <label className="f" htmlFor="rCourse">Mata kuliah</label>
+        <label className="f" htmlFor="rCourse">{t("routine.fieldCourse")}</label>
         <input
           className="f"
           id="rCourse"
           required
           maxLength={60}
-          placeholder="cth: Sistem Operasi"
+          placeholder={t("routine.coursePh")}
           value={course}
           onChange={(e) => setCourse(e.target.value)}
         />
         <div className="frow">
           <div>
-            <label className="f" htmlFor="rDay">Hari</label>
+            <label className="f" htmlFor="rDay">{t("routine.fieldDay")}</label>
             <select className="f" id="rDay" value={day} onChange={(e) => setDay(e.target.value)}>
-              <option value="1">Senin</option>
-              <option value="2">Selasa</option>
-              <option value="3">Rabu</option>
-              <option value="4">Kamis</option>
-              <option value="5">Jumat</option>
-              <option value="6">Sabtu</option>
-              <option value="7">Minggu</option>
+              <option value="1">{dayNames(lang)[0]}</option>
+              <option value="2">{dayNames(lang)[1]}</option>
+              <option value="3">{dayNames(lang)[2]}</option>
+              <option value="4">{dayNames(lang)[3]}</option>
+              <option value="5">{dayNames(lang)[4]}</option>
+              <option value="6">{dayNames(lang)[5]}</option>
+              <option value="7">{dayNames(lang)[6]}</option>
             </select>
           </div>
           <div>
-            <label className="f" htmlFor="rRoom">Ruang</label>
-            <input className="f" id="rRoom" maxLength={30} placeholder="cth: 2A" value={room} onChange={(e) => setRoom(e.target.value)} />
+            <label className="f" htmlFor="rRoom">{t("routine.fieldRoom")}</label>
+            <input className="f" id="rRoom" maxLength={30} placeholder={t("routine.roomPh")} value={room} onChange={(e) => setRoom(e.target.value)} />
           </div>
         </div>
         <div className="frow">
           <div>
-            <label className="f" htmlFor="rStart">Mulai</label>
+            <label className="f" htmlFor="rStart">{t("routine.fieldStart")}</label>
             <input className="f" id="rStart" type="time" required value={start} onChange={(e) => setStart(e.target.value)} />
           </div>
           <div>
-            <label className="f" htmlFor="rEnd">Selesai</label>
+            <label className="f" htmlFor="rEnd">{t("routine.fieldEnd")}</label>
             <input className="f" id="rEnd" type="time" required value={end} onChange={(e) => setEnd(e.target.value)} />
           </div>
         </div>
-        <label className="f" htmlFor="rLect">Dosen</label>
-        <input className="f" id="rLect" maxLength={60} placeholder="cth: Pak Andi" value={lect} onChange={(e) => setLect(e.target.value)} />
+        <label className="f" htmlFor="rLect">{t("routine.fieldLect")}</label>
+        <input className="f" id="rLect" maxLength={60} placeholder={t("routine.lectPh")} value={lect} onChange={(e) => setLect(e.target.value)} />
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onClose} disabled={adding}>
-            Tutup
+            {t("common.close")}
           </button>
           <button type="submit" className="btn primary" disabled={adding} aria-busy={adding}>
-            {adding ? "Menambah…" : "Tambah"}
+            {adding ? t("routine.adding") : t("routine.add")}
           </button>
         </div>
       </form>
       <div style={{ marginTop: 8 }}>
-        <div style={{ fontSize: 13, fontWeight: 800, margin: "10px 0 4px" }}>Jadwal buatanmu ({mine.length})</div>
+        <div style={{ fontSize: 13, fontWeight: 800, margin: "10px 0 4px" }}>{t("routine.mineTitle")}{mine.length})</div>
         {mine.length ? (
           mine.map((r) => (
             <div className="row" key={r.id}>
@@ -850,16 +850,16 @@ export function RoutineSheet({
               <div>
                 <div className="t">{r.course}</div>
                 <div className="s">
-                  {dayName(r.day)} • {r.start}–{r.end}
+                  {dayNames(lang)[r.day - 1] ?? ""} • {r.start}–{r.end}
                 </div>
               </div>
               <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDelete(r.id)}>
-                Hapus
+                {t("common.delete")}
               </button>
             </div>
           ))
         ) : (
-          <div className="empty">Belum ada — tambah lewat form di atas.</div>
+          <div className="empty">{t("routine.emptyMine")}</div>
         )}
       </div>
     </Shell>
