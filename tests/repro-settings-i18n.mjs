@@ -5,6 +5,7 @@ const notesView = readFileSync("components/NotesView.tsx", "utf8");
 const dates = readFileSync("lib/dates.ts", "utf8");
 const hari = readFileSync("components/HariIni.tsx", "utf8");
 const emailV = readFileSync("components/EmailView.tsx", "utf8");
+const tasksV = readFileSync("components/TasksView.tsx", "utf8");
 const checks = [
   ["tab settings keenam", /id:\s*"settings"/.test(nav) && nav.includes('labelKey: "nav.settings"')],
   ["tanpa profil di nav", !/id:\s*"profil"/.test(nav)],
@@ -19,6 +20,8 @@ const checks = [
   ["hariini tanpa hardcode", !hari.includes("Tidak ada pengingat") && !hari.includes("3 Terpenting") && !hari.includes("Minggu ini") && !hari.includes("Email penting") && !hari.includes("DOW3 = [") && !hari.includes("Halo, {name}") && !hari.includes(" • Ruang ") && !hari.includes("mnt lagi")],
   ["emailview useLang", emailV.includes("useLang()")],
   ["emailview tanpa hardcode", !emailV.includes("Belum dibaca") && !emailV.includes("Cari email") && !emailV.includes("Muat lagi") && !emailV.includes("Arsipkan") && !emailV.includes("Kembali ke daftar") && !emailV.includes("Tandai belum dibaca") && !emailV.includes("Beri bintang") && !emailV.includes("Tanpa label")],
+  ["tasksview useLang", tasksV.includes("useLang()")],
+  ["tasksview tanpa hardcode", !tasksV.includes("Tidak ada tugas") && !tasksV.includes("Tambah tugas") && !tasksV.includes('"Aktif"') && !tasksV.includes('"Telat"') && !tasksV.includes("Ketuk untuk ubah status") && !tasksV.includes("tersimpan lokal")],
 ];
 let fail = 0;
 for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`), ok || fail++;
