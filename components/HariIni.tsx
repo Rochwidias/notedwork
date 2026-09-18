@@ -2,7 +2,8 @@
 
 import type { KeyboardEvent } from "react";
 import type { Mail, NavTarget, Routine, Sched, Task } from "@/lib/types";
-import { fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, weekdayOf } from "@/lib/dates";
+import { dow3, fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, weekdayOf } from "@/lib/dates";
+import { useLang } from "./LangProvider";
 import {
   IconBell,
   IconCalendarDays,
@@ -27,8 +28,6 @@ interface Props {
   todayStr: string;
   onAdd: () => void;
 }
-
-const DOW3 = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
 
 /** Props keyboard untuk baris role=button: Enter/Spasi = klik. */
 function onKey(action: () => void): (e: KeyboardEvent) => void {
@@ -62,16 +61,16 @@ function isoTime(iso: string, hm: string): number | null {
   return Number.isFinite(t) ? t : null;
 }
 
-/** Label hitung mundur: "45 mnt lagi", "2 jam 10 mnt lagi", "Besok", "3 hari lagi". */
-function fmtCountdown(diffMs: number): string {
+/** Label hitung mundur terlokalisasi via key home.* (fungsi t dioper dari komponen). */
+function fmtCountdown(diffMs: number, t: (key: string) => string): string {
   const mins = Math.max(0, Math.round(diffMs / 60000));
-  if (mins < 1) return "Sebentar lagi";
-  if (mins < 60) return `${mins} mnt lagi`;
+  if (mins < 1) return t("home.dueSoon");
+  if (mins < 60) return t("home.inMin").replace("{n}", String(mins));
   const h = Math.floor(mins / 60);
   const r = mins % 60;
-  if (h < 24) return r ? `${h} jam ${r} mnt lagi` : `${h} jam lagi`;
+  if (h < 24) return r ? t("home.inHours").replace("{h}", String(h)).replace("{m}", String(r)) : t("home.inHoursEven").replace("{h}", String(h));
   const d = Math.floor(h / 24);
-  return d <= 1 ? "Besok" : `${d} hari lagi`;
+  return d <= 1 ? t("home.tomorrow") : t("home.inDays").replace("{d}", String(d));
 }
 
 function toISODate(d: Date): string {
@@ -86,8 +85,8 @@ function addDaysISO(iso: string, n: number): string {
 }
 
 /** Jam deadline: time kosong = akhir hari (konsisten dgn lib/dates). */
-function validHM(t: Task): string {
-  return /^\d{2}:\d{2}$/.test(t.time) ? t.time : "23:59";
+function validHM(task: Task): string {
+  return /^\d{2}:\d{2}$/.test(task.time) ? task.time : "23:59";
 }
 
 interface Ev {
@@ -111,17 +110,19 @@ export default function HariIni({
   todayStr = "",
   onAdd = () => undefined,
 }: Props) {
+  // Ambil bahasa aktif + fungsi translate dari provider.
+  const { lang, t } = useLang();
   const ts = normToday(todayStr as unknown);
   const nowMs = new Date().getTime();
   const wd = weekdayOf(ts);
 
-  const todayLine = new Date().toLocaleDateString("id-ID", {
+  const todayLine = new Date().toLocaleDateString(lang === "en" ? "en-US" : "id-ID", {
     weekday: "long",
     day: "numeric",
     month: "long",
     year: "numeric",
   });
-  const name = email ? email.split("@")[0] : guestName?.trim() || "di sana";
+  const name = email ? email.split("@")[0] : guestName?.trim() || t("home.guestName");
   const goKal = () => go("kalender");
 
   /* (a) kejadian terdekat yang belum lewat: rutin hari ini + agenda + deadline. */
@@ -132,7 +133,7 @@ export default function HariIni({
     if (at == null) continue;
     cands.push({
       title: r.course,
-      sub: `${r.start}–${r.end}${r.room ? ` • Ruang ${r.room}` : ""}`,
+      sub: `${r.start}–${r.end}${r.room ? ` • ${t("home.room")} ${r.room}` : ""}`,
       at,
     });
   }
@@ -140,34 +141,34 @@ export default function HariIni({
     if (s.date < ts) continue;
     const at = isoTime(s.date, s.time);
     if (at == null) continue;
-    cands.push({ title: s.title, sub: `${fmtDateID(s.date)} • ${fmtSchedRange(s)}`, at });
+    cands.push({ title: s.title, sub: `${fmtDateID(s.date, lang)} • ${fmtSchedRange(s, lang)}`, at });
   }
-  for (const t of tasks) {
-    if (t.done || t.date < ts) continue;
-    const hm = validHM(t);
-    const at = isoTime(t.date, hm);
+  for (const task of tasks) {
+    if (task.done || task.date < ts) continue;
+    const hm = validHM(task);
+    const at = isoTime(task.date, hm);
     if (at == null) continue;
-    cands.push({ title: t.title, sub: `${t.matkul} • ${fmtDateID(t.date)} • ${hm}`, at });
+    cands.push({ title: task.title, sub: `${task.matkul} • ${fmtDateID(task.date, lang)} • ${hm}`, at });
   }
   cands.sort((a, b) => a.at - b.at);
   const upcoming = cands.find((e) => e.at >= nowMs) ?? null;
 
   /* Fallback: tugas telat paling mendesak bila tak ada yang akan datang. */
   const overdue = tasks
-    .filter((t) => !t.done)
-    .map((t) => ({ t, at: isoTime(t.date, validHM(t)) }))
-    .filter((x): x is { t: Task; at: number } => x.at != null && x.at < nowMs)
+    .filter((task) => !task.done)
+    .map((task) => ({ task, at: isoTime(task.date, validHM(task)) }))
+    .filter((x): x is { task: Task; at: number } => x.at != null && x.at < nowMs)
     .sort((a, b) => a.at - b.at)[0];
 
   const hero = upcoming
-    ? { label: fmtCountdown(upcoming.at - nowMs), title: upcoming.title, sub: upcoming.sub }
+    ? { label: fmtCountdown(upcoming.at - nowMs, t), title: upcoming.title, sub: upcoming.sub }
     : overdue
-      ? { label: taskBadge(overdue.t).txt, title: overdue.t.title, sub: `${overdue.t.matkul} • ${fmtDateID(overdue.t.date)}` }
+      ? { label: taskBadge(overdue.task, lang).txt, title: overdue.task.title, sub: `${overdue.task.matkul} • ${fmtDateID(overdue.task.date, lang)}` }
       : null;
 
   /* (b) 3 terpenting: tugas aktif dengan deadline paling dekat (time kosong = 23:59, konsisten isOverdue). */
   const top3 = tasks
-    .filter((t) => !t.done)
+    .filter((task) => !task.done)
     .sort((a, b) => (a.date + (a.time || "23:59")).localeCompare(b.date + (b.time || "23:59")))
     .slice(0, 3);
 
@@ -181,19 +182,19 @@ export default function HariIni({
   return (
     <section className="view active" id="v-beranda">
       <div className="greet">
-        Hari Ini
+        {t("home.title")}
         <small>
-          {todayLine} • Halo, {name}
-          {preview ? " — Mode pratinjau (data contoh)" : ""}
+          {todayLine} • {t("home.hello")}, {name}
+          {preview ? t("home.previewSuffix") : ""}
         </small>
       </div>
 
-      {/* (a) kartu pengingat — slim: pill CTA di dalam kartu agar Hari Ini muat 1 layar */}
+      {/* (a) kartu pengingat — slim: pill CTA di dalam kartu agar beranda muat 1 layar */}
       <div
         className="hero slim"
         role="button"
         tabIndex={0}
-        aria-label={hero ? `Pengingat: ${hero.label}, ${hero.title}. Buka kalender.` : "Tidak ada pengingat. Buka kalender."}
+        aria-label={hero ? `${t("home.reminderPrefix")}: ${hero.label}, ${hero.title}. ${t("home.openCalendar")}` : t("home.reminderAriaNone")}
         onClick={goKal}
         onKeyDown={onKey(goKal)}
         style={{ cursor: "pointer" }}
@@ -208,7 +209,7 @@ export default function HariIni({
             </b>
             <p>{hero.sub}</p>
             <span className="cta">
-              Lihat kalender <span aria-hidden="true">›</span>
+              {t("home.viewCalendar")} <span aria-hidden="true">›</span>
             </span>
           </>
         ) : (
@@ -217,11 +218,11 @@ export default function HariIni({
               <span className="h-ic">
                 <IconBell size={16} />
               </span>
-              Tidak ada pengingat berikutnya
+              {t("home.noReminder")}
             </b>
-            <p>Belum ada agenda atau deadline. Nikmati harimu!</p>
+            <p>{t("home.noReminderSub")}</p>
             <span className="cta">
-              Lihat kalender <span aria-hidden="true">›</span>
+              {t("home.viewCalendar")} <span aria-hidden="true">›</span>
             </span>
           </>
         )}
@@ -234,23 +235,23 @@ export default function HariIni({
             <span className="h-ic">
               <IconTask size={15} />
             </span>
-            3 Terpenting
+            {t("home.top3")}
           </h2>
           <button className="link link-ic" onClick={() => go("tugas")}>
-            Semua <span aria-hidden="true">›</span>
+            {t("common.all")} <span aria-hidden="true">›</span>
           </button>
         </div>
         <div>
-          {top3.map((t, i) => {
-            const b = taskBadge(t);
-            const toggle = () => onToggleTask(t.id);
+          {top3.map((task, i) => {
+            const b = taskBadge(task, lang);
+            const toggle = () => onToggleTask(task.id);
             return (
               <div
-                key={t.id}
+                key={task.id}
                 className="trow slim"
                 role="button"
                 tabIndex={0}
-                aria-label={`${i + 1}. ${t.title}. Ketuk untuk tandai selesai.`}
+                aria-label={`${i + 1}. ${task.title}${t("common.tapToComplete")}`}
                 onClick={toggle}
                 onKeyDown={onKey(toggle)}
               >
@@ -259,25 +260,25 @@ export default function HariIni({
                 </span>
                 <button
                   className="check sm"
-                  title="Tandai selesai"
-                  aria-label={`Tandai selesai: ${t.title}`}
+                  title={t("common.markDone")}
+                  aria-label={`${t("common.markDone")}: ${task.title}`}
                   onClick={(e) => {
                     e.stopPropagation();
                     toggle();
                   }}
                 />
                 <div style={{ flex: 1 }}>
-                  <div className="tt">{t.title}</div>
+                  <div className="tt">{task.title}</div>
                   <div className="tm">
-                    {t.matkul} • {fmtDateID(t.date)}
-                    {t.time ? ` • ${t.time}` : ""}
+                    {task.matkul} • {fmtDateID(task.date, lang)}
+                    {task.time ? ` • ${task.time}` : ""}
                   </div>
                 </div>
                 <span className={`tag ${b.cls}`}>{b.txt}</span>
               </div>
             );
           })}
-          {top3.length === 0 && <div className="empty">Semua tugas selesai. Nikmati harimu!</div>}
+          {top3.length === 0 && <div className="empty">{t("home.allDone")}</div>}
         </div>
       </div>
 
@@ -288,10 +289,10 @@ export default function HariIni({
             <span className="h-ic">
               <IconCalendarDays size={15} />
             </span>
-            Minggu ini
+            {t("home.thisWeek")}
           </h2>
           <button className="link link-ic" onClick={goKal}>
-            Kalender <span aria-hidden="true">›</span>
+            {t("nav.calendar")} <span aria-hidden="true">›</span>
           </button>
         </div>
         <div className="wstrip">
@@ -306,10 +307,10 @@ export default function HariIni({
                 key={iso}
                 className={`wchip${isToday ? " on" : ""}`}
                 onClick={pick}
-                aria-label={fmtDateID(iso)}
+                aria-label={fmtDateID(iso, lang)}
                 aria-current={isToday ? "date" : undefined}
               >
-                {DOW3[i]}
+                {dow3(lang)[i]}
                 <span className="dn">{Number(iso.slice(8, 10))}</span>
               </button>
             );
@@ -324,10 +325,10 @@ export default function HariIni({
             <span className="h-ic">
               <IconMail size={15} />
             </span>
-            Email penting
+            {t("home.emailImportant")}
           </h2>
           <button className="link link-ic" onClick={() => go("email")}>
-            Semua <span aria-hidden="true">›</span>
+            {t("common.all")} <span aria-hidden="true">›</span>
           </button>
         </div>
         <div>
@@ -339,7 +340,7 @@ export default function HariIni({
                 className="erow"
                 role="button"
                 tabIndex={0}
-                aria-label={`Buka email: ${m.subj}`}
+                aria-label={`${t("home.openMail")}${m.subj}`}
                 onClick={open}
                 onKeyDown={onKey(open)}
               >
@@ -357,7 +358,7 @@ export default function HariIni({
               <span className="empty-ic">
                 <IconInbox size={22} />
               </span>
-              Kotak masuk beres. Tidak ada email penting.
+              {t("home.inboxClear")}
             </div>
           )}
         </div>
@@ -366,7 +367,7 @@ export default function HariIni({
       {/* (e) tambah konsisten: sheet pilihan dibuka induk via onAdd */}
       <button className="btn primary block btn-ic" onClick={onAdd} style={{ marginTop: 8 }}>
         <IconPlus size={16} />
-        Tambah
+        {t("notes.add")}
       </button>
     </section>
   );
