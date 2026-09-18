@@ -306,6 +306,11 @@ button {
     transform: scale(1.05);
   }
 }
+.lang-tag {
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 2px;
+}
 .avatar {
   width: 44px;
   height: 44px;
@@ -1489,7 +1494,7 @@ button {
   max-width: 620px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
 }
 .tabbar .tab .ic svg {
   width: 18px;
@@ -1986,6 +1991,20 @@ textarea.f.compose-body {
   .quick {
     grid-template-columns: 1fr;
   }
+  /* 5 tab sejajar satu baris di HP mungil: hanya tabbar (sidebar desktop tak tersentuh). */
+  .tabbar {
+    padding: 8px 4px calc(8px + env(safe-area-inset-bottom));
+  }
+  .tabbar .tab {
+    font-size: 10.5px;
+    padding: 8px 6px;
+    gap: 5px;
+    min-width: 0;
+  }
+  .tabbar .tab .ic svg {
+    width: 16px;
+    height: 16px;
+  }
 }
 
 /* ── Layar lebar (≥1440px): desktop Windows lega ── */
@@ -1997,4 +2016,49 @@ textarea.f.compose-body {
   .dash-grid {
     grid-template-columns: 1.2fr 0.8fr;
   }
+}
+
+/* ── Catatan (NotesView): hanya kelas yang belum ada, meniru gaya sejenis ── */
+.view-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+.view-head h1 {
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+.note-list {
+  list-style: none;
+  padding: 0;
+  margin: 12px 0 0;
+  display: grid;
+  gap: 10px;
+}
+.note-list .card {
+  margin-top: 0;
+}
+.note-list .t {
+  font-size: 14px;
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+.note-list .s {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 1px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.row-actions {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 10px;
+}
+.empty .hint {
+  font-size: 12.5px;
 }

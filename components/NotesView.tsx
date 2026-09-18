@@ -1,21 +1,48 @@
-import React from 'react';
+"use client";
 
-export interface Note {
-  id: string;
-  title: string;
-  body: string;
-  pinned?: boolean;
+import type { Note } from "@/lib/types";
+import { IconPlus, IconPencil, IconTrash } from "./icons";
+
+interface NotesViewProps {
+  notes: Note[];
+  t: (key: string) => string;
+  onAdd: () => void;
+  onEdit: (note: Note) => void;
+  onDelete: (id: string) => void;
 }
 
-export default function NotesView() {
+export default function NotesView({ notes, t, onAdd, onEdit, onDelete }: NotesViewProps) {
   return (
-    <div className="min-h-screen bg-[--bg] p-4">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-2xl font-bold mb-6">Notes</h1>
-        <div className="bg-[--card] rounded-lg p-6 text-center">
-          <p className="text-[--muted]">No notes yet. Click the + button to add one.</p>
-        </div>
+    <section aria-label={t("notes.title")}>
+      <div className="view-head">
+        <h1>{t("notes.title")}</h1>
+        <button type="button" className="btn primary" onClick={onAdd} aria-label={t("notes.add")}>
+          + {t("notes.add")}
+        </button>
       </div>
-    </div>
+      {notes.length === 0 ? (
+        <div className="empty">
+          <p>{t("notes.empty")}</p>
+          <p className="hint">{t("notes.emptyHint")}</p>
+        </div>
+      ) : (
+        <ul className="note-list">
+          {notes.map((n) => (
+            <li key={n.id} className="card">
+              <div className="t">{n.title}</div>
+              <div className="s">{n.body}</div>
+              <div className="row-actions">
+                <button type="button" className="btn ghost" onClick={() => onEdit(n)} aria-label={`${t("notes.edit")}: ${n.title}`}>
+                  <IconPencil size={15} /> {t("notes.edit")}
+                </button>
+                <button type="button" className="btn ghost danger" onClick={() => onDelete(n.id)} aria-label={`${t("notes.delete")}: ${n.title}`}>
+                  <IconTrash size={15} /> {t("notes.delete")}
+                </button>
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
   );
 }

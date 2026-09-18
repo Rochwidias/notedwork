@@ -1,4 +1,4 @@
-// RED test (TDD): menu rata kiri konsisten + navigasi 4 tab + baris keyboard-accessible.
+// RED test (TDD): menu rata kiri konsisten + navigasi 5 tab + baris keyboard-accessible.
 // Jalankan: node tests/repro-menu-kiri.mjs
 // Harus GAGAL sebelum fix, PASS sesudah fix.
 import { readFileSync } from "node:fs";
@@ -20,16 +20,31 @@ const block = (sel) => {
   return m ? m[0] : "";
 };
 
-// 1. Navigasi: 4 tab utama (Hari Ini, Email, Tugas, Kalender); Profil via avatar, bukan tab.
+// 1. Navigasi: 5 tab utama (Hari Ini, Email, Tugas, Kalender, Catatan); Profil via avatar, bukan tab.
 check(
-  "TabBar grid 4 kolom",
-  /repeat\(4/.test(block("\\.tabbar-inner")),
-  "masih repeat(5"
+  "TabBar grid 5 kolom",
+  /repeat\(5/.test(block("\\.tabbar-inner")),
+  "masih repeat(4 — tab ke-5 wrap ke baris 2"
 );
 check(
-  "AppNav TABS tepat 4 item",
-  (nav.match(/id:\s*"(beranda|email|tugas|kalender)"/g) || []).length === 4,
-  `dapat ${(nav.match(/id:\s*"(beranda|email|tugas|kalender)"/g) || []).length}`
+  "AppNav TABS 5 item",
+  (nav.match(/id:\s*"(beranda|email|tugas|kalender|catatan)"/g) || []).length === 5,
+  `dapat ${(nav.match(/id:\s*"(beranda|email|tugas|kalender|catatan)"/g) || []).length}`
+);
+check(
+  "AppNav tab catatan pakai nav.notes",
+  /labelKey:\s*"nav\.notes"/.test(nav),
+  'tab catatan tidak lewat t("nav.notes")'
+);
+check(
+  "AppNav semua label lewat kamus",
+  ["nav.home", "nav.email", "nav.tasks", "nav.calendar", "nav.notes"].every((k) => nav.includes(`"${k}"`)),
+  "ada label hardcode di MAIN_TABS"
+);
+check(
+  "Tabbar kecilkan font di layar sempit",
+  /\.tabbar\s+\.tab\s*\{[^}]*font-size/.test(css),
+  "label tabbar berisiko meluap di 360px"
 );
 check(
   "AppNav TABS tanpa profil",

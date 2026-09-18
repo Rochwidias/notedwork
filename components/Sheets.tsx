@@ -1,11 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { ComposePreset, Prio, Routine, Sched, Task } from "@/lib/types";
-import { IconBook, IconForward, IconMail, IconPlus, IconReply, IconTask } from "./icons";
+import type { ComposePreset, Note, Prio, Routine, Sched, Task } from "@/lib/types";
+import { IconBook, IconForward, IconMail, IconNote, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 
-export type SheetId = "sched" | "mail" | "task" | "routine" | "tambah" | null;
+export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | null;
 export type InfoSheetId = LegalId | null;
 
 function Shell({
@@ -277,14 +277,16 @@ export type MailMode = "tulis" | "balas" | "teruskan";
 /** Sheet pilihan tambah: Email / Tugas / Jadwal — satu pintu agar tombol ＋ konsisten. */
 export function TambahSheet({
   open,
+  t,
   onClose,
   onPick,
 }: {
   open: boolean;
+  t: (key: string) => string;
   onClose: () => void;
-  onPick: (kind: "mail" | "task" | "sched") => void;
+  onPick: (kind: "mail" | "task" | "sched" | "note") => void;
 }) {
-  const pick = (kind: "mail" | "task" | "sched", label: string) => ({
+  const pick = (kind: "mail" | "task" | "sched" | "note", label: string) => ({
     onClick: () => onPick(kind),
     onKeyDown: (e: React.KeyboardEvent) => {
       if (e.key === "Enter" || e.key === " ") {
@@ -298,37 +300,45 @@ export function TambahSheet({
   });
   return (
     <Shell id="ovTambah" open={open} onClose={onClose}>
-      <h2><span className="h-ic"><IconPlus size={15} /></span>Tambah Baru</h2>
-      <p className="hint">Pilih yang mau dibuat.</p>
+      <h2><span className="h-ic"><IconPlus size={15} /></span>{t("tambah.title")}</h2>
+      <p className="hint">{t("tambah.hint")}</p>
       <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
         <div className="row" style={{ cursor: "pointer" }} {...pick("mail", "Tulis email baru")}>
           <span className="h-ic"><IconMail size={18} /></span>
           <div>
-            <div className="t">Tulis Email</div>
-            <div className="s">Terkirim via Gmail</div>
+            <div className="t">{t("tambah.mail")}</div>
+            <div className="s">{t("tambah.mailSub")}</div>
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
         <div className="row" style={{ cursor: "pointer" }} {...pick("task", "Tambah tugas baru")}>
           <span className="h-ic"><IconTask size={18} /></span>
           <div>
-            <div className="t">Tambah Tugas</div>
-            <div className="s">Deadline muncul di Kalender</div>
+            <div className="t">{t("tambah.task")}</div>
+            <div className="s">{t("tambah.taskSub")}</div>
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
         <div className="row" style={{ cursor: "pointer" }} {...pick("sched", "Tambah jadwal baru")}>
           <span className="h-ic"><IconPlus size={18} /></span>
           <div>
-            <div className="t">Tambah Jadwal</div>
-            <div className="s">Agenda sekali saja</div>
+            <div className="t">{t("tambah.sched")}</div>
+            <div className="s">{t("tambah.schedSub")}</div>
+          </div>
+          <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
+        </div>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("note", "Tambah catatan baru")}>
+          <span className="h-ic"><IconNote size={18} /></span>
+          <div>
+            <div className="t">{t("tambah.note")}</div>
+            <div className="s">{t("tambah.noteSub")}</div>
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
       </div>
       <div className="actions-single">
         <button type="button" className="btn ghost block" onClick={onClose}>
-          Tutup
+          {t("common.close")}
         </button>
       </div>
     </Shell>
@@ -618,6 +628,108 @@ export function TaskSheet({
           </button>
           <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
             {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan"}
+          </button>
+        </div>
+      </form>
+    </Shell>
+  );
+}
+
+interface NoteSheetProps {
+  open: boolean;
+  initial: Note | null;   // null = tambah; terisi = ubah
+  t: (key: string) => string;
+  onClose: () => void;
+  /** return false = gagal, sheet tetap terbuka. */
+  onSave: (v: { title: string; body: string }) => Promise<boolean | void> | boolean | void;
+}
+
+export function NoteSheet({ open, initial, t, onClose, onSave }: NoteSheetProps) {
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [titleErr, setTitleErr] = useState("");
+  // Anti-spam simpan: ref sinkron validasi SEKARANG (state telat satu render).
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      // Mode edit: isi form dari data lama; mode tambah: reset field.
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- sync form default saat sheet dibuka
+      setTitle(initial?.title ?? "");
+      setBody(initial?.body ?? "");
+      setTitleErr("");
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }, [open, initial]);
+
+  const editing = !!initial;
+
+  return (
+    <Shell id="ovNote" open={open} onClose={onClose}>
+      <h2><span className="h-ic"><IconNote size={15} /></span>{editing ? t("notes.sheetEdit") : t("notes.sheetAdd")}</h2>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault();
+          if (savingRef.current) return;
+          // Error inline (bukan diam): judul wajib.
+          const jt = title.trim();
+          if (!jt) {
+            setTitleErr(t("notes.titleRequired"));
+            return;
+          }
+          setTitleErr("");
+          savingRef.current = true;
+          setSaving(true);
+          let ok: boolean | void = false;
+          try {
+            ok = await onSave({ title: jt, body: body.trim() });
+          } finally {
+            savingRef.current = false;
+            setSaving(false);
+          }
+          // Form tetap utuh bila simpan gagal (false): jangan clear draf.
+          if (ok === false) return;
+          setTitle("");
+          setBody("");
+          setTitleErr("");
+        }}
+      >
+        <label className="f" htmlFor="nTitle">{t("notes.fieldTitle")}</label>
+        <input
+          className="f"
+          id="nTitle"
+          maxLength={100}
+          placeholder={t("notes.titlePh")}
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (titleErr) setTitleErr("");
+          }}
+          aria-invalid={!!titleErr}
+          aria-describedby={titleErr ? "nTitleErr" : undefined}
+        />
+        {titleErr && (
+          <p id="nTitleErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5, marginTop: 4 }}>
+            {titleErr}
+          </p>
+        )}
+        <label className="f" htmlFor="nBody">{t("notes.fieldBody")}</label>
+        <textarea
+          className="f"
+          id="nBody"
+          rows={6}
+          placeholder={t("notes.bodyPh")}
+          value={body}
+          onChange={(e) => setBody(e.target.value)}
+        />
+        <div className="actions">
+          <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
+            {t("common.close")}
+          </button>
+          <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
+            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : t("common.save")}
           </button>
         </div>
       </form>

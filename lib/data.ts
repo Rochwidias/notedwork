@@ -6,6 +6,7 @@ export const LS = {
   del: "notedwork.del",
   tasks: "notedwork.tasks",
   routine: "notedwork.routine",
+  notes: "notedwork.notes",
   theme: "notedwork.theme",
   notif: "notedwork.notif",
 } as const;

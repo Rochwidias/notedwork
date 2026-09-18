@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { ComposePreset, Mail, NavTarget, Routine, Sched, Task, ViewName } from "@/lib/types";
+import type { ComposePreset, Mail, NavTarget, Note, Routine, Sched, Task, ViewName } from "@/lib/types";
 import { GUEST_NAME_KEY, GUEST_SUFFIX, LS, migrateRochaKeys } from "@/lib/data";
 import { RCOL, todayStr } from "@/lib/dates";
 import { PREVIEW_LOGIN_HINT, sampleRoutines, sampleScheds, sampleTasks, SAMPLE_MAILS } from "@/lib/preview";
@@ -9,6 +9,7 @@ import { stripMailTokens } from "@/lib/emailBody";
 import { useLocalStorage } from "@/lib/store";
 import { DEFAULT_REMINDER_MIN, dueReminders, type ReminderItem } from "@/lib/reminders";
 import ThemeProvider from "./ThemeProvider";
+import LangProvider, { useLang } from "./LangProvider";
 import TopBar from "./TopBar";
 import { Fab, Sidebar, TabBar } from "./AppNav";
 import { IconEye } from "./icons";
@@ -16,8 +17,9 @@ import HariIni from "./HariIni";
 import EmailView from "./EmailView";
 import TasksView from "./TasksView";
 import CalendarView from "./CalendarView";
+import NotesView from "./NotesView";
 import ProfileView from "./ProfileView";
-import { MailSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type SheetId } from "./Sheets";
+import { MailSheet, NoteSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type SheetId } from "./Sheets";
 import {
   NOT_CONNECTED,
   apiCreateEvent,
@@ -51,12 +53,15 @@ const sortSched = (a: Sched, b: Sched) => (a.date + a.time).localeCompare(b.date
 export default function NotedworkApp() {
   return (
     <ThemeProvider>
-      <Shell />
+      <LangProvider>
+        <NotedworkShell />
+      </LangProvider>
     </ThemeProvider>
   );
 }
 
-function Shell() {
+function NotedworkShell() {
+  const { t } = useLang();
   const [view, setView] = useState<ViewName>("beranda");
   const [sheet, setSheet] = useState<SheetId>(null);
   const [compose, setCompose] = useState<ComposePreset | null>(null);
@@ -90,6 +95,9 @@ function Shell() {
   const userSuffix = connected && connEmail ? `:${connEmail.toLowerCase()}` : GUEST_SUFFIX;
   const [tasks, setTasks] = useLocalStorage<Task[]>(`${LS.tasks}${userSuffix}`, []);
   const [routines, setRoutines] = useLocalStorage<Routine[]>(`${LS.routine}${userSuffix}`, []);
+  const [notes, setNotes] = useLocalStorage<Note[]>(`${LS.notes}${userSuffix}`, []);
+  // Catatan yang sedang diedit (null = mode tambah). Sheet dibuka via onEdit/onAdd.
+  const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [notif, setNotif] = useLocalStorage<boolean>(LS.notif, true);
   const [guestName, setGuestName] = useLocalStorage<string>(GUEST_NAME_KEY, "Tamu");
 
@@ -151,6 +159,7 @@ function Shell() {
     setCurrentMail(null);
     setEditingSched(null);
     setEditingTask(null);
+    setEditingNote(null);
     setSheet(null);
     setCompose(null);
   }, []);
@@ -792,7 +801,7 @@ function Shell() {
       <TopBar connected={connected} email={connEmail} onProfile={() => go("profil")} preview={preview} />
       <div className="shell">
         <div className="app">
-          <Sidebar view={view} go={go} />
+          <Sidebar view={view} go={go} t={t} />
           <main>
             {preview && (view === "beranda" || view === "email" || view === "tugas" || view === "kalender") && (
               <div className="banner" role="status">
@@ -885,6 +894,15 @@ function Shell() {
                 onToggleTask={toggleTask}
               />
             )}
+            {view === "catatan" && (
+              <NotesView
+                notes={notes}
+                t={t}
+                onAdd={() => { setEditingNote(null); setSheet("note"); }}
+                onEdit={(n) => { setEditingNote(n); setSheet("note"); }}
+                onDelete={(id) => setNotes((prev) => prev.filter((n) => n.id !== id))}
+              />
+            )}
             {view === "profil" && (
               <ProfileView
                 connected={connected}
@@ -904,17 +922,19 @@ function Shell() {
           </main>
         </div>
       </div>
-      <TabBar view={view} go={go} />
+      <TabBar view={view} go={go} t={t} />
       {/* Fab satu jalur via go("tambah"): sheet pilihan Email/Tugas/Jadwal. */}
       <Fab onAdd={() => go("tambah")} />
 
       {/* Semua sheet selalu dirender (login maupun preview); isi yang menentukan sumber data. */}
       <TambahSheet
         open={sheet === "tambah"}
+        t={t}
         onClose={() => setSheet(null)}
         onPick={(kind) => {
           if (kind === "mail") openCompose();
           else if (kind === "task") setSheet("task");
+          else if (kind === "note") { setEditingNote(null); setSheet("note"); }
           else {
             setEditingSched(null);
             setSheet("sched");
@@ -974,6 +994,21 @@ function Shell() {
           } finally {
             taskBusy.current = false;
           }
+        }}
+      />
+      <NoteSheet
+        open={sheet === "note"}
+        initial={editingNote}
+        t={t}
+        onClose={() => setSheet(null)}
+        onSave={(v) => {
+          if (editingNote) {
+            setNotes((prev) => prev.map((n) => (n.id === editingNote.id ? { ...n, title: v.title, body: v.body, updatedAt: Date.now() } : n)));
+          } else {
+            const now = Date.now();
+            setNotes((prev) => [{ id: `n-${now.toString(36)}`, title: v.title, body: v.body, updatedAt: now }, ...prev]);
+          }
+          setSheet(null);
         }}
       />
       <RoutineSheet
