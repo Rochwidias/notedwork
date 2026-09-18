@@ -22,9 +22,9 @@ const block = (sel) => {
 
 // 1. Navigasi: 6 tab utama (Hari Ini, Email, Tugas, Kalender, Catatan, Pengaturan).
 check(
-  "TabBar grid 5 kolom",
-  /repeat\(5/.test(block("\\.tabbar-inner")),
-  "masih repeat(4 — tab ke-5 wrap ke baris 2"
+  "TabBar grid 6 kolom",
+  /repeat\(6/.test(block("\\.tabbar-inner")),
+  "masih repeat(5 — tab ke-6 wrap ke baris 2"
 );
 check(
   "AppNav TABS 6 item",
@@ -140,7 +140,7 @@ check(
 );
 
 // 8. Tabbar HP ikon saja (Android/iOS): label visual disembunyikan biar muat
-// 5 kolom di 360px; nama aksesibel wajib tetap ada via aria-label.
+// 6 kolom di 360px; nama aksesibel wajib tetap ada via aria-label.
 check(
   "TabBar tombol punya aria-label",
   /aria-label=\{t\(n\.labelKey\)\}/.test(nav),

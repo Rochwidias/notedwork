@@ -1511,13 +1511,13 @@ button {
   max-width: 620px;
   margin: 0 auto;
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
 }
 .tabbar .tab .ic svg {
   width: 18px;
   height: 18px;
 }
-/* Tabbar HP (Android/iOS): ikon saja — label visual disembunyikan biar 5 tab
+/* Tabbar HP (Android/iOS): ikon saja — label visual disembunyikan biar 6 tab
    muat satu baris di 360px. Sidebar desktop tak tersentuh (labelnya bukan .lbl).
    Nama aksesibel tetap ada via aria-label di tombol. */
 .tabbar .tab {
