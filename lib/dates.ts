@@ -1,4 +1,5 @@
 import type { Prio, Sched, Task } from "./types";
+import type { Lang } from "./i18n";
 
 export const DAYS = ["Senin", "Selasa", "Rabu", "Kamis", "Jumat", "Sabtu", "Minggu"];
 
@@ -16,6 +17,24 @@ export const MONTHS = [
   "November",
   "Desember",
 ];
+
+export const DAYS_EN = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+export const MONTHS_EN = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];
+export const DOW3_ID = ["Sen", "Sel", "Rab", "Kam", "Jum", "Sab", "Min"];
+export const DOW3_EN = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
+export const DOW1_ID = ["S", "S", "R", "K", "J", "S", "M"];
+export const DOW1_EN = ["M", "T", "W", "T", "F", "S", "S"];
+export function dayNames(lang: Lang): string[] { return lang === "en" ? DAYS_EN : DAYS; }
+export function monthNames(lang: Lang): string[] { return lang === "en" ? MONTHS_EN : MONTHS; }
+export function dow3(lang: Lang): string[] { return lang === "en" ? DOW3_EN : DOW3_ID; }
+export function dowInitials(lang: Lang): string[] { return lang === "en" ? DOW1_EN : DOW1_ID; }
+export function prioLabel(p: Prio, lang: Lang): string {
+  if (lang === "en") return p === "tinggi" ? "High" : p === "sedang" ? "Medium" : "Low";
+  return PRIO[p][0];
+}
 
 export const PRIO: Record<Prio, [string, string]> = {
   tinggi: ["Tinggi", "hi"],
@@ -44,16 +63,16 @@ export function weekdayOf(iso: string): number {
   return ((d.getDay() + 6) % 7) + 1;
 }
 
-export function fmtDateID(iso: string): string {
+export function fmtDateID(iso: string, lang: Lang = "id"): string {
   const d = new Date(iso + "T00:00:00");
-  return d.toLocaleDateString("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
+  return d.toLocaleDateString(lang === "en" ? "en-US" : "id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 }
 
 /** Rentang jam agenda: "Seharian" (all-day) · "10:00–11:30 · besok" (overnight) · "10:00–11:30" · "10:00". */
-export function fmtSchedRange(s: Sched): string {
-  if (s.allDay) return "Seharian";
+export function fmtSchedRange(s: Sched, lang: Lang = "id"): string {
+  if (s.allDay) return (lang === "en" ? "All day" : "Seharian");
   if (s.overnight && s.endTime && /^\d{2}:\d{2}$/.test(s.endTime)) {
-    return `${s.time}–${s.endTime} · besok`;
+    return `${s.time}–${s.endTime} · ${lang === "en" ? "tomorrow" : "besok"}`;
   }
   if (s.endTime && /^\d{2}:\d{2}$/.test(s.endTime) && s.endTime !== s.time) {
     return `${s.time}–${s.endTime}`;
@@ -69,19 +88,20 @@ export function isOverdue(t: Task): boolean {
   return t.date + hm < todayStr() + nowHM();
 }
 
-export function taskBadge(t: Task): { txt: string; cls: string } {
-  if (t.done) return { txt: "Selesai", cls: "lo" };
+export function taskBadge(t: Task, lang: Lang = "id"): { txt: string; cls: string } {
+  const en = lang === "en";
+  if (t.done) return { txt: (en ? "Done" : "Selesai"), cls: "lo" };
   const dl = new Date(t.date + "T" + (t.time || "23:59") + ":00");
   const now = new Date();
   const diff = dl.getTime() - now.getTime();
   if (diff < 0) {
     const d = Math.ceil(-diff / 864e5);
-    return { txt: d <= 1 ? "Telat!" : "Telat " + d + " hari", cls: "over" };
+    return { txt: d <= 1 ? (en ? "Late!" : "Telat!") : (en ? `Late ${d} days` : `Telat ${d} hari`), cls: "over" };
   }
   const days = Math.floor(diff / 864e5);
-  if (days === 0) return { txt: "Hari ini • " + t.time, cls: "hi" };
-  if (days === 1) return { txt: "Besok • " + t.time, cls: "md" };
-  return { txt: "Sisa " + days + " hari", cls: "due" };
+  if (days === 0) return { txt: (en ? "Today • " : "Hari ini • ") + t.time, cls: "hi" };
+  if (days === 1) return { txt: (en ? "Tomorrow • " : "Besok • ") + t.time, cls: "md" };
+  return { txt: (en ? `${days} days left` : `Sisa ${days} hari`), cls: "due" };
 }
 
 const ESC_MAP: Record<string, string> = {
