@@ -306,6 +306,11 @@ button {
     transform: scale(1.05);
   }
 }
+.lang-tag {
+  font-size: 10px;
+  font-weight: 700;
+  margin-left: 2px;
+}
 .avatar {
   width: 44px;
   height: 44px;

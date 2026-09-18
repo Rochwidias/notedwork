@@ -277,10 +277,12 @@ export type MailMode = "tulis" | "balas" | "teruskan";
 /** Sheet pilihan tambah: Email / Tugas / Jadwal — satu pintu agar tombol ＋ konsisten. */
 export function TambahSheet({
   open,
+  t,
   onClose,
   onPick,
 }: {
   open: boolean;
+  t: (key: string) => string;
   onClose: () => void;
   onPick: (kind: "mail" | "task" | "sched" | "note") => void;
 }) {
@@ -298,45 +300,45 @@ export function TambahSheet({
   });
   return (
     <Shell id="ovTambah" open={open} onClose={onClose}>
-      <h2><span className="h-ic"><IconPlus size={15} /></span>Tambah Baru</h2>
-      <p className="hint">Pilih yang mau dibuat.</p>
+      <h2><span className="h-ic"><IconPlus size={15} /></span>{t("tambah.title")}</h2>
+      <p className="hint">{t("tambah.hint")}</p>
       <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
         <div className="row" style={{ cursor: "pointer" }} {...pick("mail", "Tulis email baru")}>
           <span className="h-ic"><IconMail size={18} /></span>
           <div>
-            <div className="t">Tulis Email</div>
-            <div className="s">Terkirim via Gmail</div>
+            <div className="t">{t("tambah.mail")}</div>
+            <div className="s">{t("tambah.mailSub")}</div>
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
         <div className="row" style={{ cursor: "pointer" }} {...pick("task", "Tambah tugas baru")}>
           <span className="h-ic"><IconTask size={18} /></span>
           <div>
-            <div className="t">Tambah Tugas</div>
-            <div className="s">Deadline muncul di Kalender</div>
+            <div className="t">{t("tambah.task")}</div>
+            <div className="s">{t("tambah.taskSub")}</div>
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
         <div className="row" style={{ cursor: "pointer" }} {...pick("sched", "Tambah jadwal baru")}>
           <span className="h-ic"><IconPlus size={18} /></span>
           <div>
-            <div className="t">Tambah Jadwal</div>
-            <div className="s">Agenda sekali saja</div>
+            <div className="t">{t("tambah.sched")}</div>
+            <div className="s">{t("tambah.schedSub")}</div>
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
         <div className="row" style={{ cursor: "pointer" }} {...pick("note", "Tambah catatan baru")}>
           <span className="h-ic"><IconNote size={18} /></span>
           <div>
-            <div className="t">Tambah Catatan</div>
-            <div className="s">Ide cepat tersimpan lokal</div>
+            <div className="t">{t("tambah.note")}</div>
+            <div className="s">{t("tambah.noteSub")}</div>
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
       </div>
       <div className="actions-single">
         <button type="button" className="btn ghost block" onClick={onClose}>
-          Tutup
+          {t("common.close")}
         </button>
       </div>
     </Shell>
@@ -694,12 +696,12 @@ export function NoteSheet({ open, initial, t, onClose, onSave }: NoteSheetProps)
           setTitleErr("");
         }}
       >
-        <label className="f" htmlFor="nTitle">Judul</label>
+        <label className="f" htmlFor="nTitle">{t("notes.fieldTitle")}</label>
         <input
           className="f"
           id="nTitle"
           maxLength={100}
-          placeholder="cth: Ide cepat"
+          placeholder={t("notes.titlePh")}
           value={title}
           onChange={(e) => {
             setTitle(e.target.value);
@@ -713,21 +715,21 @@ export function NoteSheet({ open, initial, t, onClose, onSave }: NoteSheetProps)
             {titleErr}
           </p>
         )}
-        <label className="f" htmlFor="nBody">Isi</label>
+        <label className="f" htmlFor="nBody">{t("notes.fieldBody")}</label>
         <textarea
           className="f"
           id="nBody"
           rows={6}
-          placeholder="Tulis catatan…"
+          placeholder={t("notes.bodyPh")}
           value={body}
           onChange={(e) => setBody(e.target.value)}
         />
         <div className="actions">
           <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
-            Tutup
+            {t("common.close")}
           </button>
           <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
-            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : "Simpan"}
+            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : t("common.save")}
           </button>
         </div>
       </form>

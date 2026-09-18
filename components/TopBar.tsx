@@ -1,7 +1,8 @@
 "use client";
 
 import { useTheme } from "./ThemeProvider";
-import { IconEye } from "./icons";
+import { useLang } from "./LangProvider";
+import { IconEye, IconGlobe } from "./icons";
 
 interface Props {
   connected: boolean;
@@ -12,6 +13,7 @@ interface Props {
 
 export default function TopBar({ connected, email, onProfile, preview }: Props) {
   const { theme, toggle } = useTheme();
+  const { lang, toggleLang, t } = useLang();
   const initial = (email?.trim()?.[0] ?? "").toUpperCase();
   return (
     <header className="topbar">
@@ -22,6 +24,15 @@ export default function TopBar({ connected, email, onProfile, preview }: Props) 
           <div className="brand-sub">Email &amp; Jadwal mahasiswa</div>
         </div>
         <div className="top-actions">
+          <button
+            className="icon-btn"
+            onClick={toggleLang}
+            title={lang === "id" ? t("topbar.langToEn") : t("topbar.langToId")}
+            aria-label={lang === "id" ? "Switch to English" : "Ganti ke Bahasa Indonesia"}
+          >
+            <IconGlobe size={16} />
+            <span className="lang-tag" aria-hidden="true">{lang.toUpperCase()}</span>
+          </button>
           <button
             className="icon-btn"
             onClick={toggle}

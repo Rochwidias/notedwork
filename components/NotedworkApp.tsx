@@ -929,6 +929,7 @@ function NotedworkShell() {
       {/* Semua sheet selalu dirender (login maupun preview); isi yang menentukan sumber data. */}
       <TambahSheet
         open={sheet === "tambah"}
+        t={t}
         onClose={() => setSheet(null)}
         onPick={(kind) => {
           if (kind === "mail") openCompose();
