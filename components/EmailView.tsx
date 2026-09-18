@@ -17,6 +17,7 @@ import {
   IconStar,
   IconX,
 } from "./icons";
+import { useLang } from "./LangProvider";
 
 export type MailStatus = "all" | "unread" | "star";
 
@@ -41,14 +42,6 @@ interface Props {
   updatedAt?: string | null;
 }
 
-const STATUS_DEF: { id: MailStatus; label: string; star?: boolean }[] = [
-  { id: "all", label: "Semua" },
-  { id: "unread", label: "Belum dibaca" },
-  { id: "star", label: "Bintang", star: true },
-  // Tanpa chip Arsip: arsip Gmail keluar dari hasil list server sehingga
-  // filter arsip selalu kosong (dead-end). Aksi arsip tetap ada di detail.
-];
-
 /** Warna avatar pengirim — hash dari nama/email agar beda tiap pengirim. */
 export function senderColor(key: string): string {
   const cols = ["#D97706", "#16a34a", "#d97706", "#7c5cff", "#ec4899", "#dc2626"];
@@ -68,13 +61,15 @@ function tagVariant(tag: string): string {
 }
 
 function EmailHead({ preview, updatedAt, total }: { preview?: boolean; updatedAt?: string | null; total?: number }) {
+  // Kepala ikut bahasa aktif.
+  const { t } = useLang();
   return (
     <div className="greet">
-      Email
+      {t("email.title")}
       <small>
         {preview
-          ? "Mode pratinjau — data contoh. Bukan data aslimu."
-          : `Gmail & Kalender asli${updatedAt ? ` • update ${updatedAt}` : ""}${total != null ? ` • ${total} email` : ""}`}
+          ? t("email.previewSub")
+          : `${t("email.liveBase")}${updatedAt ? `${t("email.updatedFrag")}${updatedAt}` : ""}${total != null ? `${t("email.countSep")}${total}${t("email.countUnit")}` : ""}`}
       </small>
     </div>
   );
@@ -82,6 +77,8 @@ function EmailHead({ preview, updatedAt, total }: { preview?: boolean; updatedAt
 
 export default function EmailView(props: Props) {
   const { mails, remote, preview } = props;
+  // Bahasa aktif untuk semua label di tampilan ini.
+  const { lang, t } = useLang();
   const [status, setStatus] = useState<MailStatus>("all");
   // Status pencarian ber-debounce: tampil "mencari…" saat user masih mengetik,
   // agar jelas request dikirim setelah berhenti — bukan tiap huruf.
@@ -127,6 +124,16 @@ export default function EmailView(props: Props) {
 
   const filtering = props.search.trim() !== "" || status !== "all";
 
+  // Definisi chip di dalam komponen karena hook tidak bisa dipanggil di level modul.
+  // Label diambil dari kamus agar ikut bahasa aktif; id dipertahankan sesuai tipe MailStatus.
+  const STATUS_DEF: { id: MailStatus; label: string; star?: boolean }[] = [
+    { id: "all", label: t("common.all") },
+    { id: "unread", label: t("email.filterUnread") },
+    { id: "star", label: t("email.filterStar"), star: true },
+    // Tanpa chip Arsip: arsip Gmail keluar dari hasil list server sehingga
+    // filter arsip selalu kosong (dead-end). Aksi arsip tetap ada di detail.
+  ];
+
   if (current) return <MailDetail m={current} preview={preview} {...props} />;
 
   return (
@@ -139,25 +146,25 @@ export default function EmailView(props: Props) {
         <input
           className="search"
           type="search"
-          placeholder="Cari email…"
-          aria-label="Cari email"
+          placeholder={t("email.searchPh")}
+          aria-label={t("email.searchLabel")}
           value={props.search}
           onChange={(e) => onSearchChange(e.target.value)}
         />
         {props.search && (
-          <button type="button" className="search-clear" aria-label="Bersihkan pencarian" onClick={() => onSearchChange("")}>
+          <button type="button" className="search-clear" aria-label={t("email.clearSearch")} onClick={() => onSearchChange("")}>
             <IconX size={15} />
           </button>
         )}
       </div>
       {(typing || remote.loading) && (
         <div className="search-count" role="status" aria-live="polite">
-          {typing ? "Mengetik…" : "Mencari…"}
+          {typing ? t("email.typing") : t("email.searching")}
         </div>
       )}
       {filtering && (
         <div className="search-count" role="status">
-          {list.length} hasil{props.search.trim() ? ` untuk “${props.search.trim()}”` : ""}
+          {list.length}{t("email.results")}{props.search.trim() ? `${t("email.resultsFor")}${props.search.trim()}”` : ""}
         </div>
       )}
       <div className="chips">
@@ -166,7 +173,7 @@ export default function EmailView(props: Props) {
             key={s.id}
             className={`chip${status === s.id ? " on" : ""}`}
             aria-pressed={status === s.id}
-            aria-label={`Tampilkan email ${s.label.toLowerCase()}${counts[s.id] ? `, ${counts[s.id]} email` : ""}`}
+            aria-label={`${t("email.showEmails")} ${s.label.toLowerCase()}${counts[s.id] ? `, ${counts[s.id]}${t("email.countUnit")}` : ""}`}
             onClick={() => setStatus(s.id)}
           >
             {s.star && (
@@ -181,7 +188,7 @@ export default function EmailView(props: Props) {
       </div>
       <div style={{ marginTop: 4 }}>
         {remote.loading && list.length === 0 ? (
-          <div aria-busy="true" aria-label="Memuat email">
+          <div aria-busy="true" aria-label={t("email.loading")}>
             <div className="skeleton">
               <div className="sk w-60" />
               <div className="sk w-90" />
@@ -200,7 +207,7 @@ export default function EmailView(props: Props) {
               className={`mail${m.unread ? "" : " read"}`}
               role="button"
               tabIndex={0}
-              aria-label={`${m.subj} — ${m.from}${m.unread ? ", belum dibaca" : ""}`}
+              aria-label={`${m.subj} — ${m.from}${m.unread ? t("email.unreadSuffix") : ""}`}
               onClick={() => props.onOpen(m.id)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" || e.key === " ") {
@@ -219,8 +226,8 @@ export default function EmailView(props: Props) {
                 )}
                 <button
                   className={`star${m.starred ? " lit" : ""}`}
-                  title="Bintang"
-                  aria-label={m.starred ? "Hapus bintang" : "Beri bintang"}
+                  title={t("email.starTitle")}
+                  aria-label={m.starred ? t("email.unstar") : t("email.giveStar")}
                   onClick={(e) => {
                     e.stopPropagation();
                     props.onToggleStar(m.id);
@@ -232,7 +239,7 @@ export default function EmailView(props: Props) {
               <div className="subj">{m.subj}</div>
               <div className="prev">{m.prev}</div>
               <div className="meta">
-                <span className="meta-tag">{m.tag ? `#${m.tag}` : "Tanpa label"}</span>
+                <span className="meta-tag">{m.tag ? `#${m.tag}` : t("email.noTag")}</span>
                 <span aria-hidden>•</span>
                 <span className="meta-time">{m.time}</span>
               </div>
@@ -243,17 +250,17 @@ export default function EmailView(props: Props) {
             <span className="empty-ic">
               <IconInbox size={22} />
             </span>
-            {filtering ? "Tidak ada hasil. Coba kata kunci atau filter lain." : "Tidak ada email di sini."}
+            {filtering ? t("email.noResults") : t("email.emptyHere")}
           </div>
         )}
         {remote.loading && list.length > 0 && (
           <div className="more-loading" role="status">
-            Memuat…
+            {t("email.loadingMore")}
           </div>
         )}
         {remote.hasMore && list.length > 0 && (
           <button className="btn ghost block" onClick={remote.onMore} style={{ marginTop: 6 }}>
-            {remote.loading ? "Memuat…" : "Muat lagi (50 berikutnya)"}
+            {remote.loading ? t("email.loadingMore") : t("email.loadMore")}
           </button>
         )}
       </div>
@@ -268,6 +275,8 @@ function MailDetail({
   preview,
   updatedAt,
 }: { m: Mail; preview?: boolean } & Pick<Props, "onBack" | "onAction" | "updatedAt">) {
+  // Bahasa aktif untuk label aksi di detail email.
+  const { t } = useLang();
   const isStar = !!m.starred;
   const [moreOpen, setMoreOpen] = useState(false);
   const totalBytes = useMemo(() => {
@@ -286,9 +295,9 @@ function MailDetail({
       <EmailHead preview={preview} updatedAt={updatedAt} />
       <div className="card">
         <div className="backbar">
-          <button className="link link-ic" onClick={onBack} aria-label="Kembali ke daftar email">
+          <button className="link link-ic" onClick={onBack} aria-label={t("email.backToListAria")}>
             <IconArrowLeft size={15} />
-            Kembali ke daftar
+            {t("email.backToList")}
           </button>
         </div>
         <div className="mail-detail" style={{ border: "none", boxShadow: "none", padding: "8px 0 0" }}>
@@ -301,7 +310,7 @@ function MailDetail({
             <div className="mhead-tx">
               <div className="who">
                 <span className="who-name">{m.from}</span>
-                {m.unread && <span className="badge">Baru</span>}
+                {m.unread && <span className="badge">{t("email.badgeNew")}</span>}
               </div>
               <div className="sub">
                 {[m.email ? `<${m.email}>` : null, m.time, `#${m.tag}`].filter(Boolean).join(" • ")}
@@ -318,7 +327,7 @@ function MailDetail({
                 <span className="h-ic">
                   <IconClip size={14} />
                 </span>
-                LAMPIRAN ({m.files.length}){totalBytes ? ` • ${totalBytes}` : ""}
+                {t("email.attach")}{m.files.length}){totalBytes ? ` • ${totalBytes}` : ""}
               </div>
               {m.files.map((f) => (
                 <div className="file" key={f.name}>
@@ -334,11 +343,11 @@ function MailDetail({
           <div className="mactions">
             <button className="btn primary sm btn-ic" onClick={() => onAction("reply")}>
               <IconReply size={15} />
-              Balas
+              {t("email.reply")}
             </button>
             <button className="btn soft sm btn-ic" onClick={() => onAction("fwd")}>
               <IconForward size={15} />
-              Teruskan
+              {t("email.forward")}
             </button>
             <div className="more-wrap">
               <button
@@ -346,11 +355,11 @@ function MailDetail({
                 className="btn ghost sm btn-ic"
                 aria-expanded={moreOpen}
                 aria-haspopup="menu"
-                aria-label="Aksi email lainnya"
+                aria-label={t("email.moreActions")}
                 onClick={() => setMoreOpen((v) => !v)}
               >
                 <IconDots size={15} />
-                Lainnya
+                {t("email.more")}
               </button>
               {moreOpen && (
                 <div className="more-menu" role="menu">
@@ -364,7 +373,7 @@ function MailDetail({
                     }}
                   >
                     <IconStar size={15} filled={isStar} />
-                    {isStar ? "Hapus bintang" : "Beri bintang"}
+                    {isStar ? t("email.unstar") : t("email.giveStar")}
                   </button>
                   <button
                     type="button"
@@ -376,7 +385,7 @@ function MailDetail({
                     }}
                   >
                     <IconArchive size={15} />
-                    Arsipkan
+                    {t("email.archive")}
                   </button>
                   <button
                     type="button"
@@ -388,7 +397,7 @@ function MailDetail({
                     }}
                   >
                     <IconEyeOff size={15} />
-                    Tandai belum dibaca
+                    {t("email.markUnread")}
                   </button>
                 </div>
               )}
