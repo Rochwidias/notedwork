@@ -729,7 +729,7 @@ export function NoteSheet({ open, initial, t, onClose, onSave }: NoteSheetProps)
             {t("common.close")}
           </button>
           <button type="submit" className="btn primary" disabled={saving} aria-busy={saving}>
-            {saving ? "Menyimpan…" : editing ? "Simpan perubahan" : t("common.save")}
+            {saving ? t("notes.saving") : editing ? t("notes.saveChanges") : t("common.save")}
           </button>
         </div>
       </form>

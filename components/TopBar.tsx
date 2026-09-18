@@ -21,23 +21,27 @@ export default function TopBar({ connected, email, onProfile, preview }: Props) 
         <div className="logo-badge">N</div>
         <div>
           <div className="brand-name">notedwork</div>
-          <div className="brand-sub">Email &amp; Jadwal mahasiswa</div>
+          <div className="brand-sub">{t("topbar.tagline")}</div>
         </div>
         <div className="top-actions">
           <button
-            className="icon-btn"
+            className="icon-btn lang-btn"
             onClick={toggleLang}
             title={lang === "id" ? t("topbar.langToEn") : t("topbar.langToId")}
-            aria-label={lang === "id" ? "Switch to English" : "Ganti ke Bahasa Indonesia"}
+            aria-label={lang === "id" ? t("topbar.langToEn") : t("topbar.langToId")}
           >
             <IconGlobe size={16} />
-            <span className="lang-tag" aria-hidden="true">{lang.toUpperCase()}</span>
+            <span className="lang-tag" aria-hidden="true">
+              <span className={lang === "id" ? "on" : "off"}>ID</span>
+              <span className="sep">/</span>
+              <span className={lang === "en" ? "on" : "off"}>EN</span>
+            </span>
           </button>
           <button
             className="icon-btn"
             onClick={toggle}
-            title="Ganti tema"
-            aria-label={theme === "dark" ? "Mode terang" : "Mode gelap"}
+            title={t("topbar.theme")}
+            aria-label={theme === "dark" ? t("topbar.themeToLight") : t("topbar.themeToDark")}
           >
             {theme === "dark" ? (
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -63,8 +67,8 @@ export default function TopBar({ connected, email, onProfile, preview }: Props) 
           <button
             className="avatar"
             onClick={onProfile}
-            title={preview ? "Koneksi Google" : "Profil"}
-            aria-label={preview ? "Koneksi Google" : "Profil"}
+            title={preview ? t("topbar.connect") : t("topbar.profile")}
+            aria-label={preview ? t("topbar.connect") : t("topbar.profile")}
           >
             {connected && initial ? initial : <IconEye size={18} />}
           </button>

@@ -311,6 +311,23 @@ button {
   font-weight: 700;
   margin-left: 2px;
 }
+/* Tombol bahasa ID/EN: pil melebar, bahasa aktif tegas, nonaktif redup. */
+.icon-btn.lang-btn {
+  width: auto;
+  min-width: 44px;
+  padding: 0 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.lang-tag .off {
+  opacity: 0.45;
+}
+.lang-tag .sep {
+  opacity: 0.5;
+  margin: 0 1px;
+}
 .avatar {
   width: 44px;
   height: 44px;
