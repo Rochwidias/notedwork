@@ -78,7 +78,7 @@ function EmailHead({ preview, updatedAt, total }: { preview?: boolean; updatedAt
 export default function EmailView(props: Props) {
   const { mails, remote, preview } = props;
   // Bahasa aktif untuk semua label di tampilan ini.
-  const { lang, t } = useLang();
+  const { t } = useLang();
   const [status, setStatus] = useState<MailStatus>("all");
   // Status pencarian ber-debounce: tampil "mencari…" saat user masih mengetik,
   // agar jelas request dikirim setelah berhenti — bukan tiap huruf.
