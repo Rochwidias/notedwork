@@ -6,9 +6,6 @@ import { RCOL, todayStr } from "./dates";
 /** Identitas tampilan tamu — label saja, jangan dipakai sebagai suffix kunci (pakai GUEST_SUFFIX). */
 export const PREVIEW_EMAIL = "tamu@contoh.id";
 
-/** Satu string prompt login untuk semua aksi tulis yang diblokir di preview. */
-export const PREVIEW_LOGIN_HINT = "Login dengan Google untuk memakai data aslimu";
-
 function isoPlus(days: number): string {
   const d = new Date();
   d.setDate(d.getDate() + days);

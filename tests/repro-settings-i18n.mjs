@@ -13,6 +13,7 @@ const taskBlock = sheets.slice(sheets.indexOf("export function TaskSheet"), shee
 const mailBlock = sheets.slice(sheets.indexOf("export function MailSheet"), sheets.indexOf("export function TaskSheet"));
 const routineBlock = sheets.slice(sheets.indexOf("export function RoutineSheet"));
 const settingsV = readFileSync("components/SettingsView.tsx", "utf8");
+const shell = readFileSync("components/NotedworkApp.tsx", "utf8");
 const checks = [
   ["tab settings keenam", /id:\s*"settings"/.test(nav) && nav.includes('labelKey: "nav.settings"')],
   ["tanpa profil di nav", !/id:\s*"profil"/.test(nav)],
@@ -40,6 +41,8 @@ const checks = [
   ["routine tanpa hardcode", !routineBlock.includes("Kelola Jadwal Rutin") && !routineBlock.includes("Mata kuliah") && !routineBlock.includes("Jadwal buatanmu (") && !routineBlock.includes("Menambah")],
   ["settings useLang", settingsV.includes("useLang()")],
   ["settings tanpa hardcode", !settingsV.includes("Galeri Tema") && !settingsV.includes("Hubungkan Google") && !settingsV.includes("Akun Google yang tersambung") && !settingsV.includes("Nama tampilan") && !settingsV.includes("Warna tampilan") && !settingsV.includes("Terang, gelap") && !settingsV.includes("Login dengan Google") && !settingsV.includes("Keluar dari pratinjau") && !settingsV.includes("Tersambung sebagai") && !settingsV.includes("Pembuat &") && !settingsV.includes(">Profil<")],
+  ["shell toast via t()", shell.includes('t("toast.taskDone")') && shell.includes('t("toast.schedSaved")') && shell.includes('t("toast.archived")') && shell.includes('t("toast.connected")')],
+  ["shell tanpa hardcode", !shell.includes('"Tugas selesai!"') && !shell.includes('"Diarsipkan"') && !shell.includes('"Jadwal tersimpan"') && !shell.includes('"Terhubung ke Google"') && !shell.includes('"Keluar dari pratinjau?') && !shell.includes("PREVIEW_LOGIN_HINT") && !shell.includes('"Mode pratinjau — data contoh"') && !shell.includes('"Login dengan Google"')],
 ];
 let fail = 0;
 for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`), ok || fail++;

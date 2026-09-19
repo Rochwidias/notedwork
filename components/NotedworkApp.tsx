@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ComposePreset, Mail, NavTarget, Note, Routine, Sched, Task, ViewName } from "@/lib/types";
 import { GUEST_NAME_KEY, GUEST_SUFFIX, LS, migrateRochaKeys } from "@/lib/data";
 import { RCOL, todayStr } from "@/lib/dates";
-import { PREVIEW_LOGIN_HINT, sampleRoutines, sampleScheds, sampleTasks, SAMPLE_MAILS } from "@/lib/preview";
+import { sampleRoutines, sampleScheds, sampleTasks, SAMPLE_MAILS } from "@/lib/preview";
 import { stripMailTokens } from "@/lib/emailBody";
 import { useLocalStorage } from "@/lib/store";
+import { LANG_KEY, STRINGS, pickLang, type Lang } from "@/lib/i18n";
 import { DEFAULT_REMINDER_MIN, dueReminders, type ReminderItem } from "@/lib/reminders";
 import ThemeProvider from "./ThemeProvider";
 import LangProvider, { useLang } from "./LangProvider";
@@ -217,12 +218,12 @@ function NotedworkShell() {
         if (e instanceof Error && e.name === "AbortError") return;
         if (stale()) return;
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("Gagal sync Google");
+        else toastMsg(t("toast.syncFail"));
       } finally {
         if (!stale()) setMailLoading(false);
       }
     },
-    [markDisconnected, nowHMID, toastMsg, browserTz]
+    [markDisconnected, nowHMID, toastMsg, browserTz, t]
   );
 
   // Migrasi kunci lama rocha.* → notedwork.* (sekali per browser) + hasil login OAuth.
@@ -235,17 +236,22 @@ function NotedworkShell() {
       // Tunda ke microtask agar bukan setState sinkron di dalam effect.
       // Kode pesan spesifik dari /api/auth/callback (simpan-token-gagal/buat-sesi-gagal/…).
       const detail = q.get("pesan");
+      let storedLang: Lang = "id";
+      try {
+        storedLang = pickLang(JSON.parse(localStorage.getItem(LANG_KEY) ?? "null")) ?? "id";
+      } catch { storedLang = "id"; }
+      const tt = (k: string) => STRINGS[storedLang][k] ?? STRINGS.id[k] ?? k;
       const failMsg =
         detail === "simpan-token-gagal"
-          ? "Login Google gagal saat simpan token — coba lagi"
+          ? tt("toast.loginTokenFail")
           : detail === "buat-sesi-gagal"
-            ? "Login Google gagal saat buat sesi — coba lagi"
+            ? tt("toast.loginSessionFail")
             : detail === "state-tidak-cocok"
-              ? "Login Google kedaluwarsa — coba lagi"
+              ? tt("toast.loginExpired")
               : detail === "ditolak-google"
-                ? "Login Google dibatalkan"
-                : "Login Google gagal, coba lagi";
-      const msg = auth === "ok" ? "Terhubung ke Google" : failMsg;
+                ? tt("toast.loginCancelled")
+                : tt("toast.loginFail");
+      const msg = auth === "ok" ? tt("toast.connected") : failMsg;
       queueMicrotask(() => toastMsg(msg));
       q.delete("auth");
       q.delete("pesan");
@@ -344,10 +350,10 @@ function NotedworkShell() {
         setRemoteMails((prev) => prev.map((m) => (m.id === id ? { ...full, unread: false } : m)));
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("Gagal memuat isi email");
+        else toastMsg(t("toast.mailBodyFail"));
       }
     },
-    [connected, markDisconnected, toastMsg]
+    [connected, markDisconnected, toastMsg, t]
   );
 
   const toggleStar = useCallback(
@@ -367,12 +373,12 @@ function NotedworkShell() {
       } catch (e) {
         setRemoteMails((prev) => prev.map((m) => (m.id === id ? { ...m, starred: isStar } : m)));
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("Gagal ubah bintang");
+        else toastMsg(t("toast.starFail"));
       } finally {
         starPending.current.delete(id);
       }
     },
-    [connected, remoteMails, markDisconnected, toastMsg]
+    [connected, remoteMails, markDisconnected, toastMsg, t]
   );
 
   const mailAction = useCallback(
@@ -389,7 +395,7 @@ function NotedworkShell() {
             {
               to: m.email,
               subj: "Re: " + stripRe(m.subj),
-              body: `\n\n— — —\nPada ${m.time}, ${m.from} menulis:\n${quoted}`,
+              body: `\n\n— — —\n${t("mail.quoteWrote").replace("{time}", m.time).replace("{from}", m.from)}\n${quoted}`,
             },
             "balas"
           );
@@ -398,7 +404,7 @@ function NotedworkShell() {
             {
               to: "",
               subj: "Fwd: " + stripRe(m.subj).replace(/^fwd:\s+/i, ""),
-              body: `\n\n— Diteruskan dari ${m.from} <${m.email}> —\n${quoted}`,
+              body: `\n\n${t("mail.quoteFwd").replace("{from}", m.from).replace("{email}", m.email)}\n${quoted}`,
             },
             "teruskan"
           );
@@ -407,11 +413,11 @@ function NotedworkShell() {
         } else if (act === "arch" || act === "del") {
           setPreviewMails((prev) => prev.filter((x) => x.id !== m.id));
           setCurrentMail(null);
-          toastMsg("Diarsipkan");
+          toastMsg(t("toast.archived"));
         } else if (act === "unread") {
           setPreviewMails((prev) => prev.map((x) => (x.id === m.id ? { ...x, unread: true } : x)));
           setCurrentMail(null);
-          toastMsg("Ditandai belum dibaca");
+          toastMsg(t("toast.markedUnread"));
         }
         return;
       }
@@ -426,7 +432,7 @@ function NotedworkShell() {
             {
               to: m.email,
               subj: "Re: " + stripRe(m.subj),
-              body: `\n\n— — —\nPada ${m.time}, ${m.from} menulis:\n${quoted}`,
+              body: `\n\n— — —\n${t("mail.quoteWrote").replace("{time}", m.time).replace("{from}", m.from)}\n${quoted}`,
             },
             "balas"
           );
@@ -435,7 +441,7 @@ function NotedworkShell() {
             {
               to: "",
               subj: "Fwd: " + stripRe(m.subj).replace(/^fwd:\s+/i, ""),
-              body: `\n\n— Diteruskan dari ${m.from} <${m.email}> —\n${quoted}`,
+              body: `\n\n${t("mail.quoteFwd").replace("{from}", m.from).replace("{email}", m.email)}\n${quoted}`,
             },
             "teruskan"
           );
@@ -445,58 +451,58 @@ function NotedworkShell() {
           await apiLabelMail(m.id, "archive");
           setRemoteMails((prev) => prev.filter((x) => x.id !== m.id));
           setCurrentMail(null);
-          toastMsg("Diarsipkan");
+          toastMsg(t("toast.archived"));
         } else if (act === "unread") {
           await apiLabelMail(m.id, "unread");
           setRemoteMails((prev) => prev.map((x) => (x.id === m.id ? { ...x, unread: true } : x)));
           setCurrentMail(null);
-          toastMsg("Ditandai belum dibaca");
+          toastMsg(t("toast.markedUnread"));
         } else if (act === "del") {
           // Tanpa hapus permanen — tombol hapus = arsip.
           await apiLabelMail(m.id, "archive");
           setRemoteMails((prev) => prev.filter((x) => x.id !== m.id));
           setCurrentMail(null);
-          toastMsg("Diarsipkan");
+          toastMsg(t("toast.archived"));
         }
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("Aksi Gmail gagal");
+        else toastMsg(t("toast.gmailFail"));
       }
     },
-    [currentMail, previewMails, remoteMails, connected, openCompose, toggleStar, toastMsg, markDisconnected]
+    [currentMail, previewMails, remoteMails, connected, openCompose, toggleStar, toastMsg, markDisconnected, t]
   );
 
   /* ---- tugas (milik sendiri, mulai kosong) ---- */
   const toggleTask = useCallback(
     (id: string) => {
       // Toast di LUAR updater (side-effect di dalam updater = bug lama).
-      const t = tasksRef.current.find((x) => x.id === id);
+      const found = tasksRef.current.find((x) => x.id === id);
       setTasks((prev) => prev.map((x) => (x.id === id ? { ...x, done: !x.done } : x)));
-      toastMsg(t ? (t.done ? "Dibuka lagi" : "Tugas selesai!") : "Tugas selesai!");
+      toastMsg(found ? (found.done ? t("toast.taskReopened") : t("toast.taskDone")) : t("toast.taskDone"));
     },
-    [setTasks, toastMsg]
+    [setTasks, toastMsg, t]
   );
 
   const delTask = useCallback(
     (id: string) => {
       setTasks((prev) => prev.filter((x) => x.id !== id));
-      toastMsg("Tugas dihapus");
+      toastMsg(t("toast.taskDeleted"));
     },
-    [setTasks, toastMsg]
+    [setTasks, toastMsg, t]
   );
 
   // Mulai edit tugas: isi TaskSheet dari data lama (mode edit, bukan reset).
   const startEditTask = useCallback(
     (id: string) => {
-      const t = tasksRef.current.find((x) => x.id === id);
-      if (!t) {
-        toastMsg("Tugas tidak ditemukan");
+      const found = tasksRef.current.find((x) => x.id === id);
+      if (!found) {
+        toastMsg(t("toast.taskMissing"));
         return;
       }
-      setEditingTask(t);
+      setEditingTask(found);
       setSheet("task");
     },
-    [toastMsg]
+    [toastMsg, t]
   );
 
   /* ---- jadwal: Google Calendar saat login, lokal saat preview ---- */
@@ -504,20 +510,20 @@ function NotedworkShell() {
     async (id: string) => {
       if (!connected) {
         setPreviewScheds((prev) => prev.filter((s) => s.id !== id));
-        toastMsg("Jadwal dihapus");
+        toastMsg(t("toast.schedDeleted"));
         return;
       }
       const gid = id.startsWith("g:") ? id : `g:${id}`;
       try {
         await apiDeleteEvent(gid);
         setRemoteEvents((prev) => prev.filter((s) => s.id !== id && s.id !== gid));
-        toastMsg("Event Google dihapus");
+        toastMsg(t("toast.gcalDeleted"));
       } catch (e) {
         if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-        else toastMsg("Gagal hapus event");
+        else toastMsg(t("toast.schedDeleteFail"));
       }
     },
-    [connected, toastMsg, markDisconnected, setPreviewScheds]
+    [connected, toastMsg, markDisconnected, setPreviewScheds, t]
   );
 
   const saveSched = useCallback(
@@ -548,7 +554,7 @@ function NotedworkShell() {
               } as Sched,
             ].sort(sortSched)
           );
-          toastMsg("Jadwal tersimpan");
+          toastMsg(t("toast.schedSaved"));
           setSelDate(v.date);
           setSheet(null);
           go("kalender");
@@ -557,10 +563,10 @@ function NotedworkShell() {
         try {
           const ev = await apiCreateEvent(v, browserTz());
           setRemoteEvents((prev) => [...prev, ev].sort(sortSched));
-          toastMsg("Jadwal tersimpan ke Google Calendar");
+          toastMsg(t("toast.schedSavedGcal"));
         } catch (e) {
           if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-          else toastMsg("Gagal simpan ke Google");
+          else toastMsg(t("toast.schedSaveFail"));
           return false;
         }
         setSelDate(v.date);
@@ -571,26 +577,26 @@ function NotedworkShell() {
         schedBusy.current = false;
       }
     },
-    [connected, toastMsg, markDisconnected, go, setPreviewScheds, browserTz]
+    [connected, toastMsg, markDisconnected, go, setPreviewScheds, browserTz, t]
   );
 
   const startEditSched = useCallback(
     (id: string) => {
       const s = (connected ? remoteEvents : previewScheds).find((x) => x.id === id);
       if (!s) {
-        toastMsg("Jadwal tidak ditemukan");
+        toastMsg(t("toast.schedMissing"));
         return;
       }
       setEditingSched(s);
       setSheet("sched");
     },
-    [connected, remoteEvents, previewScheds, toastMsg]
+    [connected, remoteEvents, previewScheds, toastMsg, t]
   );
 
   const saveEditSched = useCallback(
     async (v: SchedInput): Promise<boolean> => {
       if (!editingSched) {
-        toastMsg("Jadwal tidak ditemukan");
+        toastMsg(t("toast.schedMissing"));
         return false;
       }
       // Edit spam-klik: PATCH ganda = data balapan — tahan seperti save.
@@ -622,7 +628,7 @@ function NotedworkShell() {
               )
               .sort(sortSched)
           );
-          toastMsg("Jadwal diperbarui");
+          toastMsg(t("toast.schedUpdated"));
           setEditingSched(null);
           setSelDate(v.date);
           setSheet(null);
@@ -632,10 +638,10 @@ function NotedworkShell() {
         try {
           const ev = await apiUpdateEvent(editingSched.id, v, browserTz());
           setRemoteEvents((prev) => prev.map((s) => (s.id === editingSched.id ? ev : s)).sort(sortSched));
-          toastMsg("Jadwal diperbarui di Google Calendar");
+          toastMsg(t("toast.schedUpdatedGcal"));
         } catch (e) {
           if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-          else toastMsg(`Gagal ubah: ${e instanceof Error ? e.message : "unknown"}`);
+          else toastMsg(`${t("toast.updateFailPrefix")}${e instanceof Error ? e.message : "unknown"}`);
           return false;
         }
         setEditingSched(null);
@@ -647,7 +653,7 @@ function NotedworkShell() {
         schedBusy.current = false;
       }
     },
-    [connected, editingSched, toastMsg, markDisconnected, go, setPreviewScheds, browserTz]
+    [connected, editingSched, toastMsg, markDisconnected, go, setPreviewScheds, browserTz, t]
   );
 
   const saveMail = useCallback(
@@ -658,15 +664,15 @@ function NotedworkShell() {
       try {
         if (!connected) {
           // Satu-satunya guard login yang tersisa: sheet tetap terbuka, draf utuh.
-          toastMsg(PREVIEW_LOGIN_HINT);
+          toastMsg(t("toast.previewLoginHint"));
           return false;
         }
         try {
           await apiSendMail(to, subj, body);
-          toastMsg("Email terkirim via Gmail");
+          toastMsg(t("toast.mailSent"));
         } catch (e) {
           if (e instanceof Error && e.message === NOT_CONNECTED) markDisconnected();
-          else toastMsg(`Gagal kirim: ${e instanceof Error ? e.message : "unknown"}`);
+          else toastMsg(`${t("toast.sendFailPrefix")}${e instanceof Error ? e.message : "unknown"}`);
           return false;
         }
         setSheet(null);
@@ -675,7 +681,7 @@ function NotedworkShell() {
         mailBusy.current = false;
       }
     },
-    [connected, toastMsg, markDisconnected]
+    [connected, toastMsg, markDisconnected, t]
   );
 
   const logoutGoogle = useCallback(async () => {
@@ -684,14 +690,14 @@ function NotedworkShell() {
     setView("settings");
     // Bila server menolak (403 Origin) sesi+grant masih hidup: katakan jujur
     // agar user tak merasa sudah keluar lalu diam-diam terautentikasi lagi.
-    toastMsg(ok ? "Keluar dari Google" : "Keluar lokal; sesi server mungkin masih aktif — coba lagi");
-  }, [markDisconnected, toastMsg]);
+    toastMsg(ok ? t("toast.loggedOut") : t("toast.loggedOutLocal"));
+  }, [markDisconnected, toastMsg, t]);
 
   /** Keluar preview: minta konfirmasi dulu — editan tamu ikut terhapus. */
   const exitPreview = useCallback(() => {
     if (
       typeof window !== "undefined" &&
-      !window.confirm("Keluar dari pratinjau? Data tamu (tugas, rutin, jadwal contoh) akan dihapus dan dikembalikan ke contoh awal.")
+      !window.confirm(t("toast.exitPreviewConfirm"))
     )
       return;
     setTasks(sampleTasks());
@@ -701,15 +707,15 @@ function NotedworkShell() {
     setCurrentMail(null);
     setSearch("");
     setView("beranda");
-    toastMsg("Keluar dari mode pratinjau");
-  }, [setTasks, setRoutines, setPreviewScheds, toastMsg]);
+    toastMsg(t("toast.exitPreview"));
+  }, [setTasks, setRoutines, setPreviewScheds, toastMsg, t]);
 
   const delRoutine = useCallback(
     (id: string) => {
       setRoutines((prev) => prev.filter((r) => r.id !== id));
-      toastMsg("Jadwal rutin dihapus");
+      toastMsg(t("toast.routineDeleted"));
     },
-    [setRoutines, toastMsg]
+    [setRoutines, toastMsg, t]
   );
 
   /* ---- pengingat in-app: bunyi + getar + banner tiap 30 detik ---- */
@@ -754,7 +760,7 @@ function NotedworkShell() {
           const first = firedRef.current.values().next().value as string | undefined;
           if (first !== undefined) firedRef.current.delete(first);
         }
-        toastMsg("Pengingat: " + d.title);
+        toastMsg(t("toast.reminderPrefix") + d.title);
         try {
           navigator.vibrate?.(200);
         } catch {
@@ -788,7 +794,7 @@ function NotedworkShell() {
     tick();
     const iv = setInterval(tick, 30_000);
     return () => clearInterval(iv);
-  }, [schedules, tasks, notif, toastMsg]);
+  }, [schedules, tasks, notif, toastMsg, t]);
 
   const courses = useMemo(() => [...new Set(routines.map((r) => r.course))], [routines]);
   const myRoutines = useMemo(
@@ -809,16 +815,16 @@ function NotedworkShell() {
                   <IconEye size={24} />
                 </span>
                 <span style={{ flex: 1 }}>
-                  <span className="t">Mode pratinjau — data contoh</span>
+                  <span className="t">{t("banner.previewTitle")}</span>
                   <br />
-                  <span className="s">Bukan data aslimu. Login untuk Gmail &amp; Kalender asli.</span>
+                  <span className="s">{t("banner.previewSub")}</span>
                 </span>
                 <a
                   className="btn primary sm"
                   href="/api/auth/login"
                   style={{ textDecoration: "none", flex: "none" }}
                 >
-                  Login dengan Google
+                  {t("banner.login")}
                 </a>
               </div>
             )}
@@ -910,7 +916,7 @@ function NotedworkShell() {
                 email={connEmail}
                 notif={notif}
                 onToggleNotif={() => {
-                  toastMsg(notif ? "Pengingat dimatikan" : "Pengingat dinyalakan");
+                  toastMsg(notif ? t("toast.notifOff") : t("toast.notifOn"));
                   setNotif(!notif);
                 }}
                 onLogout={logoutGoogle}
@@ -984,13 +990,13 @@ function NotedworkShell() {
               );
               setEditingTask(null);
               setSheet(null);
-              toastMsg("Tugas diperbarui");
+              toastMsg(t("toast.taskUpdated"));
               go("tugas");
               return;
             }
             setTasks((prev) => [...prev, { id: genId("t"), ...v, reminderMin, done: false }]);
             setSheet(null);
-            toastMsg("Tugas tersimpan");
+            toastMsg(t("toast.taskSaved"));
             go("tugas");
           } finally {
             taskBusy.current = false;
@@ -1021,7 +1027,7 @@ function NotedworkShell() {
             ...prev,
             { id: genId("r"), ...v, color: RCOL[prev.length % RCOL.length] },
           ]);
-          toastMsg("Jadwal rutin tersimpan");
+          toastMsg(t("toast.routineSaved"));
         }}
         onDelete={delRoutine}
       />
