@@ -54,3 +54,6 @@ next-env.d.ts
 
 # logs
 server-log.txt
+.playwright-mcp/
+.superpowers/
+.claude/
