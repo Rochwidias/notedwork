@@ -5,6 +5,7 @@ import { readFileSync, existsSync } from "node:fs";
 import { resolveTimeZone, tzOffsetString } from "../lib/dates.ts";
 import { BATCH_URL, buildBatchBody, parseBatchResponse } from "../lib/gmailBatch.ts";
 import { resolveIdentityKeys, isMissingColumnError } from "../lib/identity.ts";
+import { STRINGS } from "../lib/i18n.ts";
 
 let failures = 0;
 function check(name, cond, detail = "") {
@@ -202,7 +203,7 @@ check("V8a: Routine.day 1..7 Minggu", read("../lib/types.ts").includes("7=Minggu
   check("V8b: logout cek Origin", lo.includes("origin") && lo.includes("403"));
   check("V8b: logout fallback Sec-Fetch-Site", lo.includes("sec-fetch-site"));
   check("V8b: logout terima origin request sendiri", lo.includes("reqOrigin"));
-  check("V8b: client jujur bila logout ditolak", read("../components/NotedworkApp.tsx").includes("masih aktif"));
+  check("V8b: client jujur bila logout ditolak", STRINGS.id["toast.loggedOutLocal"].includes("masih aktif") && read("../components/NotedworkApp.tsx").includes('t("toast.loggedOutLocal")'));
 }
 {
   const g = read("../lib/google.ts");
@@ -211,7 +212,7 @@ check("V8a: Routine.day 1..7 Minggu", read("../lib/types.ts").includes("7=Minggu
 }
 {
   const s = read("../components/Sheets.tsx");
-  check("V8d: TaskSheet mode edit", s.includes("Ubah Tugas") && /TaskSheet[\s\S]{0,1200}?initial/.test(s));
+  check("V8d: TaskSheet mode edit", STRINGS.id["task.editTitle"].includes("Ubah Tugas") && s.includes('t("task.editTitle")') && /TaskSheet[\s\S]{0,1200}?initial/.test(s));
   check("V8d: TasksView ada onEdit", read("../components/TasksView.tsx").includes("onEdit"));
   check("V8d: App kelola editingTask", read("../components/NotedworkApp.tsx").includes("editingTask"));
 }
@@ -220,11 +221,11 @@ check("V8a: Routine.day 1..7 Minggu", read("../lib/types.ts").includes("7=Minggu
   const s = read("../components/Sheets.tsx");
   check(
     "V9: SchedSheet jam mulai opsional",
-    /htmlFor="fTime"[\s\S]{0,200}?opsional/i.test(s) && !/id="fTime"[^>]*required/.test(s)
+    /htmlFor="fTime"/.test(s) && /opsional/i.test(STRINGS.id["common.optional"]) && s.includes('t("common.optional")') && !/id="fTime"[^>]*required/.test(s)
   );
   check(
     "V9: SchedSheet akhir opsional + hint rentang",
-    s.includes('id="fEnd"') && /rentang/i.test(s)
+    s.includes('id="fEnd"') && /rentang/i.test(STRINGS.id["sched.endHint"]) && s.includes('t("sched.endHint")')
   );
   check(
     "V9: SchedSheet error inline judul & akhir",
@@ -232,7 +233,7 @@ check("V8a: Routine.day 1..7 Minggu", read("../lib/types.ts").includes("7=Minggu
   );
   check(
     "V9: TaskSheet jam opsional + hint 23.59",
-    /htmlFor="tTime"[\s\S]{0,200}?opsional/i.test(s) && s.includes("23.59")
+    /htmlFor="tTime"/.test(s) && /opsional/i.test(STRINGS.id["common.optional"]) && STRINGS.id["task.timeHint"].includes("23.59") && s.includes('t("task.timeHint")')
   );
 }
 {
