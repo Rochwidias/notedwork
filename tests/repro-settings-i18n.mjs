@@ -20,6 +20,8 @@ const checks = [
   ["tanpa profil di nav", !/id:\s*"profil"/.test(nav)],
   ["ViewName settings", types.includes('"settings"') && !types.includes('"profil"')],
   ["sidebar via t()", nav.includes('t("nav.menu"') || nav.includes("t('nav.menu'")],
+  ["nav aria via t()", nav.includes('t("nav.main")') && !nav.includes("Navigasi utama")],
+  ["tambah aria via t()", sheets.includes('t("tambah.mailNew")') && sheets.includes('t("tambah.taskNew")') && sheets.includes('t("tambah.schedNew")') && sheets.includes('t("tambah.noteNew")') && !sheets.includes("Tulis email baru") && !sheets.includes("Tambah tugas baru") && !sheets.includes("Tambah jadwal baru") && !sheets.includes("Tambah catatan baru")],
   ["notes gear ke settings", notesView.includes("onOpenSettings") && notesView.includes("IconGear") && notesView.includes('t("notes.settings")')],
   ["notes gear wiring", readFileSync("components/NotedworkApp.tsx", "utf8").includes('go("settings")') && readFileSync("components/NotedworkApp.tsx", "utf8").includes("onOpenSettings")],
   ["dates helper EN", dates.includes('"Monday"') && dates.includes('"January"') && dates.includes('"Mon"') && dates.includes('"All day"') && dates.includes("en-US")],

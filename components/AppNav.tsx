@@ -25,7 +25,7 @@ export function Sidebar({
   t?: (k: string) => string;
 }) {
   return (
-    <nav className="sidebar" aria-label="Navigasi utama">
+    <nav className="sidebar" aria-label={t("nav.main")}>
       <div className="cap">{t("nav.menu")}</div>
       {MAIN_TABS.map((n) => (
         <button key={n.id} className={`tab${view === n.id ? " active" : ""}`} onClick={() => go(n.id)}>
@@ -56,7 +56,7 @@ export function TabBar({
   t?: (k: string) => string;
 }) {
   return (
-    <nav className="tabbar" aria-label="Navigasi utama">
+    <nav className="tabbar" aria-label={t("nav.main")}>
       <div className="tabbar-inner">
         {MAIN_TABS.map((n) => (
           <button

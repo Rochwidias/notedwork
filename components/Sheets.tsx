@@ -302,7 +302,7 @@ export function TambahSheet({
       <h2><span className="h-ic"><IconPlus size={15} /></span>{t("tambah.title")}</h2>
       <p className="hint">{t("tambah.hint")}</p>
       <div style={{ display: "grid", gap: 8, marginTop: 8 }}>
-        <div className="row" style={{ cursor: "pointer" }} {...pick("mail", "Tulis email baru")}>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("mail", t("tambah.mailNew"))}>
           <span className="h-ic"><IconMail size={18} /></span>
           <div>
             <div className="t">{t("tambah.mail")}</div>
@@ -310,7 +310,7 @@ export function TambahSheet({
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
-        <div className="row" style={{ cursor: "pointer" }} {...pick("task", "Tambah tugas baru")}>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("task", t("tambah.taskNew"))}>
           <span className="h-ic"><IconTask size={18} /></span>
           <div>
             <div className="t">{t("tambah.task")}</div>
@@ -318,7 +318,7 @@ export function TambahSheet({
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
-        <div className="row" style={{ cursor: "pointer" }} {...pick("sched", "Tambah jadwal baru")}>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("sched", t("tambah.schedNew"))}>
           <span className="h-ic"><IconPlus size={18} /></span>
           <div>
             <div className="t">{t("tambah.sched")}</div>
@@ -326,7 +326,7 @@ export function TambahSheet({
           </div>
           <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
         </div>
-        <div className="row" style={{ cursor: "pointer" }} {...pick("note", "Tambah catatan baru")}>
+        <div className="row" style={{ cursor: "pointer" }} {...pick("note", t("tambah.noteNew"))}>
           <span className="h-ic"><IconNote size={18} /></span>
           <div>
             <div className="t">{t("tambah.note")}</div>
