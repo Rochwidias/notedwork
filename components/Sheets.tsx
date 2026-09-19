@@ -53,8 +53,9 @@ function Shell({
 
 /** Sheet info statis (Kredit/Privasi/Syarat) — reuse Shell, tanpa route. */
 export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => void }) {
+  const { lang, t } = useLang();
   if (id == null) return null;
-  const doc = LEGAL[id];
+  const doc = LEGAL[lang][id];
   return (
     <Shell id="ovInfo" open onClose={onClose}>
       <h2>{doc.title}</h2>
@@ -66,7 +67,7 @@ export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => voi
       </div>
       <div className="actions-single">
         <button type="button" className="btn primary block" onClick={onClose}>
-          Tutup
+          {t("common.close")}
         </button>
       </div>
     </Shell>

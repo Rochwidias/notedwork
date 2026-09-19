@@ -14,6 +14,7 @@ const mailBlock = sheets.slice(sheets.indexOf("export function MailSheet"), shee
 const routineBlock = sheets.slice(sheets.indexOf("export function RoutineSheet"));
 const settingsV = readFileSync("components/SettingsView.tsx", "utf8");
 const shell = readFileSync("components/NotedworkApp.tsx", "utf8");
+const legal = readFileSync("lib/legal.ts", "utf8");
 const checks = [
   ["tab settings keenam", /id:\s*"settings"/.test(nav) && nav.includes('labelKey: "nav.settings"')],
   ["tanpa profil di nav", !/id:\s*"profil"/.test(nav)],
@@ -43,6 +44,9 @@ const checks = [
   ["settings tanpa hardcode", !settingsV.includes("Galeri Tema") && !settingsV.includes("Hubungkan Google") && !settingsV.includes("Akun Google yang tersambung") && !settingsV.includes("Nama tampilan") && !settingsV.includes("Warna tampilan") && !settingsV.includes("Terang, gelap") && !settingsV.includes("Login dengan Google") && !settingsV.includes("Keluar dari pratinjau") && !settingsV.includes("Tersambung sebagai") && !settingsV.includes("Pembuat &") && !settingsV.includes(">Profil<")],
   ["shell toast via t()", shell.includes('t("toast.taskDone")') && shell.includes('t("toast.schedSaved")') && shell.includes('t("toast.archived")') && shell.includes('t("toast.connected")')],
   ["shell tanpa hardcode", !shell.includes('"Tugas selesai!"') && !shell.includes('"Diarsipkan"') && !shell.includes('"Jadwal tersimpan"') && !shell.includes('"Terhubung ke Google"') && !shell.includes('"Keluar dari pratinjau?') && !shell.includes("PREVIEW_LOGIN_HINT") && !shell.includes('"Mode pratinjau — data contoh"') && !shell.includes('"Login dengan Google"')],
+  ["legal EN", legal.includes("Record<Lang, Record<LegalId, LegalDoc>>") && legal.includes('"Credits"') && legal.includes('"Updated September 2026"')],
+  ["legal ID konsisten", legal.includes("via Pengaturan → Keluar") && legal.includes("(Pengaturan → Syarat)") && !legal.includes("via Profil →") && !legal.includes("(Profil →")],
+  ["infosheet lang", sheets.includes("LEGAL[lang][id]")],
 ];
 let fail = 0;
 for (const [name, ok] of checks) console.log(`${ok ? "PASS" : "FAIL"} ${name}`), ok || fail++;
