@@ -749,7 +749,7 @@ export function RoutineSheet({
   mine: Routine[];
   onClose: () => void;
   onSave: (v: { course: string; day: number; start: string; end: string; room: string; lect: string }) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, title: string) => void;
 }) {
   const { lang, t } = useLang();
   const [course, setCourse] = useState("");
@@ -854,7 +854,7 @@ export function RoutineSheet({
                   {dayNames(lang)[r.day - 1] ?? ""} • {r.start}–{r.end}
                 </div>
               </div>
-              <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDelete(r.id)}>
+              <button className="del" style={{ marginLeft: "auto" }} onClick={() => onDelete(r.id, r.course)}>
                 {t("common.delete")}
               </button>
             </div>
@@ -862,6 +862,40 @@ export function RoutineSheet({
         ) : (
           <div className="empty">{t("routine.emptyMine")}</div>
         )}
+      </div>
+    </Shell>
+  );
+}
+
+/** Konfirmasi hapus generik: Batal (fokus awal) + Hapus danger. */
+export interface PendingDelete {
+  kind: "task" | "sched" | "routine" | "note";
+  id: string;
+  title: string;
+}
+
+export function ConfirmSheet({
+  pending,
+  onCancel,
+  onConfirm,
+}: {
+  pending: PendingDelete | null;
+  onCancel: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useLang();
+  if (!pending) return null;
+  return (
+    <Shell id="ovConfirm" open onClose={onCancel}>
+      <h2>{t("confirm.title")}</h2>
+      <p className="hint">{t("confirm.desc").replace("{title}", pending.title)}</p>
+      <div className="actions">
+        <button type="button" className="btn ghost" onClick={onCancel} autoFocus>
+          {t("common.cancel")}
+        </button>
+        <button type="button" className="btn danger" onClick={onConfirm}>
+          {t("common.delete")}
+        </button>
       </div>
     </Shell>
   );

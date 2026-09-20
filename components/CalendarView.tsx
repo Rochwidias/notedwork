@@ -24,8 +24,8 @@ interface Props {
   selDate: string;
   onSelectDate: (iso: string) => void;
   onEditSched: (id: string) => void;
-  onDeleteSched: (id: string) => void;
-  onDeleteRoutine: (id: string) => void;
+  onDeleteSched: (id: string, title: string) => void;
+  onDeleteRoutine: (id: string, title: string) => void;
   onAddSched: () => void;
   onManageRoutine: () => void;
   preview?: boolean;
@@ -107,6 +107,7 @@ export default function CalendarView({
       <div className="greet">
         {t("nav.calendar")}<small>{preview ? t("cal.previewSub") : t("cal.liveSub")}</small>
       </div>
+      <div className="cal-wrap">
       <div className="cal">
         <div className="cal-head">
           <button
@@ -176,7 +177,7 @@ export default function CalendarView({
           </span>
         </div>
       </div>
-      <div className="card">
+      <div className="card agenda">
         <div className="card-head">
           <h2>
             <span className="h-ic">
@@ -218,7 +219,7 @@ export default function CalendarView({
               <button className="edit del-ic" aria-label={`${t("common.edit")} ${s.title}`} onClick={() => onEditSched(s.id)}>
                 <IconPencil size={15} />
               </button>
-              <button className="del del-ic" aria-label={`${t("common.delete")} ${s.title}`} onClick={() => onDeleteSched(s.id)}>
+              <button className="del del-ic" aria-label={`${t("common.delete")} ${s.title}`} onClick={() => onDeleteSched(s.id, s.title)}>
                 <IconTrash size={15} />
               </button>
             </div>
@@ -300,6 +301,7 @@ export default function CalendarView({
           {t("cal.addSched")}
         </button>
       </div>
+      </div>
       <div className="card">
         <div className="card-head">
           <h2>
@@ -322,7 +324,7 @@ export default function CalendarView({
                     {r.lect ? ` • ${r.lect}` : ""}
                   </div>
                 </div>
-                <button className="del del-ic" aria-label={`${t("common.delete")} ${r.course}`} onClick={() => onDeleteRoutine(r.id)}>
+                <button className="del del-ic" aria-label={`${t("common.delete")} ${r.course}`} onClick={() => onDeleteRoutine(r.id, r.course)}>
                   <IconTrash size={15} />
                 </button>
               </div>

@@ -10,7 +10,6 @@ import {
   IconInbox,
   IconMail,
   IconPlus,
-  IconTask,
 } from "./icons";
 
 interface Props {
@@ -173,11 +172,11 @@ export default function HariIni({
       ? { label: taskBadge(overdue.task, lang).txt, title: overdue.task.title, sub: `${overdue.task.matkul} • ${fmtDateID(overdue.task.date, lang)}` }
       : null;
 
-  /* (b) 3 terpenting: tugas aktif dengan deadline paling dekat (time kosong = 23:59, konsisten isOverdue). */
-  const top3 = tasks
-    .filter((task) => !task.done)
-    .sort((a, b) => (a.date + (a.time || "23:59")).localeCompare(b.date + (b.time || "23:59")))
-    .slice(0, 3);
+  /* (b) agenda kompak 7 hari ke depan (jadwal saja, max 4) — ganti top3. */
+  const next7 = schedules
+    .filter((s) => s.date >= ts && s.date <= addDaysISO(ts, 7))
+    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
+    .slice(0, 4);
 
   /* (c) strip Senin–Minggu minggu berjalan. */
   const monday = addDaysISO(ts, -(wd - 1));
@@ -235,57 +234,45 @@ export default function HariIni({
         )}
       </div>
 
-      {/* (b) 3 terpenting — baris slim tanpa kartu per-baris agar muat 1 layar */}
+      {/* (b) agenda 7 hari — baris kompak tanpa kartu per-baris agar muat 1 layar */}
       <div className="card mini">
         <div className="card-head">
           <h2>
             <span className="h-ic">
-              <IconTask size={15} />
+              <IconCalendarDays size={15} />
             </span>
-            {t("home.top3")}
+            {t("home.next7")}
           </h2>
-          <button className="link link-ic" onClick={() => go("tugas")}>
-            {t("common.all")} <span aria-hidden="true">›</span>
+          <button className="link link-ic" onClick={goKal}>
+            {t("nav.calendar")} <span aria-hidden="true">›</span>
           </button>
         </div>
         <div>
-          {top3.map((task, i) => {
-            const b = taskBadge(task, lang);
-            const toggle = () => onToggleTask(task.id);
+          {next7.map((s) => {
+            const pick = () => {
+              onSelectDate(s.date);
+              goKal();
+            };
             return (
               <div
-                key={task.id}
-                className="trow slim"
+                key={s.id}
+                className="erow"
                 role="button"
                 tabIndex={0}
-                aria-label={`${i + 1}. ${task.title}${t("common.tapToComplete")}`}
-                onClick={toggle}
-                onKeyDown={onKey(toggle)}
+                aria-label={`${s.title}, ${fmtDateID(s.date, lang)}`}
+                onClick={pick}
+                onKeyDown={onKey(pick)}
               >
-                <span className="pill blue num" aria-hidden="true">
-                  {i + 1}
-                </span>
-                <button
-                  className="check sm"
-                  title={t("common.markDone")}
-                  aria-label={`${t("common.markDone")}: ${task.title}`}
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    toggle();
-                  }}
-                />
-                <div style={{ flex: 1 }}>
-                  <div className="tt">{task.title}</div>
-                  <div className="tm">
-                    {task.matkul} • {fmtDateID(task.date, lang)}
-                    {task.time ? ` • ${task.time}` : ""}
-                  </div>
+                <span className="dot" style={{ background: s.color || "#22c55e" }} />
+                <div>
+                  <div className="tt">{s.title}</div>
+                  <div className="ss">{fmtDateID(s.date, lang)} • {fmtSchedRange(s, lang)}</div>
                 </div>
-                <span className={`tag ${b.cls}`}>{b.txt}</span>
+                <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
               </div>
             );
           })}
-          {top3.length === 0 && <div className="empty">{t("home.allDone")}</div>}
+          {next7.length === 0 && <div className="empty">{t("home.next7empty")}</div>}
         </div>
       </div>
 

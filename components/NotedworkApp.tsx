@@ -20,7 +20,7 @@ import TasksView from "./TasksView";
 import CalendarView from "./CalendarView";
 import NotesView from "./NotesView";
 import SettingsView from "./SettingsView";
-import { MailSheet, NoteSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type SheetId } from "./Sheets";
+import { ConfirmSheet, MailSheet, NoteSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type PendingDelete, type SheetId } from "./Sheets";
 import {
   NOT_CONNECTED,
   apiCreateEvent,
@@ -65,6 +65,7 @@ function NotedworkShell() {
   const { t } = useLang();
   const [view, setView] = useState<ViewName>("beranda");
   const [sheet, setSheet] = useState<SheetId>(null);
+  const [confirmDel, setConfirmDel] = useState<PendingDelete | null>(null);
   const [compose, setCompose] = useState<ComposePreset | null>(null);
   /** Mode sheet email — ditentukan pemanggil openCompose, bukan ditebak dari preset. */
   const [composeMode, setComposeMode] = useState<"tulis" | "balas" | "teruskan">("tulis");
@@ -718,6 +719,26 @@ function NotedworkShell() {
     [setRoutines, toastMsg, t]
   );
 
+  /** Minta konfirmasi hapus dulu (sheet) — eksekusi jalan pas user tekan Hapus. */
+  const askDelete = useCallback(
+    (kind: PendingDelete["kind"], id: string, title: string) =>
+      setConfirmDel({ kind, id, title: title.trim() || id }),
+    []
+  );
+
+  const doConfirmDelete = useCallback(() => {
+    if (!confirmDel) return;
+    const { kind, id } = confirmDel;
+    setConfirmDel(null);
+    if (kind === "task") delTask(id);
+    else if (kind === "sched") void delSched(id);
+    else if (kind === "routine") delRoutine(id);
+    else {
+      setNotes((prev) => prev.filter((n) => n.id !== id));
+      toastMsg(t("toast.noteDeleted"));
+    }
+  }, [confirmDel, delTask, delSched, delRoutine, setNotes, toastMsg, t]);
+
   /* ---- pengingat in-app: bunyi + getar + banner tiap 30 detik ---- */
   useEffect(() => {
     if (!notif) return;
@@ -872,7 +893,7 @@ function NotedworkShell() {
                 tasks={tasks}
                 routines={routines}
                 onToggle={toggleTask}
-                onDelete={delTask}
+                onDelete={(id, title) => askDelete("task", id, title)}
                 onAdd={() => {
                   setEditingTask(null);
                   setSheet("task");
@@ -889,8 +910,8 @@ function NotedworkShell() {
                 selDate={selDate}
                 onSelectDate={(iso) => setSelDate(iso)}
                 onEditSched={startEditSched}
-                onDeleteSched={delSched}
-                onDeleteRoutine={delRoutine}
+                onDeleteSched={(id, title) => askDelete("sched", id, title)}
+                onDeleteRoutine={(id, title) => askDelete("routine", id, title)}
                 onAddSched={() => {
                   setEditingSched(null);
                   setSheet("sched");
@@ -906,7 +927,7 @@ function NotedworkShell() {
                 t={t}
                 onAdd={() => { setEditingNote(null); setSheet("note"); }}
                 onEdit={(n) => { setEditingNote(n); setSheet("note"); }}
-                onDelete={(id) => setNotes((prev) => prev.filter((n) => n.id !== id))}
+                onDelete={(id, title) => askDelete("note", id, title)}
               />
             )}
             {view === "settings" && (
@@ -1028,7 +1049,12 @@ function NotedworkShell() {
           ]);
           toastMsg(t("toast.routineSaved"));
         }}
-        onDelete={delRoutine}
+        onDelete={(id, title) => askDelete("routine", id, title)}
+      />
+      <ConfirmSheet
+        pending={confirmDel}
+        onCancel={() => setConfirmDel(null)}
+        onConfirm={doConfirmDelete}
       />
 
       <div className={`toast${toast ? " show" : ""}`} role="status" aria-live="polite">

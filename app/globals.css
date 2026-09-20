@@ -2088,3 +2088,43 @@ textarea.f.compose-body {
 .empty .hint {
   font-size: 12.5px;
 }
+
+/* ── Kalender: kalender + agenda sebelahan di layar lebar ── */
+@media (min-width: 700px) {
+  .cal-wrap {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+  }
+  .cal-wrap > .cal {
+    flex: 1.15;
+    min-width: 0;
+  }
+  .cal-wrap > .card.agenda {
+    flex: 1;
+    min-width: 0;
+  }
+}
+
+/* ── Kalender portrait HP: padatkan biar muat 1 layar ── */
+@media (max-width: 699px) {
+  .cal-wrap {
+    display: grid;
+    gap: 10px;
+  }
+  .cal-wrap > .cal {
+    padding: 10px;
+  }
+  .cal-wrap .day {
+    height: 32px;
+    min-height: 32px;
+    font-size: 12px;
+  }
+  .cal-wrap > .card.agenda {
+    padding: 10px 12px;
+  }
+  .cal-wrap .card.agenda .row {
+    padding: 6px 0;
+    gap: 8px;
+  }
+}

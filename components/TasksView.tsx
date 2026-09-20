@@ -12,7 +12,7 @@ interface Props {
   tasks: Task[];
   routines: Routine[];
   onToggle: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, title: string) => void;
   onAdd: () => void;
   onEdit: (id: string) => void;
   preview?: boolean;
@@ -128,7 +128,7 @@ export default function TasksView({ tasks, routines, onToggle, onDelete, onAdd, 
                   aria-label={`${t("common.delete")} ${task.title}`}
                   onClick={(e) => {
                     e.stopPropagation();
-                    onDelete(task.id);
+                    onDelete(task.id, task.title);
                   }}
                 >
                   <IconX size={14} />

@@ -8,7 +8,7 @@ interface NotesViewProps {
   t: (key: string) => string;
   onAdd: () => void;
   onEdit: (note: Note) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string, title: string) => void;
 }
 
 export default function NotesView({ notes, t, onAdd, onEdit, onDelete }: NotesViewProps) {
@@ -32,11 +32,11 @@ export default function NotesView({ notes, t, onAdd, onEdit, onDelete }: NotesVi
               <div className="t">{n.title}</div>
               <div className="s">{n.body}</div>
               <div className="row-actions">
-                <button type="button" className="btn ghost" onClick={() => onEdit(n)} aria-label={`${t("notes.edit")}: ${n.title}`}>
-                  <IconPencil size={15} /> {t("notes.edit")}
+                <button type="button" className="edit del-ic" onClick={() => onEdit(n)} aria-label={`${t("notes.edit")}: ${n.title}`}>
+                  <IconPencil size={15} />
                 </button>
-                <button type="button" className="btn ghost danger" onClick={() => onDelete(n.id)} aria-label={`${t("notes.delete")}: ${n.title}`}>
-                  <IconTrash size={15} /> {t("notes.delete")}
+                <button type="button" className="del del-ic" onClick={() => onDelete(n.id, n.title)} aria-label={`${t("notes.delete")}: ${n.title}`}>
+                  <IconTrash size={15} />
                 </button>
               </div>
             </li>
