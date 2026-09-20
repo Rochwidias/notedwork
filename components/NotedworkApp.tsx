@@ -811,6 +811,47 @@ function NotedworkShell() {
   );
 
   /* ---- pengingat in-app: bunyi + getar + banner tiap 30 detik ---- */
+  /** Tembak satu notifikasi lewat jalur yang sama (dipakai interval + tombol Tes). */
+  const fireReminderAlert = useCallback(
+    (title: string) => {
+      toastMsg(t("toast.reminderPrefix") + title);
+      try {
+        navigator.vibrate?.(200);
+      } catch {
+        /* abaikan: browser tanpa vibrate */
+      }
+      try {
+        const AC =
+          window.AudioContext ??
+          (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+        if (!AC) return;
+        const ctx = new AC();
+        const o = ctx.createOscillator();
+        const g = ctx.createGain();
+        o.connect(g);
+        g.connect(ctx.destination);
+        o.frequency.value = 880;
+        const t0 = ctx.currentTime;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.02);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
+        o.start(t0);
+        o.stop(t0 + 0.32);
+        o.onended = () => {
+          void ctx.close().catch(() => null);
+        };
+      } catch {
+        /* abaikan: autoplay policy / tanpa WebAudio */
+      }
+    },
+    [toastMsg, t]
+  );
+
+  /** Tombol Tes di Pengaturan: tembak contoh walau saklar pengingat mati. */
+  const testNotif = useCallback(() => {
+    fireReminderAlert(t("settings.testNotifSample"));
+  }, [fireReminderAlert, t]);
+
   useEffect(() => {
     if (!notif) return;
     const tick = () => {
@@ -852,41 +893,13 @@ function NotedworkShell() {
           const first = firedRef.current.values().next().value as string | undefined;
           if (first !== undefined) firedRef.current.delete(first);
         }
-        toastMsg(t("toast.reminderPrefix") + d.title);
-        try {
-          navigator.vibrate?.(200);
-        } catch {
-          /* abaikan: browser tanpa vibrate */
-        }
-        try {
-          const AC =
-            window.AudioContext ??
-            (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-          if (!AC) continue;
-          const ctx = new AC();
-          const o = ctx.createOscillator();
-          const g = ctx.createGain();
-          o.connect(g);
-          g.connect(ctx.destination);
-          o.frequency.value = 880;
-          const t0 = ctx.currentTime;
-          g.gain.setValueAtTime(0.0001, t0);
-          g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.02);
-          g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.3);
-          o.start(t0);
-          o.stop(t0 + 0.32);
-          o.onended = () => {
-            void ctx.close().catch(() => null);
-          };
-        } catch {
-          /* abaikan: autoplay policy / tanpa WebAudio */
-        }
+        fireReminderAlert(d.title);
       }
     };
     tick();
     const iv = setInterval(tick, 30_000);
     return () => clearInterval(iv);
-  }, [schedules, tasks, notif, toastMsg, t]);
+  }, [schedules, tasks, notif, fireReminderAlert]);
 
   const courses = useMemo(() => [...new Set(routines.map((r) => r.course))], [routines]);
   const myRoutines = useMemo(
@@ -1026,6 +1039,7 @@ function NotedworkShell() {
                   toastMsg(notif ? t("toast.notifOff") : t("toast.notifOn"));
                   setNotif(!notif);
                 }}
+                onTestNotif={testNotif}
                 onLogout={logoutGoogle}
                 preview={preview}
                 guestName={guestName}

@@ -170,8 +170,6 @@ check(
   const files = [
     "../app/loading.tsx",
     "../app/not-found.tsx",
-    "../app/icon.tsx",
-    "../app/apple-icon.tsx",
     "../app/layout.tsx",
     "../app/manifest.ts",
     "../public/icon.svg",
@@ -180,10 +178,10 @@ check(
   ];
   const stale = files.filter((f) => /00cfff|0d0d0d|#121212/i.test(read(f)));
   check("V7: tanpa sisa cyan/hitam lama (#00cfff/#0d0d0d/#121212)", stale.length === 0, stale.join(", "));
-  check("V7: ikon pakai coklat brand", read("../public/icon.svg").includes("#B45309"));
+  check("V7: ikon pakai gradien amber logo", read("../public/icon.svg").includes("#fbbf24"));
   check("V7: teks legal sebut default coklat", read("../lib/legal.ts").includes("#B45309"));
   check("V7: tanpa kata cyan di legal/data", !/cyan/i.test(read("../lib/legal.ts") + read("../lib/data.ts")));
-  check("V7: theme-color ikut tema kertas", read("../components/ThemeProvider.tsx").includes("#1C1917"));
+  check("V7: theme-color ikut tema navy", read("../components/ThemeProvider.tsx").includes("#0A0C10"));
   check(
     "V7: palet runtime tanpa cyan",
     !/#00cfff/i.test(

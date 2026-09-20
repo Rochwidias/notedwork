@@ -23,8 +23,16 @@ export const GUEST_SUFFIX = ":preview";
 /** Nama tampilan tamu (lokal, bisa diubah di Pengaturan). */
 export const GUEST_NAME_KEY = "notedwork.guestName";
 
-/** Accent warna pilihan user (hex, default coklat brand). */
+/** Accent warna pilihan user (hex, default amber logo). */
 export const ACCENT_KEY = "notedwork.accent";
+
+/** Warna font kustom per mode (hex, unset = ikut token tema). */
+export const INK_DARK_KEY = "notedwork.inkDark";
+export const INK_LIGHT_KEY = "notedwork.inkLight";
+
+/** Warna latar kustom per mode (hex, unset = ikut token tema). */
+export const BG_DARK_KEY = "notedwork.bgDark";
+export const BG_LIGHT_KEY = "notedwork.bgLight";
 
 /**
  * Migrasi one-time kunci lama rocha.* → notedwork.* tanpa hilang data.

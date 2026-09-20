@@ -18,7 +18,7 @@ export default function TopBar({ connected, email, onProfile, preview }: Props) 
   return (
     <header className="topbar">
       <div className="topbar-inner">
-        <div className="logo-badge">N</div>
+        <img className="logo-badge" src="/icon.svg" alt="notedwork" width={40} height={40} />
         <div>
           <div className="brand-name">notedwork</div>
           <div className="brand-sub">{t("topbar.tagline")}</div>

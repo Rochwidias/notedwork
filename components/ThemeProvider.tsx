@@ -2,7 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
 import type { Theme } from "@/lib/types";
-import { ACCENT_KEY, LS } from "@/lib/data";
+import { ACCENT_KEY, BG_DARK_KEY, BG_LIGHT_KEY, INK_DARK_KEY, INK_LIGHT_KEY, LS } from "@/lib/data";
 
 interface ThemeContextValue {
   /** Preferensi tema ("dark" | "light" | "auto"); tema efektif di-resolve ke DOM. */
@@ -11,12 +11,20 @@ interface ThemeContextValue {
   setTheme: (t: Theme) => void;
   accent: string;
   setAccent: (hex: string) => void;
+  /** Tema efektif yang sedang tampil ("auto" sudah di-resolve). */
+  effective: "dark" | "light";
+  /** Warna font kustom mode aktif (null = ikut token tema). */
+  ink: string | null;
+  setInk: (hex: string | null) => void;
+  /** Warna latar kustom mode aktif (null = ikut token tema). */
+  bg: string | null;
+  setBg: (hex: string | null) => void;
 }
 
-export const DEFAULT_ACCENT = "#B45309";
+export const DEFAULT_ACCENT = "#D97706";
 
-/** Preset aksen unisex (Kertas Netral): coklat default + biru + hijau + ungu + merah tua. */
-export const ACCENT_PRESETS = ["#B45309", "#1D4ED8", "#15803D", "#7C3AED", "#B91C1C"];
+/** Preset aksen selaras logo (Amber Emas): amber default + biru + hijau + ungu + merah tua. */
+export const ACCENT_PRESETS = ["#D97706", "#1D4ED8", "#15803D", "#7C3AED", "#B91C1C"];
 
 const ThemeContext = createContext<ThemeContextValue>({
   theme: "dark",
@@ -24,7 +32,18 @@ const ThemeContext = createContext<ThemeContextValue>({
   setTheme: () => {},
   accent: DEFAULT_ACCENT,
   setAccent: () => {},
+  effective: "dark",
+  ink: null,
+  setInk: () => {},
+  bg: null,
+  setBg: () => {},
 });
+
+/** Preset warna font selaras logo: kertas, amber, slate, pekat. */
+export const FONT_PRESETS = ["#F8FAFC", "#FBBF24", "#94A3B8", "#0D0D0D"];
+
+/** Preset warna latar selaras logo: navy, slate, kertas, putih. */
+export const BG_PRESETS = ["#0A0C10", "#161922", "#F7F4EE", "#FFFFFF"];
 
 export function useTheme() {
   return useContext(ThemeContext);
@@ -123,6 +142,50 @@ function mixWith(base: string, other: string, t: number): string {
   return "#" + mix.map((v) => v.toString(16).padStart(2, "0")).join("").toUpperCase();
 }
 
+/**
+ * Terapkan override tampilan kustom mode aktif.
+ * - ink: timpa --ink; --muted diturunkan (ink 62% + bg) agar teks sekunder harmonis.
+ * - bg: timpa --bg + turunkan --card/--card-2/--input/--topbar/--line dari bg+ink.
+ * - null = hapus override (kembali ke token CSS tema).
+ */
+function applyCustom(ink: string | null, bg: string | null, dark: boolean): void {
+  const root = document.documentElement.style;
+  const baseBg = bg ?? (dark ? "#0A0C10" : "#F7F4EE");
+  const baseInk = ink ?? (dark ? "#F8FAFC" : "#292524");
+  if (ink) {
+    root.setProperty("--ink", ink);
+    root.setProperty("--muted", `color-mix(in srgb, ${ink} 62%, ${baseBg})`);
+  } else {
+    root.removeProperty("--ink");
+    root.removeProperty("--muted");
+  }
+  if (bg) {
+    root.setProperty("--bg", bg);
+    root.setProperty("--card", `color-mix(in srgb, ${bg} 92%, ${baseInk})`);
+    root.setProperty("--card-2", `color-mix(in srgb, ${bg} 86%, ${baseInk})`);
+    root.setProperty("--input", `color-mix(in srgb, ${bg} 92%, ${baseInk})`);
+    root.setProperty("--topbar", `color-mix(in srgb, ${bg} 88%, transparent)`);
+    root.setProperty("--line", `color-mix(in srgb, ${bg} 80%, ${baseInk})`);
+  } else {
+    root.removeProperty("--bg");
+    root.removeProperty("--card");
+    root.removeProperty("--card-2");
+    root.removeProperty("--input");
+    root.removeProperty("--topbar");
+    root.removeProperty("--line");
+  }
+}
+
+/** Baca override kustom tersimpan (null = belum pernah diatur). */
+function getStoredCustom(key: string): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return sanitizeHex(localStorage.getItem(key));
+  } catch {
+    return null;
+  }
+}
+
 function getStoredAccent(): string | null {
   if (typeof window === "undefined") return null;
   try {
@@ -135,6 +198,10 @@ function getStoredAccent(): string | null {
 export default function ThemeProvider({ children }: { children: React.ReactNode }) {
   const [theme, setTheme] = useState<Theme>("dark");
   const [accent, setAccentState] = useState<string>(DEFAULT_ACCENT);
+  const [inkDark, setInkDark] = useState<string | null>(null);
+  const [inkLight, setInkLight] = useState<string | null>(null);
+  const [bgDark, setBgDark] = useState<string | null>(null);
+  const [bgLight, setBgLight] = useState<string | null>(null);
   // Pilihan sistem saat ini — lazy-init dari matchMedia agar tanpa setState di effect.
   const [system, setSystem] = useState<"dark" | "light">(() => getSystemTheme());
 
@@ -148,6 +215,14 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     if (acc) {
       setAccentState(acc);
     }
+    const id = getStoredCustom(INK_DARK_KEY);
+    if (id) setInkDark(id);
+    const il = getStoredCustom(INK_LIGHT_KEY);
+    if (il) setInkLight(il);
+    const bd = getStoredCustom(BG_DARK_KEY);
+    if (bd) setBgDark(bd);
+    const bl = getStoredCustom(BG_LIGHT_KEY);
+    if (bl) setBgLight(bl);
   }, []);
 
   // Langganan prefers-color-scheme: hanya callback perubahan yang setState.
@@ -169,9 +244,11 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     } catch {
       /* abaikan */
     }
-    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", effective === "dark" ? "#1C1917" : "#F7F4EE");
+    document.querySelector('meta[name="theme-color"]')?.setAttribute("content", effective === "dark" ? "#0A0C10" : "#F7F4EE");
     applyAccent(accent, effective === "dark");
-  }, [theme, effective, accent]);
+    const dark = effective === "dark";
+    applyCustom(dark ? inkDark : inkLight, dark ? bgDark : bgLight, dark);
+  }, [theme, effective, accent, inkDark, inkLight, bgDark, bgLight]);
 
   const toggle = useCallback(() => {
     // Non-breaking: toggle selalu dark<->light ("auto" → ikut efektif lalu dibalik).
@@ -189,5 +266,54 @@ export default function ThemeProvider({ children }: { children: React.ReactNode 
     }
   }, []);
 
-  return <ThemeContext.Provider value={{ theme, toggle, setTheme, accent, setAccent }}>{children}</ThemeContext.Provider>;
+  // Tulis override ke kunci mode efektif; null/"" = reset ke token tema.
+  const setCustomForMode = useCallback(
+    (
+      hex: string | null,
+      setDark: (v: string | null) => void,
+      setLight: (v: string | null) => void,
+      keyDark: string,
+      keyLight: string
+    ) => {
+      const clean = hex ? sanitizeHex(hex) : null;
+      const dark = effective === "dark";
+      (dark ? setDark : setLight)(clean);
+      try {
+        if (clean) localStorage.setItem(dark ? keyDark : keyLight, JSON.stringify(clean));
+        else localStorage.removeItem(dark ? keyDark : keyLight);
+      } catch {
+        /* abaikan */
+      }
+    },
+    [effective]
+  );
+
+  const setInk = useCallback(
+    (hex: string | null) => setCustomForMode(hex, setInkDark, setInkLight, INK_DARK_KEY, INK_LIGHT_KEY),
+    [setCustomForMode]
+  );
+  const setBg = useCallback(
+    (hex: string | null) => setCustomForMode(hex, setBgDark, setBgLight, BG_DARK_KEY, BG_LIGHT_KEY),
+    [setCustomForMode]
+  );
+
+  const dark = effective === "dark";
+  return (
+    <ThemeContext.Provider
+      value={{
+        theme,
+        toggle,
+        setTheme,
+        accent,
+        setAccent,
+        effective,
+        ink: dark ? inkDark : inkLight,
+        setInk,
+        bg: dark ? bgDark : bgLight,
+        setBg,
+      }}
+    >
+      {children}
+    </ThemeContext.Provider>
+  );
 }
