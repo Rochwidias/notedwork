@@ -10,6 +10,7 @@ import {
   IconDoc,
   IconEye,
   IconGear,
+  IconGoogle,
   IconInfo,
   IconMoon,
   IconPalette,
@@ -106,10 +107,11 @@ export default function SettingsView({
         ) : (
           <>
             <a
-              className="btn primary block"
+              className="btn primary block btn-ic"
               href="/api/auth/login"
-              style={{ marginTop: 14, textDecoration: "none", textAlign: "center", display: "block" }}
+              style={{ marginTop: 14, textDecoration: "none", textAlign: "center" }}
             >
+              <IconGoogle size={17} />
               {t("settings.connectGoogle")}
             </a>
             <button className="btn ghost block" onClick={onExitPreview} style={{ marginTop: 8 }}>
@@ -242,8 +244,8 @@ export default function SettingsView({
               style={{ marginLeft: "auto", textDecoration: "none" }}
               href="/api/auth/login"
             >
+              <IconGoogle size={14} />
               {t("settings.loginGoogle")}
-              <IconArrowRight size={14} />
             </a>
           )}
         </div>
