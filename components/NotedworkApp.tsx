@@ -13,14 +13,14 @@ import ThemeProvider from "./ThemeProvider";
 import LangProvider, { useLang } from "./LangProvider";
 import TopBar from "./TopBar";
 import { Fab, Sidebar, TabBar } from "./AppNav";
-import { IconEye } from "./icons";
+import { IconDownload, IconEye } from "./icons";
 import HariIni from "./HariIni";
 import EmailView from "./EmailView";
 import TasksView from "./TasksView";
 import CalendarView from "./CalendarView";
 import NotesView from "./NotesView";
 import SettingsView from "./SettingsView";
-import { ConfirmSheet, MailSheet, NoteSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type PendingDelete, type SheetId } from "./Sheets";
+import { ConfirmSheet, InstallSheet, MailSheet, NoteSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type PendingDelete, type SheetId } from "./Sheets";
 import {
   NOT_CONNECTED,
   apiCreateEvent,
@@ -104,6 +104,53 @@ function NotedworkShell() {
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [notif, setNotif] = useLocalStorage<boolean>(LS.notif, true);
   const [guestName, setGuestName] = useLocalStorage<string>(GUEST_NAME_KEY, "Tamu");
+
+  /* ---- install PWA ---- */
+  /** Prompt native Chrome (beforeinstallprompt) — hanya ada bila app belum terinstal & installable. */
+  interface BeforeInstallPromptEvent extends Event {
+    prompt(): Promise<void>;
+    userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+  }
+  const [installPrompt, setInstallPrompt] = useState<BeforeInstallPromptEvent | null>(null);
+  const [pwaInstalled, setPwaInstalled] = useState(false);
+  const [installDismissed, setInstallDismissed] = useLocalStorage<boolean>("notedwork.installDismissed", false);
+  useEffect(() => {
+    const mq = window.matchMedia("(display-mode: standalone)");
+    const check = () =>
+      setPwaInstalled(mq.matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true);
+    check();
+    const onBIP = (e: Event) => {
+      e.preventDefault();
+      setInstallPrompt(e as BeforeInstallPromptEvent);
+    };
+    const onInstalled = () => {
+      setPwaInstalled(true);
+      setInstallPrompt(null);
+    };
+    mq.addEventListener("change", check);
+    window.addEventListener("beforeinstallprompt", onBIP);
+    window.addEventListener("appinstalled", onInstalled);
+    return () => {
+      mq.removeEventListener("change", check);
+      window.removeEventListener("beforeinstallprompt", onBIP);
+      window.removeEventListener("appinstalled", onInstalled);
+    };
+  }, []);
+  /** Picu dialog install native Android — dipanggil dari InstallSheet. */
+  const doNativeInstall = useCallback(async () => {
+    const ev = installPrompt;
+    if (!ev) return;
+    await ev.prompt();
+    const { outcome } = await ev.userChoice;
+    setInstallPrompt(null);
+    if (outcome === "accepted") toastMsg(t("install.installedToast"));
+  }, [installPrompt, toastMsg, t]);
+  /** “Jangan tampilkan lagi” — tutup sheet + sembunyikan entry permanen. */
+  const neverShowInstall = useCallback(() => {
+    setInstallDismissed(true);
+    setSheet(null);
+    toastMsg(t("install.dismissedToast"));
+  }, [setInstallDismissed, toastMsg, t]);
 
   /* ---- ref cermin & penjaga race ---- */
   const searchT = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -873,6 +920,22 @@ function NotedworkShell() {
                 </a>
               </div>
             )}
+            {/* Entry install PWA: tepat di bawah banner pratinjau; auto-sembunyi bila terinstal/ditolak. */}
+            {preview && !pwaInstalled && !installDismissed && (view === "beranda" || view === "email" || view === "tugas" || view === "kalender") && (
+              <button type="button" className="banner install" onClick={() => setSheet("install")} aria-label={t("install.entryTitle")}>
+                <span className="banner-ic">
+                  <IconDownload size={24} />
+                </span>
+                <span style={{ flex: 1 }}>
+                  <span className="t">{t("install.entryTitle")}</span>
+                  <br />
+                  <span className="s">{t("install.entrySub")}</span>
+                </span>
+                <span className="btn primary sm" style={{ flex: "none" }}>
+                  {t("install.entryBtn")}
+                </span>
+              </button>
+            )}
             {view === "beranda" && (
               <HariIni
                 mails={mails}
@@ -1085,6 +1148,13 @@ function NotedworkShell() {
         pending={confirmDel}
         onCancel={() => setConfirmDel(null)}
         onConfirm={doConfirmDelete}
+      />
+      <InstallSheet
+        open={sheet === "install"}
+        canPrompt={installPrompt != null}
+        onInstall={doNativeInstall}
+        onNever={neverShowInstall}
+        onClose={() => setSheet(null)}
       />
 
       <div className={`toast${toast ? " show" : ""}`} role="status" aria-live="polite">

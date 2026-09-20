@@ -440,6 +440,27 @@ button {
   color: var(--muted);
   margin-top: 2px;
 }
+/* Entry install PWA — varian banner solid tepat di bawah banner pratinjau. */
+.banner.install {
+  border-style: solid;
+  background: var(--brand-soft, var(--card));
+  margin-top: 10px;
+}
+/* Nomor langkah tutor di InstallSheet. */
+.step-n {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--brand);
+  color: var(--on-brand, #fff);
+  font-size: 12px;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-top: 1px;
+}
 
 /* ── Cards ── */
 .stats {

@@ -2,12 +2,12 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ComposePreset, Note, Prio, Routine, Sched, Task } from "@/lib/types";
-import { IconBook, IconForward, IconMail, IconNote, IconPlus, IconReply, IconTask } from "./icons";
+import { IconBook, IconDownload, IconForward, IconMail, IconNote, IconPlus, IconReply, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 import { dayNames, prioLabel } from "@/lib/dates";
 import { useLang } from "./LangProvider";
 
-export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | null;
+export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | "install" | null;
 export type InfoSheetId = LegalId | null;
 
 function Shell({
@@ -338,6 +338,74 @@ export function TambahSheet({
       <div className="actions-single">
         <button type="button" className="btn ghost block" onClick={onClose}>
           {t("common.close")}
+        </button>
+      </div>
+    </Shell>
+  );
+}
+
+/** Sheet tutor pasang PWA — tab per platform, tombol native bila browser sediakan prompt. */
+export type InstallTab = "android" | "iphone" | "laptop";
+const INSTALL_TABS: InstallTab[] = ["android", "iphone", "laptop"];
+
+export function InstallSheet({
+  open,
+  canPrompt,
+  onInstall,
+  onNever,
+  onClose,
+}: {
+  open: boolean;
+  canPrompt: boolean;
+  onInstall: () => void;
+  onNever: () => void;
+  onClose: () => void;
+}) {
+  const { t } = useLang();
+  const [tab, setTab] = useState<InstallTab>("android");
+  return (
+    <Shell id="ovInstall" open={open} onClose={onClose}>
+      <h2><span className="h-ic"><IconDownload size={15} /></span>{t("install.title")}</h2>
+      <p className="hint">{t("install.sub")}</p>
+      <div className="chips" role="tablist" aria-label={t("install.title")} style={{ paddingBottom: 4 }}>
+        {INSTALL_TABS.map((id) => (
+          <button
+            key={id}
+            type="button"
+            role="tab"
+            aria-selected={tab === id}
+            className={`chip${tab === id ? " on" : ""}`}
+            onClick={() => setTab(id)}
+          >
+            {t(id === "android" ? "install.tabAndroid" : id === "iphone" ? "install.tabIphone" : "install.tabLaptop")}
+          </button>
+        ))}
+      </div>
+      <ol style={{ display: "grid", gap: 10, margin: "4px 0 0", padding: 0, listStyle: "none" }}>
+        {[1, 2, 3].map((n) => (
+          <li key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+            <span className="step-n" aria-hidden="true">{n}</span>
+            <span style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--ink)" }}>
+              {t(`install.${tab}${n}`)}
+            </span>
+          </li>
+        ))}
+      </ol>
+      <div className="actions-single">
+        {canPrompt && (
+          <button type="button" className="btn primary block" onClick={onInstall}>
+            {t("install.nativeBtn")}
+          </button>
+        )}
+        <button type="button" className="btn ghost block" onClick={onClose}>
+          {t("common.close")}
+        </button>
+        <button
+          type="button"
+          onClick={onNever}
+          style={{ background: "none", border: "none", color: "var(--muted)", fontSize: 12.5, padding: 6, cursor: "pointer", textDecoration: "underline" }}
+        >
+          {t("install.never")}
         </button>
       </div>
     </Shell>
