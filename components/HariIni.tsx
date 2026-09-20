@@ -1,6 +1,6 @@
 "use client";
 
-import type { KeyboardEvent } from "react";
+import { useEffect, useState, type KeyboardEvent } from "react";
 import type { Mail, NavTarget, Routine, Sched, Task } from "@/lib/types";
 import { dow3, fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, weekdayOf } from "@/lib/dates";
 import { useLang } from "./LangProvider";
@@ -116,12 +116,19 @@ export default function HariIni({
   const nowMs = new Date().getTime();
   const wd = weekdayOf(ts);
 
-  const todayLine = new Date().toLocaleDateString(lang === "en" ? "en-US" : "id-ID", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-  });
+  // Hydration-safe: toLocaleDateString beda antara server & client (React #418).
+  // Render placeholder saat SSR, isi tanggal asli setelah mount.
+  const [todayLine, setTodayLine] = useState(ts);
+  useEffect(() => {
+    setTodayLine(
+      new Date().toLocaleDateString(lang === "en" ? "en-US" : "id-ID", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      })
+    );
+  }, [lang]);
   const name = email ? email.split("@")[0] : guestName?.trim() || t("home.guestName");
   const goKal = () => go("kalender");
 

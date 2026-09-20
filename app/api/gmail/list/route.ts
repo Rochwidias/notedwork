@@ -9,7 +9,7 @@ export async function GET(req: NextRequest) {
   const pageToken = req.nextUrl.searchParams.get("pageToken") ?? undefined;
   try {
     const { mails, nextPageToken } = await listMails(userId, q, pageToken);
-    return Response.json({ mails, nextPageToken: nextPageToken ?? null });
+    return Response.json({ mails, nextPageToken: nextPageToken ?? null }, { headers: { "Cache-Control": "private, no-store" } });
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
     if (msg === "NOT_CONNECTED" || msg === "REFRESH_FAILED")

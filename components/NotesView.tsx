@@ -1,7 +1,7 @@
 "use client";
 
 import type { Note } from "@/lib/types";
-import { IconPlus, IconPencil, IconTrash, IconGear } from "./icons";
+import { IconPlus, IconPencil, IconTrash } from "./icons";
 
 interface NotesViewProps {
   notes: Note[];
@@ -9,19 +9,15 @@ interface NotesViewProps {
   onAdd: () => void;
   onEdit: (note: Note) => void;
   onDelete: (id: string) => void;
-  onOpenSettings: () => void;
 }
 
-export default function NotesView({ notes, t, onAdd, onEdit, onDelete, onOpenSettings }: NotesViewProps) {
+export default function NotesView({ notes, t, onAdd, onEdit, onDelete }: NotesViewProps) {
   return (
     <section aria-label={t("notes.title")}>
       <div className="view-head">
         <h1>{t("notes.title")}</h1>
         <button type="button" className="btn primary" onClick={onAdd} aria-label={t("notes.add")}>
           + {t("notes.add")}
-        </button>
-        <button type="button" className="icon-btn" onClick={onOpenSettings} title={t("notes.settings")} aria-label={t("notes.settings")}>
-          <IconGear size={18} />
         </button>
       </div>
       {notes.length === 0 ? (

@@ -124,7 +124,7 @@ export default function CalendarView({
           {cells.map((c) => {
             if (!c.iso)
               return (
-                <button key={c.key} className="day dim" tabIndex={-1}>
+                <button key={c.key} type="button" className="day dim" tabIndex={-1} disabled aria-hidden="true">
                   {c.label}
                 </button>
               );
@@ -136,7 +136,7 @@ export default function CalendarView({
             if (oSet.has(c.iso)) dots.push("#22c55e");
             if (tSet.has(c.iso)) dots.push("#ef4444");
             return (
-              <button key={c.key} className={cls.join(" ")} onClick={() => onSelectDate(c.iso as string)}>
+              <button key={c.key} type="button" className={cls.join(" ")} onClick={() => onSelectDate(c.iso as string)}>
                 {c.label}
                 {dots.length > 0 && (
                   <span className="dots">

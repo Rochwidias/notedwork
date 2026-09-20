@@ -326,7 +326,8 @@ function stripImageLines(text: string): string {
 function cleanPlain(text: string): string {
   // Part text/plain email marketing kadang membawa sisa MSO/VML mentah —
   // bersihkan dulu agar tak tampil sebagai teks (kasus notifikasi Google).
-  const demsod = stripMsoDecoded(stripMsoRaw(text));
+  // decodeEntities: snippet/body text/plain sering membawa &#39; &amp; mentah.
+  const demsod = decodeEntities(stripMsoDecoded(stripMsoRaw(text)));
   return dedupeBlocks(
     stripImageLines(demsod.replace(/\r\n?/g, "\n"))
       .split("\n")
@@ -406,7 +407,7 @@ function extractBody(msg: GmailMessage): string {
     return "";
   };
   const payload = msg.payload as GmailPart | undefined;
-  const snippetClean = (msg.snippet ?? "").replace(/\s+/g, " ").trim();
+  const snippetClean = decodeEntities((msg.snippet ?? "").replace(/\s+/g, " ").trim());
   return safeSlice(walk(payload)) || snippetClean || "Email ini tidak memiliki isi teks.";
 }
 
@@ -554,7 +555,7 @@ function toMail(msg: GmailMessage, internalDate?: string): Mail {
     decodeHeader(header(msg, "From") || header(msg, "Sender") || header(msg, "Reply-To") || header(msg, "Return-Path"))
   );
   const body = extractBody(msg);
-  const snippetClean = detokenize(msg.snippet ?? "").replace(/\s+/g, " ").trim();
+  const snippetClean = decodeEntities(detokenize(msg.snippet ?? "").replace(/\s+/g, " ").trim());
   // Subjek: header → baris pertama isi → sisa snippet → netral.
   const headerSubj = decodeHeader(header(msg, "Subject")).replace(/\s+/g, " ").trim();
   const fallbackSubj = firstLine(body) || firstLine(snippetClean);
