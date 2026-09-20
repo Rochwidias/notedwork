@@ -87,6 +87,18 @@ export default function CalendarView({
     .filter((s) => s.date === selDate)
     .sort((a, b) => a.time.localeCompare(b.time));
   const dayTasks = tasks.filter((x) => x.date === selDate);
+  const dayEmpty = dayRoutines.length + daySched.length + dayTasks.length === 0;
+
+  // Agenda terdekat 7 hari ke depan — hanya dipakai saat tanggal pilihan kosong.
+  // ISO yyyy-mm-dd bisa dibandingkan leksikografis.
+  const upcoming = useMemo(() => {
+    const end = new Date(selDate + "T00:00:00");
+    end.setDate(end.getDate() + 7);
+    const endIso = `${end.getFullYear()}-${String(end.getMonth() + 1).padStart(2, "0")}-${String(end.getDate()).padStart(2, "0")}`;
+    return schedules
+      .filter((s) => s.date > selDate && s.date <= endIso)
+      .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+  }, [schedules, selDate]);
 
   const routineList = routines.slice().sort((a, b) => a.day - b.day || a.start.localeCompare(b.start));
 
@@ -244,13 +256,44 @@ export default function CalendarView({
               </div>
             );
           })}
-          {dayRoutines.length + daySched.length + dayTasks.length === 0 && (
+          {dayEmpty && (
             <div className="empty">
               {t("cal.emptyDate")}
               <br />
-              {t("cal.enjoyDay")}
+              {upcoming.length ? t("cal.upcoming7") : t("cal.enjoyDay")}
             </div>
           )}
+          {dayEmpty &&
+            upcoming.map((s) => {
+              const jump = () => onSelectDate(s.date);
+              return (
+                <div
+                  className="row"
+                  key={s.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`${s.title} • ${fmtDateID(s.date, lang)}`}
+                  onClick={jump}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      jump();
+                    }
+                  }}
+                  style={{ cursor: "pointer" }}
+                >
+                  <span className="dot" style={{ background: s.color || "#22c55e" }} />
+                  <div>
+                    <div className="t">
+                      {s.title}{" "}
+                      <span style={{ color: "var(--muted)", fontWeight: 500 }}>• {fmtSchedRange(s, lang)}</span>
+                    </div>
+                    <div className="s">{fmtDateID(s.date, lang)}</div>
+                  </div>
+                  <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
+                </div>
+              );
+            })}
         </div>
         <button className="btn primary block btn-ic" onClick={onAddSched} style={{ marginTop: 10 }}>
           <IconPlus size={16} />
