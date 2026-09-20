@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ComposePreset, Note, Prio, Routine, Sched, Task } from "@/lib/types";
-import { IconBook, IconDownload, IconForward, IconMail, IconNote, IconPlus, IconReply, IconTask } from "./icons";
+import { IconBook, IconDownload, IconForward, IconLaptop, IconMail, IconNote, IconPhone, IconPlus, IconReply, IconShare, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 import { dayNames, prioLabel } from "@/lib/dates";
 import { useLang } from "./LangProvider";
@@ -377,6 +377,7 @@ export function InstallSheet({
             className={`chip${tab === id ? " on" : ""}`}
             onClick={() => setTab(id)}
           >
+            {id === "android" ? <span className="chip-ic"><IconPhone size={14} /></span> : id === "iphone" ? <span className="chip-ic"><IconShare size={14} /></span> : <span className="chip-ic"><IconLaptop size={14} /></span>}
             {t(id === "android" ? "install.tabAndroid" : id === "iphone" ? "install.tabIphone" : "install.tabLaptop")}
           </button>
         ))}
@@ -394,6 +395,7 @@ export function InstallSheet({
       <div className="actions-single">
         {canPrompt && (
           <button type="button" className="btn primary block" onClick={onInstall}>
+            <span className="chip-ic"><IconDownload size={15} /></span>
             {t("install.nativeBtn")}
           </button>
         )}

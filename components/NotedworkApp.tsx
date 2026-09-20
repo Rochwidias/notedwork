@@ -1031,6 +1031,8 @@ function NotedworkShell() {
                 guestName={guestName}
                 onGuestName={(v) => setGuestName(v)}
                 onExitPreview={exitPreview}
+                installed={pwaInstalled}
+                onOpenInstall={() => setSheet("install")}
               />
             )}
           </main>

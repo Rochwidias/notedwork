@@ -236,6 +236,38 @@ export function IconDownload(p: IconProps) {
   );
 }
 
+/** HP generik — tab Android di InstallSheet. */
+export function IconPhone(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="7" y="2.5" width="10" height="19" rx="2.5" />
+      <path d="M10.5 5.5h3" />
+      <circle cx="12" cy="18.5" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+/** Simbol Bagikan iOS — tab iPhone di InstallSheet (langkahnya via tombol Bagikan). */
+export function IconShare(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <path d="M12 15V3" />
+      <path d="m8 7 4-4 4 4" />
+      <path d="M5 12v8a1.5 1.5 0 0 0 1.5 1.5h11A1.5 1.5 0 0 0 19 20v-8" />
+    </svg>
+  );
+}
+
+/** Laptop — tab Laptop di InstallSheet. */
+export function IconLaptop(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="4.5" y="4" width="15" height="10.5" rx="1.5" />
+      <path d="M2.5 18.5h19l-2-4h-15Z" />
+    </svg>
+  );
+}
+
 export function IconDots(p: IconProps) {
   return (
     <svg {...base(p)} fill="currentColor" stroke="none">

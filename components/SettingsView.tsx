@@ -8,6 +8,7 @@ import {
   IconArrowRight,
   IconBell,
   IconDoc,
+  IconDownload,
   IconEye,
   IconGear,
   IconGoogle,
@@ -30,6 +31,8 @@ interface Props {
   guestName: string;
   onGuestName: (v: string) => void;
   onExitPreview: () => void;
+  installed: boolean;
+  onOpenInstall: () => void;
 }
 
 export default function SettingsView({
@@ -42,6 +45,8 @@ export default function SettingsView({
   guestName,
   onGuestName,
   onExitPreview,
+  installed,
+  onOpenInstall,
 }: Props) {
   const { theme, setTheme, accent, setAccent } = useTheme();
   const { t } = useLang();
@@ -258,6 +263,21 @@ export default function SettingsView({
           </span>
           {t("settings.info")}
         </h2>
+        {!installed && (
+          <div className="set-row">
+            <div>
+              <div className="t row-ic">
+                <IconDownload size={14} />
+                {t("settings.installApp")}
+              </div>
+              <div className="s">{t("settings.installAppSub")}</div>
+            </div>
+            <button className="link link-ic" style={{ marginLeft: "auto" }} onClick={onOpenInstall}>
+              {t("settings.open")}
+              <IconArrowRight size={14} />
+            </button>
+          </div>
+        )}
         <div className="set-row">
           <div>
             <div className="t row-ic">

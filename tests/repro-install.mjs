@@ -9,6 +9,8 @@ const i18n = readFileSync("lib/i18n.ts", "utf8");
 const sheets = readFileSync("components/Sheets.tsx", "utf8");
 const app = readFileSync("components/NotedworkApp.tsx", "utf8");
 const manifest = readFileSync("app/manifest.ts", "utf8");
+const icons = readFileSync("components/icons.tsx", "utf8");
+const settings = readFileSync("components/SettingsView.tsx", "utf8");
 
 // 1. i18n: namespace install.* harus ada & paritas id/en
 const keysOf = (src, lang) => {
@@ -43,5 +45,14 @@ check("manifest icon 192", manifest.includes("192x192") && manifest.includes("ic
 check("manifest icon 512", manifest.includes("512x512") && manifest.includes("icon-512"));
 check("public/icon-192.png ada", existsSync("public/icon-192.png"));
 check("public/icon-512.png ada", existsSync("public/icon-512.png"));
+
+// 5. Pengaturan: row install + ikon platform
+check("SettingsView punya prop onOpenInstall", settings.includes("onOpenInstall"));
+check("SettingsView sembunyikan row bila installed", settings.includes("installed"));
+check("settings.installApp di id+en", i18n.includes('"settings.installApp"') && i18n.includes('"settings.installAppSub"'));
+for (const ic of ["IconPhone", "IconShare", "IconLaptop"])
+  check(`icons.tsx exports ${ic}`, icons.includes(`export function ${ic}`));
+check("InstallSheet tab pakai ikon", sheets.includes("IconPhone") && sheets.includes("IconShare") && sheets.includes("IconLaptop"));
+check("SettingsView teruskan onOpenInstall dari App", app.includes("onOpenInstall"));
 
 process.exit(code ? 1 : 0);
