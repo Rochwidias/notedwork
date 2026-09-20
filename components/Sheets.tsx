@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import type { ComposePreset, Note, Prio, Routine, Sched, Task } from "@/lib/types";
-import { IconBook, IconDownload, IconForward, IconLaptop, IconMail, IconNote, IconPhone, IconPlus, IconReply, IconShare, IconTask } from "./icons";
+import { IconAddHome, IconBook, IconDownload, IconForward, IconLaptop, IconMail, IconMenuVert, IconNote, IconPhone, IconPlus, IconReply, IconShare, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 import { dayNames, prioLabel } from "@/lib/dates";
 import { useLang } from "./LangProvider";
@@ -348,6 +348,13 @@ export function TambahSheet({
 export type InstallTab = "android" | "iphone" | "laptop";
 const INSTALL_TABS: InstallTab[] = ["android", "iphone", "laptop"];
 
+/** Ikon panduan per (tab × langkah) — tunjukkan tombol beneran di perangkat user; null = teks saja. */
+const STEP_ICONS: Record<InstallTab, (React.ComponentType<{ size?: number }> | null)[]> = {
+  android: [IconDownload, null, IconPhone],
+  iphone: [IconShare, IconAddHome, null],
+  laptop: [IconDownload, IconMenuVert, null],
+};
+
 export function InstallSheet({
   open,
   canPrompt,
@@ -383,14 +390,18 @@ export function InstallSheet({
         ))}
       </div>
       <ol style={{ display: "grid", gap: 10, margin: "4px 0 0", padding: 0, listStyle: "none" }}>
-        {[1, 2, 3].map((n) => (
-          <li key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
-            <span className="step-n" aria-hidden="true">{n}</span>
-            <span style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--ink)" }}>
-              {t(`install.${tab}${n}`)}
-            </span>
-          </li>
-        ))}
+        {[1, 2, 3].map((n) => {
+          const StepIcon = STEP_ICONS[tab][n - 1];
+          return (
+            <li key={n} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
+              <span className="step-n" aria-hidden="true">{n}</span>
+              <span style={{ fontSize: 13.5, lineHeight: 1.6, color: "var(--ink)" }}>
+                {StepIcon && <span className="step-ic" aria-hidden="true"><StepIcon size={14} /></span>}
+                {t(`install.${tab}${n}`)}
+              </span>
+            </li>
+          );
+        })}
       </ol>
       <div className="actions-single">
         {canPrompt && (

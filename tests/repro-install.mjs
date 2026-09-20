@@ -55,4 +55,12 @@ for (const ic of ["IconPhone", "IconShare", "IconLaptop"])
 check("InstallSheet tab pakai ikon", sheets.includes("IconPhone") && sheets.includes("IconShare") && sheets.includes("IconLaptop"));
 check("SettingsView teruskan onOpenInstall dari App", app.includes("onOpenInstall"));
 
+// 6. Ikon panduan di tiap langkah InstallSheet
+const css = readFileSync("app/globals.css", "utf8");
+for (const ic of ["IconAddHome", "IconMenuVert"])
+  check(`icons.tsx exports ${ic}`, icons.includes(`export function ${ic}`));
+check("langkah install pakai ikon baru", sheets.includes("IconAddHome") && sheets.includes("IconMenuVert"));
+check("langkah render pil ikon step-ic", sheets.includes("step-ic"));
+check("css .step-ic ada", css.includes(".step-ic"));
+
 process.exit(code ? 1 : 0);

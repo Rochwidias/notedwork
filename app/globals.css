@@ -1391,6 +1391,19 @@ button {
   flex: none;
   color: var(--muted);
 }
+/* ── Pil ikon panduan di langkah InstallSheet ── */
+.step-ic {
+  display: inline-flex;
+  vertical-align: -4px;
+  margin-right: 7px;
+  padding: 3px;
+  border-radius: 8px;
+  background: var(--brand-soft);
+  color: var(--brand);
+}
+.step-ic svg {
+  display: block;
+}
 .banner-ic {
   flex: none;
   display: grid;

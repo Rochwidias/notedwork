@@ -278,6 +278,27 @@ export function IconDots(p: IconProps) {
   );
 }
 
+/** Menu vertikal ⋮ (Chrome Android/laptop) — langkah panduan InstallSheet. */
+export function IconMenuVert(p: IconProps) {
+  return (
+    <svg {...base(p)} fill="currentColor" stroke="none">
+      <circle cx="12" cy="5" r="1.8" />
+      <circle cx="12" cy="12" r="1.8" />
+      <circle cx="12" cy="19" r="1.8" />
+    </svg>
+  );
+}
+
+/** Kotak + plus (gaya “Tambahkan ke Layar Utama” iOS) — langkah panduan InstallSheet. */
+export function IconAddHome(p: IconProps) {
+  return (
+    <svg {...base(p)}>
+      <rect x="4" y="4" width="16" height="16" rx="4" />
+      <path d="M12 8.5v7M8.5 12h7" />
+    </svg>
+  );
+}
+
 export function IconPencil(p: IconProps) {
   return (
     <svg {...base(p)}>
