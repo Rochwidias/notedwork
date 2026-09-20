@@ -115,3 +115,16 @@ export async function apiUpdateEvent(
   const j = (await res.json()) as { event: Sched };
   return j.event;
 }
+
+export async function apiSyncNote(
+  v: { title: string; body: string; driveFileId?: string }
+): Promise<string> {
+  const j = await jpost<{ fileId: string }>("/api/drive/notes", v);
+  return j.fileId;
+}
+
+export async function apiTrashNoteFile(fileId: string): Promise<void> {
+  const res = await fetch(`/api/drive/notes/${encodeURIComponent(fileId)}`, { method: "DELETE" });
+  if (res.status === 401) throw new Error(NOT_CONNECTED);
+  if (!res.ok) throw new Error("hapus dokumen gagal: " + res.status);
+}

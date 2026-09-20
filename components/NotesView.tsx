@@ -29,7 +29,10 @@ export default function NotesView({ notes, t, onAdd, onEdit, onDelete }: NotesVi
         <ul className="note-list">
           {notes.map((n) => (
             <li key={n.id} className="card">
-              <div className="t">{n.title}</div>
+              <div className="t">
+                {n.title}{" "}
+                {n.driveFileId && <span className="tag">{t("notes.onDrive")}</span>}
+              </div>
               <div className="s">{n.body}</div>
               <div className="row-actions">
                 <button type="button" className="edit del-ic" onClick={() => onEdit(n)} aria-label={`${t("notes.edit")}: ${n.title}`}>

@@ -68,6 +68,8 @@ export interface Note {
   body: string;
   /** epoch ms terakhir diubah; untuk urutan terbaru dulu. */
   updatedAt: number;
+  /** ID file Google Docs di Drive (hasil sync); absen = belum tersync. */
+  driveFileId?: string;
 }
 
 /** Layar utama: beranda (Hari Ini) + email + tugas + kalender + catatan + pengaturan. */

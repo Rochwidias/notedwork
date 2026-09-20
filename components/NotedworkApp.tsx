@@ -32,6 +32,8 @@ import {
   apiLogout,
   apiSendMail,
   apiStatus,
+  apiSyncNote,
+  apiTrashNoteFile,
   apiUpdateEvent,
 } from "@/lib/remote";
 
@@ -734,10 +736,32 @@ function NotedworkShell() {
     else if (kind === "sched") void delSched(id);
     else if (kind === "routine") delRoutine(id);
     else {
+      const fileId = notes.find((n) => n.id === id)?.driveFileId;
       setNotes((prev) => prev.filter((n) => n.id !== id));
       toastMsg(t("toast.noteDeleted"));
+      // File Drive ikut dibuang; lokal tetap terhapus walau sync gagal.
+      if (fileId && connected && !preview) {
+        void apiTrashNoteFile(fileId).catch(() => toastMsg(t("toast.driveSyncFail")));
+      }
     }
-  }, [confirmDel, delTask, delSched, delRoutine, setNotes, toastMsg, t]);
+  }, [confirmDel, delTask, delSched, delRoutine, notes, setNotes, toastMsg, t, connected, preview]);
+
+  /** Sync catatan ke Google Docs (background, local-first): hanya saat login. */
+  const syncNote = useCallback(
+    (note: { id: string; title: string; body: string; driveFileId?: string }) => {
+      if (!connected || preview) return;
+      void (async () => {
+        try {
+          const fileId = await apiSyncNote(note);
+          setNotes((prev) => prev.map((n) => (n.id === note.id ? { ...n, driveFileId: fileId } : n)));
+        } catch (e) {
+          if (e instanceof Error && e.message === NOT_CONNECTED) return;
+          toastMsg(t("toast.driveSyncFail"));
+        }
+      })();
+    },
+    [connected, preview, setNotes, toastMsg, t]
+  );
 
   /* ---- pengingat in-app: bunyi + getar + banner tiap 30 detik ---- */
   useEffect(() => {
@@ -1030,12 +1054,18 @@ function NotedworkShell() {
         onClose={() => setSheet(null)}
         onSave={(v) => {
           if (editingNote) {
-            setNotes((prev) => prev.map((n) => (n.id === editingNote.id ? { ...n, title: v.title, body: v.body, updatedAt: Date.now() } : n)));
+            const id = editingNote.id;
+            const fileId = notes.find((n) => n.id === id)?.driveFileId;
+            setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title: v.title, body: v.body, updatedAt: Date.now() } : n)));
+            setSheet(null);
+            syncNote({ id, title: v.title, body: v.body, driveFileId: fileId });
           } else {
             const now = Date.now();
-            setNotes((prev) => [{ id: `n-${now.toString(36)}`, title: v.title, body: v.body, updatedAt: now }, ...prev]);
+            const id = `n-${now.toString(36)}`;
+            setNotes((prev) => [{ id, title: v.title, body: v.body, updatedAt: now }, ...prev]);
+            setSheet(null);
+            syncNote({ id, title: v.title, body: v.body });
           }
-          setSheet(null);
         }}
       />
       <RoutineSheet

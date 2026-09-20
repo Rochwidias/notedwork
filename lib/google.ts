@@ -3,7 +3,8 @@ import { decryptText, encryptText, randomToken } from "./crypto";
 import { isMissingColumnError, resolveIdentityKeys } from "./identity";
 import { supabaseAdmin } from "./supabaseAdmin";
 
-// Scope sekaligus di awal (keputusan desain): baca+tulis Gmail & Calendar.
+// Scope sekaligus di awal (keputusan desain): baca+tulis Gmail & Calendar,
+// plus Drive khusus file app (sync catatan → Google Docs).
 // "openid email" hanya untuk identitas stabil (sub + email terverifikasi) —
 // tanpa data profil tambahan. Kedua scope OIDC ini yang memaksa consent ulang sekali.
 export const GOOGLE_SCOPES = [
@@ -14,6 +15,7 @@ export const GOOGLE_SCOPES = [
   "https://www.googleapis.com/auth/gmail.modify",
   "https://www.googleapis.com/auth/calendar.readonly",
   "https://www.googleapis.com/auth/calendar.events",
+  "https://www.googleapis.com/auth/drive.file",
 ].join(" ");
 
 const REFRESH_MARGIN_MS = 5 * 60 * 1000; // refresh proaktif jika sisa < 5 menit
