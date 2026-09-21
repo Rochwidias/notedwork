@@ -303,14 +303,21 @@ function trimUrlTail(url: string): string {
   return u;
 }
 
-/** URL aman untuk token link: trim + decode entities + hanya http/https. */
+/** URL aman untuk token link: trim + decode entities + hanya http/https.
+ *  Anti-injeksi JS: tolak javascript:/data:/vbscript:/file: walau pakai
+ *  huruf besar, spasi/control-char di depan, atau backslash. Tolak juga
+ *  URL ber-spasi/kurung-sudut/quote/backtick di tengah (upaya selundup
+ *  atribut HTML). Maks 2000 char agar tak jadi bom memori. */
 function cleanLinkUrl(u: string): string {
-  const t = decodeEntities(u || "").trim();
-  if (!/^https?:\/\//i.test(t)) return "";
+  const raw = decodeEntities(u || "").replace(/[\u0000-\u0020\u007f]+/g, "").trim();
+  if (!raw || raw.length > 2000) return "";
+  if (!/^https?:\/\//i.test(raw)) return "";
+  if (/[\s<>"'`\\]/.test(raw)) return "";
   try {
-    const parsed = new URL(t);
+    const parsed = new URL(raw);
     if (parsed.protocol !== "http:" && parsed.protocol !== "https:") return "";
-    return t;
+    if (!parsed.hostname) return "";
+    return raw;
   } catch {
     return "";
   }

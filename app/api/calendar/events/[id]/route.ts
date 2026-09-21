@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { deleteEvent, updateEvent } from "@/lib/calendar";
 import { resolveTimeZone } from "@/lib/dates";
+import { hitRateLimit, tooMany, validGoogleId } from "@/lib/ratelimit";
 
 /** Validasi tanggal kalender asli: tolak 2026-13-99 (komponen Date harus sama). */
 function validCalendarDate(iso: string): boolean {
@@ -23,10 +24,11 @@ function parseReminder(v: unknown): number | null {
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const userId = await getSessionUser();
   if (!userId) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
-  let { id } = await ctx.params;
+  if (!hitRateLimit(`cal-del:${userId}`, 60)) return tooMany();
+  const { id: rawId } = await ctx.params;
   // ID internal diawali "g:" — kupas sebelum dikirim ke Google.
-  if (id.startsWith("g:")) id = id.slice(2);
-  if (!id) return Response.json({ error: "ID kosong" }, { status: 400 });
+  const id = validGoogleId(rawId, { allowGPrefix: true });
+  if (!id) return Response.json({ error: "ID tidak valid" }, { status: 400 });
   try {
     await deleteEvent(userId, id);
     return Response.json({ ok: true });
@@ -41,10 +43,11 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
 export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const userId = await getSessionUser();
   if (!userId) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
-  let { id } = await ctx.params;
+  if (!hitRateLimit(`cal-update:${userId}`, 60)) return tooMany();
+  const { id: rawId } = await ctx.params;
   // ID internal diawali "g:" — kupas sebelum dikirim ke Google.
-  if (id.startsWith("g:")) id = id.slice(2);
-  if (!id) return Response.json({ error: "ID kosong" }, { status: 400 });
+  const id = validGoogleId(rawId, { allowGPrefix: true });
+  if (!id) return Response.json({ error: "ID tidak valid" }, { status: 400 });
   let v: { title?: string; date?: string; time?: string; endTime?: string; note?: string; reminderMin?: unknown; tz?: unknown };
   try {
     v = (await req.json()) as typeof v;

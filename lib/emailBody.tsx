@@ -78,8 +78,11 @@ export function trimBareTail(raw: string): string {
 }
 
 function isSafeUrl(u: string): boolean {
+  const raw = (u || "").replace(/[\u0000-\u0020\u007f]+/g, "").trim();
+  if (!raw || raw.length > 2000) return false;
+  if (/[\s<>"'`\\]/.test(raw)) return false;
   try {
-    const parsed = new URL(u);
+    const parsed = new URL(raw);
     return parsed.protocol === "http:" || parsed.protocol === "https:";
   } catch {
     return false;
@@ -101,12 +104,18 @@ function shortUrl(raw: string, href: string): string {
   }
 }
 
-/** Normalisasi temuan link: www. → https, email → mailto, http(s) apa adanya. */
+/** Normalisasi temuan link: www. → https, email → mailto, http(s) apa adanya.
+ *  Anti-injeksi JS: skema selain http/https/mailto ditolak; mailto wajib
+ *  format email sederhana (tanpa CRLF/quote/sudut) agar tak bisa selundup
+ *  header atau javascript: via "mailto:x@y" palsu. */
 function toHref(raw: string): string | null {
-  if (raw.includes("@") && !/^https?:\/\//i.test(raw) && !raw.startsWith("www.")) {
-    return /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(raw) ? `mailto:${raw}` : null;
+  const clean = (raw || "").replace(/[\u0000-\u0020\u007f]+/g, "").trim();
+  if (!clean || clean.length > 2000) return null;
+  if (/[\r\n<>"'`\\]/.test(clean)) return null;
+  if (clean.includes("@") && !/^https?:\/\//i.test(clean) && !clean.startsWith("www.")) {
+    return /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(clean) ? `mailto:${clean}` : null;
   }
-  const url = raw.startsWith("www.") ? `https://${raw}` : raw;
+  const url = clean.startsWith("www.") ? `https://${clean}` : clean;
   return isSafeUrl(url) ? url : null;
 }
 

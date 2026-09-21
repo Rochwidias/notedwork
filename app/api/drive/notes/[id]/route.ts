@@ -1,12 +1,15 @@
 import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { trashNoteFile } from "@/lib/drive";
+import { hitRateLimit, tooMany, validGoogleId } from "@/lib/ratelimit";
 
 export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const userId = await getSessionUser();
   if (!userId) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
-  const { id } = await ctx.params;
-  if (!id) return Response.json({ error: "ID kosong" }, { status: 400 });
+  if (!hitRateLimit(`drive-del:${userId}`, 30)) return tooMany();
+  const { id: rawId } = await ctx.params;
+  const id = validGoogleId(rawId);
+  if (!id) return Response.json({ error: "ID tidak valid" }, { status: 400 });
   try {
     await trashNoteFile(userId, id);
     return Response.json({ ok: true });

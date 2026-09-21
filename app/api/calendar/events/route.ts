@@ -2,6 +2,7 @@ import type { NextRequest } from "next/server";
 import { getSessionUser } from "@/lib/session";
 import { createEvent, listEvents } from "@/lib/calendar";
 import { resolveTimeZone } from "@/lib/dates";
+import { hitRateLimit, tooMany } from "@/lib/ratelimit";
 
 function disconnected(e: unknown): boolean {
   const msg = e instanceof Error ? e.message : "";
@@ -28,6 +29,7 @@ function parseReminder(v: unknown): number | null {
 export async function GET(req: NextRequest) {
   const userId = await getSessionUser();
   if (!userId) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
+  if (!hitRateLimit(`cal-list:${userId}`, 60)) return tooMany();
   const q = req.nextUrl.searchParams;
   const timeMin = q.get("timeMin") ?? new Date().toISOString().slice(0, 10);
   const timeMax =
@@ -48,6 +50,7 @@ export async function GET(req: NextRequest) {
 export async function POST(req: Request) {
   const userId = await getSessionUser();
   if (!userId) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
+  if (!hitRateLimit(`cal-create:${userId}`, 30)) return tooMany();
   let v: { title?: string; date?: string; time?: string; endTime?: string; note?: string; reminderMin?: unknown; tz?: unknown };
   try {
     v = (await req.json()) as typeof v;

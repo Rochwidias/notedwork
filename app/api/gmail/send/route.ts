@@ -1,9 +1,12 @@
 import { getSessionUser } from "@/lib/session";
 import { sendMail } from "@/lib/gmail";
+import { hitRateLimit, tooMany } from "@/lib/ratelimit";
 
 export async function POST(req: Request) {
   const userId = await getSessionUser();
   if (!userId) return Response.json({ error: "NOT_CONNECTED" }, { status: 401 });
+  // Anti-spam judol: maks 10 email/menit per user.
+  if (!hitRateLimit(`send:${userId}`, 10)) return tooMany();
   let body: { to?: string; subj?: string; body?: string };
   try {
     body = (await req.json()) as typeof body;
