@@ -20,7 +20,7 @@ import TasksView from "./TasksView";
 import CalendarView from "./CalendarView";
 import NotesView from "./NotesView";
 import SettingsView from "./SettingsView";
-import { ConfirmSheet, InstallSheet, MailSheet, NoteSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type PendingDelete, type SheetId } from "./Sheets";
+import { ConfirmSheet, InstallSheet, MailSheet, NoteSheet, QuickAddSheet, RoutineSheet, SchedSheet, TambahSheet, TaskSheet, type PendingDelete, type QuickKind, type SheetId } from "./Sheets";
 import {
   NOT_CONNECTED,
   apiCreateEvent,
@@ -346,7 +346,7 @@ function NotedworkShell() {
 
   const go = useCallback((v: NavTarget) => {
     if (v === "tambah") {
-      setSheet("tambah");
+      setSheet("cepat");
       return;
     }
     setView(v);
@@ -810,6 +810,74 @@ function NotedworkShell() {
     [connected, preview, setNotes, toastMsg, t]
   );
 
+  /** Simpan tugas — dipakai TaskSheet DAN QuickAddSheet (satu logika, tanpa divergensi). */
+  const saveTaskValue = useCallback(
+    (v: { matkul: string; title: string; date: string; time: string; prio: Task["prio"]; note: string; reminderMin?: number }) => {
+      // Anti double-tugas: spam-klik Simpan = 1 tugas, bukan N.
+      if (taskBusy.current) return;
+      taskBusy.current = true;
+      try {
+        const reminderMin = v.reminderMin ?? DEFAULT_REMINDER_MIN;
+        if (editingTask) {
+          const id = editingTask.id;
+          setTasks((prev) =>
+            prev.map((x) =>
+              x.id === id ? { ...x, matkul: v.matkul, title: v.title, date: v.date, time: v.time, prio: v.prio, note: v.note, reminderMin } : x
+            )
+          );
+          setEditingTask(null);
+          setSheet(null);
+          toastMsg(t("toast.taskUpdated"));
+          go("tugas");
+          return;
+        }
+        setTasks((prev) => [...prev, { id: genId("t"), ...v, reminderMin, done: false }]);
+        setSheet(null);
+        toastMsg(t("toast.taskSaved"));
+        go("tugas");
+      } finally {
+        taskBusy.current = false;
+      }
+    },
+    [editingTask, setTasks, setEditingTask, toastMsg, go, t]
+  );
+
+  /** Simpan catatan (local-first + background sync Drive) — dipakai NoteSheet DAN QuickAddSheet. */
+  const saveNoteValue = useCallback(
+    (v: { title: string; body: string }) => {
+      if (editingNote) {
+        const id = editingNote.id;
+        const fileId = notes.find((n) => n.id === id)?.driveFileId;
+        setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title: v.title, body: v.body, updatedAt: Date.now() } : n)));
+        setSheet(null);
+        syncNote({ id, title: v.title, body: v.body, driveFileId: fileId });
+      } else {
+        const now = Date.now();
+        const id = `n-${now.toString(36)}`;
+        setNotes((prev) => [{ id, title: v.title, body: v.body, updatedAt: now }, ...prev]);
+        setSheet(null);
+        syncNote({ id, title: v.title, body: v.body });
+      }
+    },
+    [editingNote, notes, setNotes, syncNote]
+  );
+
+  /** Dari wizard cepat ke form lengkap (draf judul tetap di wizard saat kembali). */
+  const openDetailFromQuick = useCallback(
+    (kind: QuickKind) => {
+      if (kind === "mail") openCompose();
+      else if (kind === "task") setSheet("task");
+      else if (kind === "note") {
+        setEditingNote(null);
+        setSheet("note");
+      } else {
+        setEditingSched(null);
+        setSheet("sched");
+      }
+    },
+    [openCompose]
+  );
+
   /* ---- pengingat in-app: bunyi + getar + banner tiap 30 detik ---- */
   /** Tembak satu notifikasi lewat jalur yang sama (dipakai interval + tombol Tes). */
   const fireReminderAlert = useCallback(
@@ -963,7 +1031,7 @@ function NotedworkShell() {
                 onToggleTask={toggleTask}
                 onSelectDate={setSelDate}
                 todayStr={todayStr()}
-                onAdd={() => setSheet("tambah")}
+                onAdd={() => setSheet("cepat")}
               />
             )}
             {view === "email" && (
@@ -1053,7 +1121,7 @@ function NotedworkShell() {
         </div>
       </div>
       <TabBar view={view} go={go} t={t} />
-      {/* Fab satu jalur via go("tambah"): sheet pilihan Email/Tugas/Jadwal. */}
+      {/* Fab satu jalur via go("tambah"): wizard Tambah Cepat 3 langkah. */}
       <Fab onAdd={() => go("tambah")} t={t} />
 
       {/* Semua sheet selalu dirender (login maupun preview); isi yang menentukan sumber data. */}
@@ -1097,55 +1165,25 @@ function NotedworkShell() {
           setEditingTask(null);
           setSheet(null);
         }}
-        onSave={(v) => {
-          // Anti double-tugas: spam-klik Simpan = 1 tugas, bukan N.
-          if (taskBusy.current) return;
-          taskBusy.current = true;
-          try {
-            const reminderMin =
-              (v as { reminderMin?: number }).reminderMin ?? DEFAULT_REMINDER_MIN;
-            if (editingTask) {
-              const id = editingTask.id;
-              setTasks((prev) =>
-                prev.map((x) =>
-                  x.id === id ? { ...x, matkul: v.matkul, title: v.title, date: v.date, time: v.time, prio: v.prio, note: v.note, reminderMin } : x
-                )
-              );
-              setEditingTask(null);
-              setSheet(null);
-              toastMsg(t("toast.taskUpdated"));
-              go("tugas");
-              return;
-            }
-            setTasks((prev) => [...prev, { id: genId("t"), ...v, reminderMin, done: false }]);
-            setSheet(null);
-            toastMsg(t("toast.taskSaved"));
-            go("tugas");
-          } finally {
-            taskBusy.current = false;
-          }
-        }}
+        onSave={saveTaskValue}
+      />
+      <QuickAddSheet
+        open={sheet === "cepat"}
+        selDate={selDate}
+        courses={courses}
+        onClose={() => setSheet(null)}
+        onSaveTask={saveTaskValue}
+        onSaveSched={(v) => saveSched(v)}
+        onSaveMail={saveMail}
+        onSaveNote={saveNoteValue}
+        onOpenDetail={openDetailFromQuick}
       />
       <NoteSheet
         open={sheet === "note"}
         initial={editingNote}
         t={t}
         onClose={() => setSheet(null)}
-        onSave={(v) => {
-          if (editingNote) {
-            const id = editingNote.id;
-            const fileId = notes.find((n) => n.id === id)?.driveFileId;
-            setNotes((prev) => prev.map((n) => (n.id === id ? { ...n, title: v.title, body: v.body, updatedAt: Date.now() } : n)));
-            setSheet(null);
-            syncNote({ id, title: v.title, body: v.body, driveFileId: fileId });
-          } else {
-            const now = Date.now();
-            const id = `n-${now.toString(36)}`;
-            setNotes((prev) => [{ id, title: v.title, body: v.body, updatedAt: now }, ...prev]);
-            setSheet(null);
-            syncNote({ id, title: v.title, body: v.body });
-          }
-        }}
+        onSave={saveNoteValue}
       />
       <RoutineSheet
         open={sheet === "routine"}

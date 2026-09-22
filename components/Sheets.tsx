@@ -7,7 +7,17 @@ import { LEGAL, type LegalId } from "@/lib/legal";
 import { dayNames, prioLabel } from "@/lib/dates";
 import { useLang } from "./LangProvider";
 
-export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | "install" | null;
+export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | "cepat" | "install" | null;
+
+/** Slider menit (0-1425) -> "HH:MM". Clamp agar tak pernah "24:xx". */
+export function minutesToHHMM(mins: number): string {
+  const m = Math.max(0, Math.min(1439, Math.round(mins)));
+  const h = Math.floor(m / 60);
+  const mm = m % 60;
+  return `${String(h).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+}
+
+export type QuickKind = "task" | "sched" | "mail" | "note";
 export type InfoSheetId = LegalId | null;
 
 function Shell({
@@ -953,6 +963,280 @@ export interface PendingDelete {
   kind: "task" | "sched" | "routine" | "note";
   id: string;
   title: string;
+}
+
+/** Wizard Tambah Cepat 3 langkah: 1 Apa (ketik) → 2 Kapan (geser jam) → 3 Cek & Simpan.
+ *  Simpan reuse callback lama persis (saveSched/saveTask/saveMail/Note) — tanpa logika simpan baru. */
+export function QuickAddSheet({
+  open,
+  selDate,
+  courses,
+  onClose,
+  onSaveTask,
+  onSaveSched,
+  onSaveMail,
+  onSaveNote,
+  onOpenDetail,
+}: {
+  open: boolean;
+  selDate: string;
+  courses: string[];
+  onClose: () => void;
+  onSaveTask: (v: { matkul: string; title: string; date: string; time: string; prio: Prio; note: string; reminderMin?: number }) => Promise<boolean | void> | boolean | void;
+  onSaveSched: (v: { title: string; date: string; time: string; endTime?: string; note: string; reminderMin?: number }) => Promise<boolean | void> | boolean | void;
+  onSaveMail: (to: string, subj: string, body: string) => Promise<boolean | void> | boolean | void;
+  onSaveNote: (v: { title: string; body: string }) => Promise<boolean | void> | boolean | void;
+  onOpenDetail: (kind: QuickKind) => void;
+}) {
+  const { t } = useLang();
+  const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [kind, setKind] = useState<QuickKind>("task");
+  const [title, setTitle] = useState("");
+  const [detail, setDetail] = useState("");
+  const [matkul, setMatkul] = useState("");
+  const [date, setDate] = useState(selDate);
+  const [timeMins, setTimeMins] = useState(540);
+  const [to, setTo] = useState("");
+  const [reminderMin, setReminderMin] = useState(15);
+  const [titleErr, setTitleErr] = useState("");
+  const [toErr, setToErr] = useState("");
+  const savingRef = useRef(false);
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    if (open) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reset wizard tiap dibuka
+      setStep(1);
+      setKind("task");
+      setTitle("");
+      setDetail("");
+      setMatkul("");
+      setDate(selDate);
+      setTimeMins(540);
+      setTo("");
+      setReminderMin(15);
+      setTitleErr("");
+      setToErr("");
+      savingRef.current = false;
+      setSaving(false);
+    }
+  }, [open, selDate]);
+
+  if (!open) return null;
+  const time = minutesToHHMM(timeMins);
+  const needWhen = kind === "task" || kind === "sched";
+  const titleOk = title.trim().length > 0;
+  const toOk = kind !== "mail" || /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(to.trim());
+
+  const next = () => {
+    if (step === 1) {
+      if (!titleOk) {
+        setTitleErr(t("quick.titleRequired"));
+        return;
+      }
+      setTitleErr("");
+      setStep(kind === "note" ? 3 : 2);
+      return;
+    }
+    if (step === 2) {
+      if (kind === "mail" && !toOk) {
+        setToErr(t("mail.toInvalid"));
+        return;
+      }
+      setToErr("");
+      setStep(3);
+    }
+  };
+
+  const shiftDate = (days: number) => {
+    const d = new Date(`${date}T00:00:00`);
+    if (Number.isNaN(d.getTime())) return;
+    d.setDate(d.getDate() + days);
+    const iso = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    setDate(iso);
+  };
+
+  const save = async () => {
+    if (savingRef.current) return;
+    if (!titleOk) {
+      setTitleErr(t("quick.titleRequired"));
+      setStep(1);
+      return;
+    }
+    savingRef.current = true;
+    setSaving(true);
+    let ok: boolean | void = false;
+    try {
+      const jt = title.trim();
+      if (kind === "task") {
+        ok = await onSaveTask({ matkul: matkul.trim() || "Umum", title: jt, date, time: time || "23:59", prio: "sedang", note: detail.trim(), reminderMin });
+      } else if (kind === "sched") {
+        ok = await onSaveSched({ title: jt, date, time: time || "09:00", note: detail.trim(), reminderMin });
+      } else if (kind === "mail") {
+        if (!toOk) {
+          setToErr(t("mail.toInvalid"));
+          setStep(2);
+          return;
+        }
+        ok = await onSaveMail(to.trim(), jt, detail.trim());
+      } else {
+        ok = await onSaveNote({ title: jt, body: detail.trim() });
+      }
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
+    if (ok === false) return;
+  };
+
+  return (
+    <Shell id="ovCepat" open={open} onClose={onClose}>
+      <h2><span className="h-ic"><IconPlus size={15} /></span>{t("quick.title")}</h2>
+      <p className="hint">{step === 1 ? t("quick.step1") : step === 2 ? t("quick.step2") : t("quick.step3")} — {t("quick.hint")}</p>
+      {step === 1 && (
+        <div style={{ display: "grid", gap: 8 }}>
+          <div className="chips" role="group" aria-label={t("quick.summaryKind")}>
+            {(["task", "sched", "mail", "note"] as QuickKind[]).map((k) => (
+              <button key={k} type="button" className={`chip${kind === k ? " on" : ""}`} aria-pressed={kind === k} onClick={() => setKind(k)}>
+                {t(k === "task" ? "tambah.task" : k === "sched" ? "tambah.sched" : k === "mail" ? "tambah.mail" : "tambah.note")}
+              </button>
+            ))}
+          </div>
+          <label className="f" htmlFor="qTitle">{t("quick.step1")}</label>
+          <input
+            className="f"
+            id="qTitle"
+            maxLength={100}
+            autoFocus
+            placeholder={t("quick.whatPh")}
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (titleErr) setTitleErr("");
+            }}
+            aria-invalid={!!titleErr}
+            aria-describedby={titleErr ? "qTitleErr" : undefined}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                next();
+              }
+            }}
+          />
+          {titleErr && (
+            <p id="qTitleErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5 }}>
+              {titleErr}
+            </p>
+          )}
+          {kind === "task" && (
+            <>
+              <label className="f" htmlFor="qMatkul">{t("task.fieldCourse")}</label>
+              <input className="f" id="qMatkul" list="matkulListQuick" maxLength={60} placeholder={t("task.coursePh")} value={matkul} onChange={(e) => setMatkul(e.target.value)} />
+              <datalist id="matkulListQuick">
+                {courses.map((c) => (
+                  <option key={c} value={c} />
+                ))}
+              </datalist>
+            </>
+          )}
+          <label className="f" htmlFor="qDetail">{t("notes.fieldBody")}<span style={{ fontWeight: 500, color: "var(--muted)" }}>{t("common.optional")}</span></label>
+          <textarea className="f" id="qDetail" rows={3} placeholder={t("quick.detailPh")} value={detail} onChange={(e) => setDetail(e.target.value)} />
+        </div>
+      )}
+      {step === 2 && needWhen && (
+        <div style={{ display: "grid", gap: 8 }}>
+          <label className="f" htmlFor="qDate">{t("quick.dateLabel")}</label>
+          <input className="f" id="qDate" type="date" required value={date} onChange={(e) => setDate(e.target.value)} />
+          <label className="f" htmlFor="qTime">{t("quick.timeLabel")} — <strong>{time}</strong></label>
+          <input
+            className="f"
+            id="qTime"
+            type="range"
+            min={0}
+            max={1425}
+            step={15}
+            value={timeMins}
+            onChange={(e) => setTimeMins(Number(e.target.value))}
+            aria-valuetext={time}
+          />
+          <div className="chips">
+            <button type="button" className="chip" onClick={() => setTimeMins(420)}>{t("quick.presetMorning")} 07:00</button>
+            <button type="button" className="chip" onClick={() => setTimeMins(780)}>{t("quick.presetNoon")} 13:00</button>
+            <button type="button" className="chip" onClick={() => setTimeMins(1140)}>{t("quick.presetNight")} 19:00</button>
+            <button type="button" className="chip" onClick={() => shiftDate(1)}>{t("quick.presetTomorrow")}</button>
+          </div>
+          <label className="f">{t("reminder.title")}</label>
+          <ReminderChips value={reminderMin} onChange={setReminderMin} idPrefix="qRem" />
+        </div>
+      )}
+      {step === 2 && kind === "mail" && (
+        <div style={{ display: "grid", gap: 8 }}>
+          <label className="f" htmlFor="qTo">{t("quick.toLabel")}</label>
+          <input
+            className="f"
+            id="qTo"
+            type="email"
+            required
+            placeholder={t("quick.toPh")}
+            value={to}
+            onChange={(e) => {
+              setTo(e.target.value);
+              if (toErr) setToErr("");
+            }}
+            aria-invalid={!!toErr}
+            aria-describedby={toErr ? "qToErr" : undefined}
+          />
+          {toErr && (
+            <p id="qToErr" role="alert" style={{ color: "var(--red)", fontSize: 12.5 }}>
+              {toErr}
+            </p>
+          )}
+        </div>
+      )}
+      {step === 3 && (
+        <div style={{ display: "grid", gap: 6, fontSize: 13.5, lineHeight: 1.6 }}>
+          <div><strong>{t("quick.summaryKind")}:</strong> {t(kind === "task" ? "tambah.task" : kind === "sched" ? "tambah.sched" : kind === "mail" ? "tambah.mail" : "tambah.note")}</div>
+          <div><strong>Judul:</strong> {title.trim()}</div>
+          {needWhen && (
+            <div><strong>{t("quick.dateLabel")}:</strong> {date} • {time}</div>
+          )}
+          {kind === "mail" && (
+            <div><strong>{t("quick.toLabel")}:</strong> {to.trim()}</div>
+          )}
+          {detail.trim() && (
+            <div style={{ color: "var(--muted)" }}>{detail.trim().slice(0, 140)}</div>
+          )}
+          <button
+            type="button"
+            onClick={() => onOpenDetail(kind)}
+            style={{ background: "none", border: "none", color: "var(--brand)", fontSize: 13, padding: "6px 0", cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
+          >
+            {t("quick.detailLink")} →
+          </button>
+        </div>
+      )}
+      <div className="actions">
+        {step > 1 ? (
+          <button type="button" className="btn ghost" onClick={() => setStep((s) => (s === 3 && kind === "note" ? 1 : ((s - 1) as 1 | 2 | 3)))} disabled={saving}>
+            {t("quick.back")}
+          </button>
+        ) : (
+          <button type="button" className="btn ghost" onClick={onClose} disabled={saving}>
+            {t("common.close")}
+          </button>
+        )}
+        {step < 3 ? (
+          <button type="button" className="btn primary" onClick={next} disabled={!titleOk}>
+            {t("quick.next")}
+          </button>
+        ) : (
+          <button type="button" className="btn primary" onClick={save} disabled={saving || !titleOk} aria-busy={saving}>
+            {saving ? t("task.saving") : t("common.save")}
+          </button>
+        )}
+      </div>
+    </Shell>
+  );
 }
 
 export function ConfirmSheet({
