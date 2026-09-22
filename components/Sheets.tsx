@@ -5,6 +5,7 @@ import type { ComposePreset, Note, Prio, Routine, Sched, Task } from "@/lib/type
 import { IconAddHome, IconBook, IconDownload, IconForward, IconLaptop, IconMail, IconMenuVert, IconNote, IconPhone, IconPlus, IconReply, IconShare, IconTask } from "./icons";
 import { LEGAL, type LegalId } from "@/lib/legal";
 import { dayNames, prioLabel } from "@/lib/dates";
+import { DEFAULT_REMINDER_MIN } from "@/lib/reminders";
 import { useLang } from "./LangProvider";
 
 export type SheetId = "sched" | "mail" | "task" | "routine" | "note" | "tambah" | "cepat" | "install" | null;
@@ -84,9 +85,21 @@ export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => voi
   );
 }
 
-export const REMINDER_VALUES = [0, 5, 15, 30, 60];
+/** Preset pengingat (menit): Mati, 1/3/5/10 jam, 1 hari. Satuan tampil per-helper di bawah. */
+export const REMINDER_VALUES = [0, 60, 180, 300, 600, 1440];
 
-/** Pemilih pengingat chips [Mati,5,15,30,60 mnt] — dipakai SchedSheet + TaskSheet. */
+/** Label chips pengingat: 0=Mati, 60=1 jam, kelipatan jam, 1440=1 hari. */
+export function reminderChipLabel(mins: number, t: (key: string) => string): string {
+  if (mins <= 0) return t("reminder.off");
+  if (mins < 60) return `${mins}${t("reminder.min")}`;
+  if (mins % 60 !== 0) return `${mins}${t("reminder.min")}`;
+  const h = mins / 60;
+  if (h < 24) return `${h}${h === 1 ? t("reminder.hour") : t("reminder.hours")}`;
+  const d = h / 24;
+  return `${d}${t("reminder.day")}`;
+}
+
+/** Pemilih pengingat chips [Mati,1/3/5/10 jam,1 hari] — dipakai SchedSheet + TaskSheet + QuickAddSheet. */
 export function ReminderChips({
   value,
   onChange,
@@ -108,7 +121,7 @@ export function ReminderChips({
           aria-pressed={value === v}
           onClick={() => onChange(v)}
         >
-          {v === 0 ? t("reminder.off") : `${v}${t("reminder.min")}`}
+          {reminderChipLabel(v, t)}
         </button>
       ))}
     </div>
@@ -135,7 +148,7 @@ export function SchedSheet({
   const [time, setTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [note, setNote] = useState("");
-  const [reminderMin, setReminderMin] = useState(15);
+  const [reminderMin, setReminderMin] = useState(DEFAULT_REMINDER_MIN);
   const [titleErr, setTitleErr] = useState("");
   const [endErr, setEndErr] = useState("");
   // Anti-spam simpan: ref sinkron (lolos bila pakai state saja — klik cepat
@@ -213,7 +226,7 @@ export function SchedSheet({
           setEndTime("");
           setTitleErr("");
           setEndErr("");
-          setReminderMin(15);
+          setReminderMin(DEFAULT_REMINDER_MIN);
         }}
       >
         <label className="f" htmlFor="fTitle">{t("sched.fieldTitle")}</label>
@@ -589,7 +602,7 @@ export function TaskSheet({
   const [time, setTime] = useState("");
   const [prio, setPrio] = useState<Prio>("sedang");
   const [note, setNote] = useState("");
-  const [reminderMin, setReminderMin] = useState(15);
+  const [reminderMin, setReminderMin] = useState(DEFAULT_REMINDER_MIN);
   const [titleErr, setTitleErr] = useState("");
   // Anti-spam simpan: ref sinkron validasi SEKARANG (state telat satu render).
   const savingRef = useRef(false);
@@ -655,7 +668,7 @@ export function TaskSheet({
           setPrio("sedang");
           setTime("");
           setTitleErr("");
-          setReminderMin(15);
+          setReminderMin(DEFAULT_REMINDER_MIN);
         }}
       >
         <label className="f" htmlFor="tMatkul">{t("task.fieldCourse")}</label>
@@ -1005,7 +1018,7 @@ export function QuickAddSheet({
   const [endTime, setEndTime] = useState("");
   const [prio, setPrio] = useState<Prio>("sedang");
   const [to, setTo] = useState("");
-  const [reminderMin, setReminderMin] = useState(15);
+  const [reminderMin, setReminderMin] = useState(DEFAULT_REMINDER_MIN);
   const [titleErr, setTitleErr] = useState("");
   const [toErr, setToErr] = useState("");
   const [detailErr, setDetailErr] = useState("");
@@ -1025,7 +1038,7 @@ export function QuickAddSheet({
       setEndTime("");
       setPrio("sedang");
       setTo("");
-      setReminderMin(15);
+      setReminderMin(DEFAULT_REMINDER_MIN);
       setTitleErr("");
       setToErr("");
       setDetailErr("");

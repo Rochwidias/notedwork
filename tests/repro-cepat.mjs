@@ -138,5 +138,40 @@ check(
   "route masih menolak body kosong"
 );
 
+const remindersSrc = readFileSync(new URL("../lib/reminders.ts", import.meta.url), "utf8");
+const rvMatch = sheets.match(/REMINDER_VALUES\s*=\s*\[([^\]]*)\]/);
+const rvList = rvMatch ? rvMatch[1].split(",").map((s) => s.trim()) : [];
+
+// 16. Preset pengingat full jam.
+check(
+  "REMINDER_VALUES: ada 60/180/300/600/1440",
+  ["60", "180", "300", "600", "1440"].every((v) => rvList.includes(v)),
+  `dapat [${rvList.join(", ")}]`
+);
+check(
+  "REMINDER_VALUES: tanpa menit kecil (5/15)",
+  !rvList.includes("5") && !rvList.includes("15"),
+  `dapat [${rvList.join(", ")}]`
+);
+
+// 17. Default 1 hari.
+check(
+  "DEFAULT_REMINDER_MIN = 1440",
+  /DEFAULT_REMINDER_MIN\s*=\s*1440/.test(remindersSrc),
+  "default bukan 1440"
+);
+
+// 18. Label jam/hari (bukan tempel menit buta).
+check(
+  "ReminderChips: pakai label jam/hari",
+  /reminder\.hour/.test(sheets) && /reminder\.day/.test(sheets),
+  "tidak ada reminder.hour/day di Sheets.tsx"
+);
+check(
+  "i18n: ada reminder.hour(s)/day ID+EN",
+  /"reminder\.hour"/.test(i18n) && /"reminder\.day"/.test(i18n),
+  "keys reminder.hour/day belum lengkap"
+);
+
 console.log(failures ? `\n${failures} check(s) FAILED (fitur belum ada)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);
