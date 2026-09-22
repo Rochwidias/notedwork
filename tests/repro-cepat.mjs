@@ -173,5 +173,24 @@ check(
   "keys reminder.hour/day belum lengkap"
 );
 
+const hariIni = readFileSync(new URL("../components/HariIni.tsx", import.meta.url), "utf8");
+
+// 19. Home: kartu Tugas Terdekat (max 3) di bawah agenda 7 hari.
+check(
+  "HariIni: pakai key home.nearTasks",
+  hariIni.includes("home.nearTasks"),
+  "tidak ada home.nearTasks di HariIni.tsx"
+);
+check(
+  "HariIni: tugas terdekat dibatasi 3",
+  /nearTasks[\s\S]{0,600}?slice\(0,\s*3\)/.test(hariIni),
+  "tidak ada slice(0, 3) di blok nearTasks"
+);
+check(
+  "i18n: ada home.nearTasks + home.nearTasksEmpty",
+  /"home\.nearTasks"/.test(i18n) && /"home\.nearTasksEmpty"/.test(i18n),
+  "keys home.nearTasks(Empty) belum lengkap"
+);
+
 console.log(failures ? `\n${failures} check(s) FAILED (fitur belum ada)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);

@@ -10,6 +10,7 @@ import {
   IconInbox,
   IconMail,
   IconPlus,
+  IconTask,
 } from "./icons";
 
 interface Props {
@@ -178,6 +179,13 @@ export default function HariIni({
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
     .slice(0, 4);
 
+  /* (b2) tugas terdekat: belum selesai + hari ini ke depan, max 3 kotak. */
+  const nearTasks = tasks
+    .filter((task) => !task.done && task.date >= ts)
+    .sort((a, b) => (a.date + validHM(a)).localeCompare(b.date + validHM(b)))
+    .slice(0, 3);
+  const goTasks = () => go("tugas");
+
   /* (c) strip Senin–Minggu minggu berjalan. */
   const monday = addDaysISO(ts, -(wd - 1));
   const week = Array.from({ length: 7 }, (_, i) => addDaysISO(monday, i));
@@ -273,6 +281,46 @@ export default function HariIni({
             );
           })}
           {next7.length === 0 && <div className="empty">{t("home.next7empty")}</div>}
+        </div>
+      </div>
+
+      {/* (b2) tugas terdekat — max 3 kotak di bawah agenda 7 hari */}
+      <div className="card mini">
+        <div className="card-head">
+          <h2>
+            <span className="h-ic">
+              <IconTask size={15} />
+            </span>
+            {t("home.nearTasks")}
+          </h2>
+          <button className="link link-ic" onClick={goTasks}>
+            {t("nav.tasks")} <span aria-hidden="true">›</span>
+          </button>
+        </div>
+        <div>
+          {nearTasks.map((task) => {
+            const hm = validHM(task);
+            const badge = taskBadge(task, lang);
+            return (
+              <div
+                key={task.id}
+                className="erow"
+                role="button"
+                tabIndex={0}
+                aria-label={`${task.title}, ${fmtDateID(task.date, lang)}`}
+                onClick={goTasks}
+                onKeyDown={onKey(goTasks)}
+              >
+                <span className="dot" style={{ background: "var(--brand)" }} />
+                <div>
+                  <div className="tt">{task.title}</div>
+                  <div className="ss">{task.matkul} • {fmtDateID(task.date, lang)} • {hm}</div>
+                </div>
+                <div className="tm">{badge.txt}</div>
+              </div>
+            );
+          })}
+          {nearTasks.length === 0 && <div className="empty">{t("home.nearTasksEmpty")}</div>}
         </div>
       </div>
 
