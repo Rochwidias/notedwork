@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "test": "node tests/repro.mjs && node tests/repro-email.mjs && node tests/repro-fix.mjs && node tests/repro-double.mjs && node tests/repro-menu-kiri.mjs && node tests/repro-notes-keys.mjs && node tests/repro-i18n-parity.mjs && node tests/repro-topbar-lang.mjs && node tests/repro-settings-i18n.mjs && node tests/repro-drive.mjs && node tests/repro-install.mjs && node tests/repro-logo.mjs && node tests/repro-tampilan.mjs && node tests/repro-notif.mjs && node tests/repro-cepat.mjs"
+    "test": "node tests/repro.mjs && node tests/repro-email.mjs && node tests/repro-fix.mjs && node tests/repro-double.mjs && node tests/repro-menu-kiri.mjs && node tests/repro-notes-keys.mjs && node tests/repro-i18n-parity.mjs && node tests/repro-topbar-lang.mjs && node tests/repro-settings-i18n.mjs && node tests/repro-drive.mjs && node tests/repro-install.mjs && node tests/repro-logo.mjs && node tests/repro-tampilan.mjs && node tests/repro-notif.mjs && node tests/repro-cepat.mjs && node tests/repro-legal.mjs"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

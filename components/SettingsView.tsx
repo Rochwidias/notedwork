@@ -450,6 +450,8 @@ export default function SettingsView({
           {t("settings.aboutBody1")}
           <br />
           {t("settings.aboutBody2")}
+          <br />
+          {t("settings.copyright")}
         </div>
       </div>
 
