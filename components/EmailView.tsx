@@ -37,6 +37,8 @@ interface Props {
   search: string;
   onSearch: (q: string) => void;
   remote: RemoteState;
+  /** Buka wizard tulis cepat (terkunci email). Opsional agar preview lama tetap jalan. */
+  onCompose?: () => void;
   preview?: boolean;
   /** Jam sync terakhir dari NotedworkApp (HH:MM), tampil bila login. */
   updatedAt?: string | null;
@@ -139,6 +141,11 @@ export default function EmailView(props: Props) {
   return (
     <section className="view active" id="v-email">
       <EmailHead preview={preview} updatedAt={props.updatedAt} total={preview ? undefined : mails.length} />
+      {props.onCompose && (
+        <button type="button" className="btn primary block" onClick={props.onCompose} style={{ margin: "8px 0 0" }}>
+          {t("mail.composeTitle")}
+        </button>
+      )}
       <div className="search-wrap" role="search">
         <span className="search-ic" aria-hidden>
           <IconSearch size={16} />

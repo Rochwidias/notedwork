@@ -60,5 +60,83 @@ try {
   check("minutesToHHMM: import check", false, "gagal import");
 }
 
+const emailView = readFileSync(new URL("../components/EmailView.tsx", import.meta.url), "utf8");
+const driveRoute = readFileSync(new URL("../app/api/drive/notes/route.ts", import.meta.url), "utf8");
+const quickSrc = sheets.slice(sheets.indexOf("export function QuickAddSheet"));
+const step1Start = quickSrc.indexOf("{step === 1");
+const step2Start = quickSrc.indexOf("{step === 2", step1Start);
+const quickStep1 = quickSrc.slice(step1Start, step2Start);
+
+// 7. Mode terkunci per tab: props + chips disembunyikan.
+check(
+  "QuickAddSheet: props initialKind + lockKind",
+  /initialKind/.test(quickSrc) && /lockKind/.test(quickSrc),
+  "tidak ada props initialKind/lockKind di QuickAddSheet"
+);
+check(
+  "QuickAddSheet: chips jenis disembunyikan saat lockKind",
+  /!lockKind/.test(quickSrc),
+  "tidak ada cabang !lockKind di QuickAddSheet"
+);
+
+// 8. Tugas lengkap: pilihan prioritas (tidak lagi hardcoded sedang).
+check(
+  'QuickAddSheet tugas: ada pilihan prioritas ("tinggi")',
+  /"tinggi"/.test(quickSrc),
+  'tidak ada opsi "tinggi" di QuickAddSheet'
+);
+
+// 9. Jadwal lengkap: jam selesai opsional.
+check(
+  'QuickAddSheet jadwal: ada input jam selesai (qEnd)',
+  quickSrc.includes('id="qEnd"'),
+  'tidak ada id="qEnd" di QuickAddSheet'
+);
+
+// 10. Email terpandu: To ditanya di langkah 1 (bukan langkah 2).
+check(
+  "QuickAddSheet email: To (qTo) ada di langkah 1",
+  quickStep1.includes('id="qTo"'),
+  'id="qTo" tidak ada sebelum "step === 2"'
+);
+
+// 11. Email: subjek berlabel sendiri.
+check(
+  "i18n: ada quick.subjLabel",
+  /"quick\.subjLabel"/.test(i18n),
+  "tidak ada quick.subjLabel di lib/i18n.ts"
+);
+
+// 12. Judul sheet per jenis saat terkunci.
+check(
+  "i18n: judul per jenis quick.titleTask/Sched/Mail/Note",
+  /"quick\.titleTask"/.test(i18n) &&
+    /"quick\.titleSched"/.test(i18n) &&
+    /"quick\.titleMail"/.test(i18n) &&
+    /"quick\.titleNote"/.test(i18n),
+  "keys quick.title{Task,Sched,Mail,Note} belum lengkap"
+);
+
+// 13. EmailView: tombol Tulis untuk wizard terkunci email.
+check(
+  "EmailView: ada tombol Tulis (onCompose)",
+  /onCompose/.test(emailView),
+  "tidak ada onCompose di EmailView.tsx"
+);
+
+// 14. App: state kind terkunci + entry per tab.
+check(
+  "NotedworkApp: state quickKind/quickLock",
+  /quickKind/.test(app) && /quickLock/.test(app),
+  "tidak ada quickKind/quickLock di NotedworkApp"
+);
+
+// 15. Drive: isi boleh kosong (judul saja cukup, nutup bug 400).
+check(
+  "Drive: tanpa tolak !body",
+  !/!title \|\| !body/.test(driveRoute),
+  "route masih menolak body kosong"
+);
+
 console.log(failures ? `\n${failures} check(s) FAILED (fitur belum ada)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);

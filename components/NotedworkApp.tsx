@@ -67,6 +67,14 @@ function NotedworkShell() {
   const { t } = useLang();
   const [view, setView] = useState<ViewName>("beranda");
   const [sheet, setSheet] = useState<SheetId>(null);
+  /** Wizard cepat kontekstual: kind + kunci per tab (FAB/beranda = tak terkunci). */
+  const [quickKind, setQuickKind] = useState<QuickKind>("task");
+  const [quickLock, setQuickLock] = useState(false);
+  const openQuick = useCallback((kind: QuickKind, lock: boolean) => {
+    setQuickKind(kind);
+    setQuickLock(lock);
+    setSheet("cepat");
+  }, []);
   const [confirmDel, setConfirmDel] = useState<PendingDelete | null>(null);
   const [compose, setCompose] = useState<ComposePreset | null>(null);
   /** Mode sheet email — ditentukan pemanggil openCompose, bukan ditebak dari preset. */
@@ -346,12 +354,12 @@ function NotedworkShell() {
 
   const go = useCallback((v: NavTarget) => {
     if (v === "tambah") {
-      setSheet("cepat");
+      openQuick("task", false);
       return;
     }
     setView(v);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
-  }, []);
+  }, [openQuick]);
 
   // Sheet email selalu boleh dibuka (termasuk tamu) — penolakan jujur terjadi
   // saat Kirim via saveMail, bukan via tombol mati.
@@ -1031,7 +1039,7 @@ function NotedworkShell() {
                 onToggleTask={toggleTask}
                 onSelectDate={setSelDate}
                 todayStr={todayStr()}
-                onAdd={() => setSheet("cepat")}
+                onAdd={() => openQuick("task", false)}
               />
             )}
             {view === "email" && (
@@ -1054,6 +1062,7 @@ function NotedworkShell() {
                 }}
                 preview={preview}
                 updatedAt={updatedAt}
+                onCompose={() => openQuick("mail", true)}
               />
             )}
             {view === "tugas" && (
@@ -1062,10 +1071,7 @@ function NotedworkShell() {
                 routines={routines}
                 onToggle={toggleTask}
                 onDelete={(id, title) => askDelete("task", id, title)}
-                onAdd={() => {
-                  setEditingTask(null);
-                  setSheet("task");
-                }}
+                onAdd={() => openQuick("task", true)}
                 onEdit={startEditTask}
                 preview={preview}
               />
@@ -1080,10 +1086,7 @@ function NotedworkShell() {
                 onEditSched={startEditSched}
                 onDeleteSched={(id, title) => askDelete("sched", id, title)}
                 onDeleteRoutine={(id, title) => askDelete("routine", id, title)}
-                onAddSched={() => {
-                  setEditingSched(null);
-                  setSheet("sched");
-                }}
+                onAddSched={() => openQuick("sched", true)}
                 onManageRoutine={() => setSheet("routine")}
                 preview={preview}
                 onToggleTask={toggleTask}
@@ -1093,7 +1096,7 @@ function NotedworkShell() {
               <NotesView
                 notes={notes}
                 t={t}
-                onAdd={() => { setEditingNote(null); setSheet("note"); }}
+                onAdd={() => openQuick("note", true)}
                 onEdit={(n) => { setEditingNote(n); setSheet("note"); }}
                 onDelete={(id, title) => askDelete("note", id, title)}
               />
@@ -1171,6 +1174,8 @@ function NotedworkShell() {
         open={sheet === "cepat"}
         selDate={selDate}
         courses={courses}
+        initialKind={quickKind}
+        lockKind={quickLock}
         onClose={() => setSheet(null)}
         onSaveTask={saveTaskValue}
         onSaveSched={(v) => saveSched(v)}
