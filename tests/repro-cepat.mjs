@@ -144,8 +144,8 @@ const rvList = rvMatch ? rvMatch[1].split(",").map((s) => s.trim()) : [];
 
 // 16. Preset pengingat full jam.
 check(
-  "REMINDER_VALUES: ada 60/180/300/600/1440",
-  ["60", "180", "300", "600", "1440"].every((v) => rvList.includes(v)),
+  "REMINDER_VALUES: ada 180/300/600/1440 tanpa 60 (pas sebaris)",
+  ["180", "300", "600", "1440"].every((v) => rvList.includes(v)) && !rvList.includes("60"),
   `dapat [${rvList.join(", ")}]`
 );
 check(
@@ -154,11 +154,11 @@ check(
   `dapat [${rvList.join(", ")}]`
 );
 
-// 17. Default 1 hari.
+// 17. Default 3 jam.
 check(
-  "DEFAULT_REMINDER_MIN = 1440",
-  /DEFAULT_REMINDER_MIN\s*=\s*1440/.test(remindersSrc),
-  "default bukan 1440"
+  "DEFAULT_REMINDER_MIN = 180",
+  /DEFAULT_REMINDER_MIN\s*=\s*180/.test(remindersSrc),
+  "default bukan 180"
 );
 
 // 18. Label jam/hari (bukan tempel menit buta).

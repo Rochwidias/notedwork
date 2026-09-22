@@ -85,8 +85,8 @@ export function InfoSheet({ id, onClose }: { id: InfoSheetId; onClose: () => voi
   );
 }
 
-/** Preset pengingat (menit): Mati, 1/3/5/10 jam, 1 hari. Satuan tampil per-helper di bawah. */
-export const REMINDER_VALUES = [0, 60, 180, 300, 600, 1440];
+/** Preset pengingat (menit): Mati, 3/5/10 jam, 1 hari — pas sebaris tanpa geser. */
+export const REMINDER_VALUES = [0, 180, 300, 600, 1440];
 
 /** Label chips pengingat: 0=Mati, 60=1 jam, kelipatan jam, 1440=1 hari. */
 export function reminderChipLabel(mins: number, t: (key: string) => string): string {
@@ -99,7 +99,7 @@ export function reminderChipLabel(mins: number, t: (key: string) => string): str
   return `${d}${t("reminder.day")}`;
 }
 
-/** Pemilih pengingat chips [Mati,1/3/5/10 jam,1 hari] — dipakai SchedSheet + TaskSheet + QuickAddSheet. */
+/** Pemilih pengingat chips [Mati,3/5/10 jam,1 hari] — dipakai SchedSheet + TaskSheet + QuickAddSheet. */
 export function ReminderChips({
   value,
   onChange,

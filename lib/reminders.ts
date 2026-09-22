@@ -11,8 +11,8 @@ export interface ReminderItem {
   reminderMin: number;
 }
 
-/** Default bila Sched/Task.reminderMin tak diisi: 1 hari (0 = mati disengaja). */
-export const DEFAULT_REMINDER_MIN = 1440;
+/** Default bila Sched/Task.reminderMin tak diisi: 3 jam (0 = mati disengaja). */
+export const DEFAULT_REMINDER_MIN = 180;
 
 /** Toleransi kecocokan pengingat: ±60 detik. */
 const DUE_TOLERANCE_MS = 60_000;
