@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type KeyboardEvent } from "react";
 import type { Mail, NavTarget, Routine, Sched, Task } from "@/lib/types";
-import { dow3, fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, weekdayOf } from "@/lib/dates";
+import { dow3, fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, urgencyLevel, weekdayOf } from "@/lib/dates";
 import { useLang } from "./LangProvider";
 import {
   IconBell,
@@ -316,7 +316,7 @@ export default function HariIni({
                   <div className="tt">{task.title}</div>
                   <div className="ss">{task.matkul} • {fmtDateID(task.date, lang)} • {hm}</div>
                 </div>
-                <div className="tm">{badge.txt}</div>
+                <div className="tm"><span className={`pill ${urgencyLevel(task.date, ts)}`}>{badge.txt}</span></div>
               </div>
             );
           })}

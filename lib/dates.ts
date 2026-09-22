@@ -88,6 +88,21 @@ export function isOverdue(t: Task): boolean {
   return t.date + hm < todayStr() + nowHM();
 }
 
+/**
+ * Level urgensi deadline berdasar selisih hari kalender (date - today):
+ * H-1 ke bawah (besok, hari ini, telat) = red; H-2 = amber; H-3 ke atas = green.
+ * Dipakai pill indikator di kotak Tugas Terdekat (kelas CSS .pill.red/.amber/.green).
+ */
+export function urgencyLevel(dateIso: string, todayIso: string): "red" | "amber" | "green" {
+  const d = new Date(dateIso + "T00:00:00").getTime();
+  const t = new Date(todayIso + "T00:00:00").getTime();
+  if (!Number.isFinite(d) || !Number.isFinite(t)) return "green";
+  const diff = Math.round((d - t) / 864e5);
+  if (diff <= 1) return "red";
+  if (diff === 2) return "amber";
+  return "green";
+}
+
 export function taskBadge(t: Task, lang: Lang = "id"): { txt: string; cls: string } {
   const en = lang === "en";
   if (t.done) return { txt: (en ? "Done" : "Selesai"), cls: "lo" };
