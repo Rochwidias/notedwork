@@ -274,9 +274,9 @@ export default function HariIni({
                 <span className="dot" style={{ background: s.color || "#22c55e" }} />
                 <div>
                   <div className="tt">{s.title}</div>
-                  <div className="ss">{fmtDateID(s.date, lang)} • {fmtSchedRange(s, lang)}</div>
+                  <div className="ss">{fmtDateID(s.date, lang)}</div>
                 </div>
-                <span aria-hidden="true" style={{ color: "var(--muted)", fontWeight: 800, marginLeft: "auto" }}>›</span>
+                <div className="tm"><span className={`pill ${urgencyLevel(s.date, ts)}`}>{fmtSchedRange(s, lang)}</span></div>
               </div>
             );
           })}

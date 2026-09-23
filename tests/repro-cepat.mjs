@@ -221,5 +221,14 @@ check(
   "nearTasks belum pakai urgencyLevel/pill"
 );
 
+const agendaBlock = hariIni.slice(hariIni.indexOf("next7.map"), hariIni.indexOf("nearTasks.map"));
+
+// 21. Agenda 7 hari: pill waktu berwarna di kanan (seperti Tugas Terdekat).
+check(
+  "Agenda: baris pakai pill urgency",
+  agendaBlock.includes("urgencyLevel") && agendaBlock.includes("pill ${"),
+  "blok next7 belum pakai pill urgency"
+);
+
 console.log(failures ? `\n${failures} check(s) FAILED (fitur belum ada)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);
