@@ -90,7 +90,7 @@ export function isOverdue(t: Task): boolean {
 
 /**
  * Level urgensi deadline berdasar selisih hari kalender (date - today):
- * H-1 ke bawah (besok, hari ini, telat) = red; H-2 = amber; H-3 ke atas = green.
+ * H-1 (hari ini + telat) = red; H-2 (besok) = amber; H-3 (lusa) ke atas = green.
  * Dipakai pill indikator di kotak Tugas Terdekat (kelas CSS .pill.red/.amber/.green).
  */
 export function urgencyLevel(dateIso: string, todayIso: string): "red" | "amber" | "green" {
@@ -98,8 +98,8 @@ export function urgencyLevel(dateIso: string, todayIso: string): "red" | "amber"
   const t = new Date(todayIso + "T00:00:00").getTime();
   if (!Number.isFinite(d) || !Number.isFinite(t)) return "green";
   const diff = Math.round((d - t) / 864e5);
-  if (diff <= 1) return "red";
-  if (diff === 2) return "amber";
+  if (diff <= 0) return "red";
+  if (diff === 1) return "amber";
   return "green";
 }
 

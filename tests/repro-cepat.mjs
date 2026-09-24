@@ -196,23 +196,18 @@ import { urgencyLevel } from "../lib/dates.ts";
 
 // 20. Indikator warna urgensi: H-1/today/telat merah, H-2 kuning, H-3+ hijau.
 check(
-  "urgency: H-1 merah",
-  urgencyLevel("2026-09-23", "2026-09-22") === "red",
-  `dapat ${urgencyLevel("2026-09-23", "2026-09-22")}`
-);
-check(
-  "urgency: hari ini + telat ikut merah",
+  "urgency: H-1 (hari ini) + telat merah",
   urgencyLevel("2026-09-22", "2026-09-22") === "red" && urgencyLevel("2026-09-20", "2026-09-22") === "red",
   "today/overdue bukan red"
 );
 check(
-  "urgency: H-2 kuning (amber)",
-  urgencyLevel("2026-09-24", "2026-09-22") === "amber",
-  `dapat ${urgencyLevel("2026-09-24", "2026-09-22")}`
+  "urgency: H-2 (besok) kuning (amber)",
+  urgencyLevel("2026-09-23", "2026-09-22") === "amber",
+  `dapat ${urgencyLevel("2026-09-23", "2026-09-22")}`
 );
 check(
-  "urgency: H-3 dan jauh hijau",
-  urgencyLevel("2026-09-25", "2026-09-22") === "green" && urgencyLevel("2026-10-05", "2026-09-22") === "green",
+  "urgency: H-3 (lusa) dan jauh hijau",
+  urgencyLevel("2026-09-24", "2026-09-22") === "green" && urgencyLevel("2026-10-05", "2026-09-22") === "green",
   "H-3+ bukan green"
 );
 check(

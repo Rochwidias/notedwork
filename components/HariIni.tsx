@@ -261,6 +261,7 @@ export default function HariIni({
               onSelectDate(s.date);
               goKal();
             };
+            const dayShort = dow3(lang)[weekdayOf(s.date) - 1] ?? "";
             return (
               <div
                 key={s.id}
@@ -276,7 +277,10 @@ export default function HariIni({
                   <div className="tt">{s.title}</div>
                   <div className="ss">{fmtDateID(s.date, lang)}</div>
                 </div>
-                <div className="tm"><span className={`pill ${urgencyLevel(s.date, ts)}`}>{fmtSchedRange(s, lang)}</span></div>
+                <div className="tm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <span>{dayShort}</span>
+                  <span className={`pill ${urgencyLevel(s.date, ts)}`}>{fmtSchedRange(s, lang)}</span>
+                </div>
               </div>
             );
           })}
