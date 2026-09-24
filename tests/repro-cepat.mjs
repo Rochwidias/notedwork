@@ -229,6 +229,11 @@ check(
   /var\(--(red|amber|green)\)/.test(agendaBlock),
   "hari kanan belum berwarna urgensi"
 );
+check(
+  "Agenda: hari kanan nama lengkap (dayNames, bukan singkatan)",
+  /dayNames\(lang\)\[weekdayOf\(s\.date\)/.test(agendaBlock),
+  "hari kanan belum pakai dayNames lengkap"
+);
 
 console.log(failures ? `\n${failures} check(s) FAILED (fitur belum ada)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);

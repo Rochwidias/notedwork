@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type KeyboardEvent } from "react";
 import type { Mail, NavTarget, Routine, Sched, Task } from "@/lib/types";
-import { dow3, fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, urgencyLevel, weekdayOf } from "@/lib/dates";
+import { dayNames, dow3, fmtDateID, fmtSchedRange, taskBadge, todayStr as getToday, urgencyLevel, weekdayOf } from "@/lib/dates";
 import { useLang } from "./LangProvider";
 import {
   IconBell,
@@ -261,7 +261,7 @@ export default function HariIni({
               onSelectDate(s.date);
               goKal();
             };
-            const dayShort = dow3(lang)[weekdayOf(s.date) - 1] ?? "";
+            const dayFull = dayNames(lang)[weekdayOf(s.date) - 1] ?? "";
             const urg = urgencyLevel(s.date, ts);
             const urgColor = urg === "red" ? "var(--red)" : urg === "amber" ? "var(--amber)" : "var(--green)";
             return (
@@ -280,7 +280,7 @@ export default function HariIni({
                   <div className="ss">{fmtDateID(s.date, lang)}</div>
                 </div>
                 <div className="tm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: urgColor, fontWeight: 800 }}>{dayShort}</span>
+                  <span style={{ color: urgColor, fontWeight: 800, fontSize: 12 }}>{dayFull}</span>
                   <span className={`pill ${urg}`}>{fmtSchedRange(s, lang)}</span>
                 </div>
               </div>
