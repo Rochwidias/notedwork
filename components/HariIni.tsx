@@ -262,6 +262,8 @@ export default function HariIni({
               goKal();
             };
             const dayShort = dow3(lang)[weekdayOf(s.date) - 1] ?? "";
+            const urg = urgencyLevel(s.date, ts);
+            const urgColor = urg === "red" ? "var(--red)" : urg === "amber" ? "var(--amber)" : "var(--green)";
             return (
               <div
                 key={s.id}
@@ -278,8 +280,8 @@ export default function HariIni({
                   <div className="ss">{fmtDateID(s.date, lang)}</div>
                 </div>
                 <div className="tm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span>{dayShort}</span>
-                  <span className={`pill ${urgencyLevel(s.date, ts)}`}>{fmtSchedRange(s, lang)}</span>
+                  <span style={{ color: urgColor, fontWeight: 800 }}>{dayShort}</span>
+                  <span className={`pill ${urg}`}>{fmtSchedRange(s, lang)}</span>
                 </div>
               </div>
             );

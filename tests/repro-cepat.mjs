@@ -224,6 +224,11 @@ check(
   agendaBlock.includes("urgencyLevel") && agendaBlock.includes("pill ${"),
   "blok next7 belum pakai pill urgency"
 );
+check(
+  "Agenda: hari kanan ikut warna urgensi",
+  /var\(--(red|amber|green)\)/.test(agendaBlock),
+  "hari kanan belum berwarna urgensi"
+);
 
 console.log(failures ? `\n${failures} check(s) FAILED (fitur belum ada)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);
