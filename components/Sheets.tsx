@@ -1050,6 +1050,10 @@ export function QuickAddSheet({
   if (!open) return null;
   const time = minutesToHHMM(timeMins);
   const needWhen = kind === "task" || kind === "sched";
+  // Review (langkah 3) hanya untuk email — kirim bersifat irreversibel.
+  // Tugas/jadwal/catatan lokal-first (bisa ubah/hapus) langsung simpan.
+  const maxStep = kind === "mail" ? 3 : 2;
+  const atFinal = step === maxStep || kind === "note";
   const titleOk = title.trim().length > 0;
   const toOk = kind !== "mail" || /^[^\s@<>"]+@[^\s@<>"]+\.[^\s@<>"]+$/.test(to.trim());
   const lockedTitle =
@@ -1078,16 +1082,27 @@ export function QuickAddSheet({
         return;
       }
       setDetailErr("");
-      setStep(kind === "note" ? 3 : 2);
+      // Catatan tak punya langkah Kapan — langsung simpan dari langkah 1.
+      if (kind === "note") {
+        void save();
+        return;
+      }
+      setStep(2);
       return;
     }
     if (step === 2) {
-      if (kind === "mail" && !detail.trim()) {
-        setDetailErr(t("quick.bodyRequired"));
+      // Hanya email yang lanjut ke review (langkah 3); sisanya simpan langsung.
+      if (kind === "mail") {
+        if (!detail.trim()) {
+          setDetailErr(t("quick.bodyRequired"));
+          return;
+        }
+        setDetailErr("");
+        setStep(3);
         return;
       }
       setDetailErr("");
-      setStep(3);
+      void save();
     }
   };
 
@@ -1365,9 +1380,18 @@ export function QuickAddSheet({
           </button>
         </div>
       )}
+      {kind !== "mail" && atFinal && (
+        <button
+          type="button"
+          onClick={() => onOpenDetail(kind)}
+          style={{ background: "none", border: "none", color: "var(--brand)", fontSize: 13, padding: "2px 0 8px", cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
+        >
+          {t("quick.detailLink")} →
+        </button>
+      )}
       <div className="actions">
         {step > 1 ? (
-          <button type="button" className="btn ghost" onClick={() => setStep((s) => (s === 3 && kind === "note" ? 1 : ((s - 1) as 1 | 2 | 3)))} disabled={saving}>
+          <button type="button" className="btn ghost" onClick={() => setStep((s) => ((s - 1) as 1 | 2 | 3))} disabled={saving}>
             {t("quick.back")}
           </button>
         ) : (
@@ -1375,13 +1399,13 @@ export function QuickAddSheet({
             {t("common.close")}
           </button>
         )}
-        {step < 3 ? (
-          <button type="button" className="btn primary" onClick={next} disabled={!titleOk}>
-            {t("quick.next")}
-          </button>
-        ) : (
+        {atFinal ? (
           <button type="button" className="btn primary" onClick={save} disabled={saving || !titleOk} aria-busy={saving}>
             {saving ? t("task.saving") : t("common.save")}
+          </button>
+        ) : (
+          <button type="button" className="btn primary" onClick={next} disabled={!titleOk}>
+            {t("quick.next")}
           </button>
         )}
       </div>
