@@ -263,7 +263,6 @@ export default function HariIni({
             };
             const dayFull = dayNames(lang)[weekdayOf(s.date) - 1] ?? "";
             const urg = urgencyLevel(s.date, ts);
-            const urgColor = urg === "red" ? "var(--red)" : urg === "amber" ? "var(--amber)" : "var(--green)";
             return (
               <div
                 key={s.id}
@@ -279,10 +278,7 @@ export default function HariIni({
                   <div className="tt">{s.title}</div>
                   <div className="ss">{fmtDateID(s.date, lang)}</div>
                 </div>
-                <div className="tm" style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <span style={{ color: urgColor, fontWeight: 800, fontSize: 12 }}>{dayFull}</span>
-                  <span className={`pill ${urg}`}>{fmtSchedRange(s, lang)}</span>
-                </div>
+                <div className="tm"><span className={`pill ${urg}`}>{dayFull} • {fmtSchedRange(s, lang)}</span></div>
               </div>
             );
           })}

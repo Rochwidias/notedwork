@@ -2024,6 +2024,9 @@ textarea.f.compose-body {
   color: var(--muted);
   white-space: nowrap;
 }
+.erow .tm .pill {
+  margin: 0;
+}
 
 /* ── Layar kecil (≤380px): HP mungil Android / iPhone SE ── */
 @media (max-width: 380px) {
