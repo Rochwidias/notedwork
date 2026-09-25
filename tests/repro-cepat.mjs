@@ -267,6 +267,11 @@ check(
   /"quick\.step3"/.test(i18n),
   "quick.step3 terhapus padahal email memakainya"
 );
+check(
+  "QuickAddSheet: link detail di langkah final non-mail",
+  /kind !== "mail" && atFinal/.test(quickAll) && /onOpenDetail\(kind\)/.test(quickAll),
+  "link Lengkapi detail belum pindah ke langkah final non-mail"
+);
 
 console.log(failures ? `\n${failures} check(s) FAILED (fitur belum ada)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);

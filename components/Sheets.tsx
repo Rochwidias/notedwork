@@ -1380,6 +1380,15 @@ export function QuickAddSheet({
           </button>
         </div>
       )}
+      {kind !== "mail" && atFinal && (
+        <button
+          type="button"
+          onClick={() => onOpenDetail(kind)}
+          style={{ background: "none", border: "none", color: "var(--brand)", fontSize: 13, padding: "2px 0 8px", cursor: "pointer", textDecoration: "underline", textAlign: "left" }}
+        >
+          {t("quick.detailLink")} →
+        </button>
+      )}
       <div className="actions">
         {step > 1 ? (
           <button type="button" className="btn ghost" onClick={() => setStep((s) => ((s - 1) as 1 | 2 | 3))} disabled={saving}>
