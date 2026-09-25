@@ -235,5 +235,38 @@ check(
   "hari kanan belum pakai dayNames lengkap"
 );
 
+const quickAll = sheets.slice(sheets.indexOf("export function QuickAddSheet"));
+// 22b. Review (langkah 3) hanya untuk email.
+check(
+  "QuickAddSheet: maxStep review hanya email",
+  /const maxStep = kind === "mail" \? 3 : 2/.test(quickAll),
+  "tidak ada maxStep mail-only di QuickAddSheet"
+);
+check(
+  "QuickAddSheet: footer pakai atFinal/maxStep",
+  /const atFinal = step === maxStep \|\| kind === "note"/.test(quickAll) && /step === maxStep/.test(quickAll),
+  "footer belum pakai atFinal/maxStep"
+);
+check(
+  "QuickAddSheet: note simpan langsung dari langkah 1",
+  /if \(kind === "note"\) \{\s*void save\(\);/.test(quickAll),
+  "note belum void save() langsung"
+);
+check(
+  "QuickAddSheet: email tetap lewat langkah 3",
+  /if \(kind === "mail"\) \{\s*if \(!detail\.trim\(\)\)[\s\S]{0,200}?setStep\(3\)/.test(quickAll),
+  "cabang mail setStep(3) hilang"
+);
+check(
+  "QuickAddSheet: kunci anti double-submit utuh",
+  /savingRef\.current = true/.test(quickAll),
+  "guard savingRef hilang"
+);
+check(
+  "i18n: quick.step3 tetap ada (dipakai alur email)",
+  /"quick\.step3"/.test(i18n),
+  "quick.step3 terhapus padahal email memakainya"
+);
+
 console.log(failures ? `\n${failures} check(s) FAILED (fitur belum ada)` : "\nSemua checks PASS");
 process.exit(failures ? 1 : 0);
