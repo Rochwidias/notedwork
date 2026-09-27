@@ -9,6 +9,7 @@ import { stripMailTokens } from "@/lib/emailBody";
 import { useLocalStorage } from "@/lib/store";
 import { LANG_KEY, STRINGS, pickLang, type Lang } from "@/lib/i18n";
 import { DEFAULT_REMINDER_MIN, dueReminders, type ReminderItem } from "@/lib/reminders";
+import { resyncNotif, testNotifNative, wireNotifTap } from "@/lib/notify";
 import ThemeProvider from "./ThemeProvider";
 import LangProvider, { useLang } from "./LangProvider";
 import TopBar from "./TopBar";
@@ -360,6 +361,22 @@ function NotedworkShell() {
     setView(v);
     if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
   }, [openQuick]);
+
+  /* ---- notifikasi sistem Android (lapis 2): resync tiap data/saklar berubah.
+     Di browser laptop jadi no-op; reboot HP ditutup resync tiap buka app. ---- */
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    wireNotifTap((v) => go(v));
+    const h = setTimeout(() => {
+      void resyncNotif({
+        enabled: notif,
+        tasks,
+        scheds: connected ? remoteEvents : previewScheds,
+        routines,
+      });
+    }, 800);
+    return () => clearTimeout(h);
+  }, [tasks, remoteEvents, previewScheds, routines, notif, connected, go]);
 
   // Sheet email selalu boleh dibuka (termasuk tamu) — penolakan jujur terjadi
   // saat Kirim via saveMail, bukan via tombol mati.
@@ -923,10 +940,14 @@ function NotedworkShell() {
     [toastMsg, t]
   );
 
-  /** Tombol Tes di Pengaturan: tembak contoh walau saklar pengingat mati. */
+  /** Tombol Tes di Pengaturan: notif sistem bila di HP, beep in-app bila di browser. */
   const testNotif = useCallback(() => {
-    fireReminderAlert(t("settings.testNotifSample"));
-  }, [fireReminderAlert, t]);
+    void (async () => {
+      const ok = await testNotifNative(t("settings.testNotifSample"));
+      if (!ok) fireReminderAlert(t("settings.testNotifSample"));
+      else toastMsg(t("settings.testNotifSample"));
+    })();
+  }, [fireReminderAlert, toastMsg, t]);
 
   useEffect(() => {
     if (!notif) return;

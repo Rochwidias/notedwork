@@ -1,10 +1,13 @@
 # notedwork → APK (sideload, via Capacitor) — Design Spec
 
 Tanggal: 2026-09-26
-Status: menunggu review user
+Status: disetujui user 2026-09-26 ("gas") — lanjut ke implementation plan
 Repo web: `C:\Project\notedwork` (Next.js 16 + React 19 + Supabase + Tailwind)
 Live URL: `https://notedwork.vercel.app`
 Target: APK debug sideload (bagi via WA/GDrive), diuji di AVD Android Studio (`D:\android.studio`)
+Wrapper (baju Android): `D:\project-app\notedwork.app\apk\` — subfolder BARU, dibedakan dari
+repo web (`C:\Project\notedwork`) dan dari CLI lama (`Main.kt` / `jalan.bat` / `notedwork.jar`
+di `D:\project-app\notedwork.app\` — jangan diutak-atik, biarin jalan seperti sekarang).
 
 ## 1. Tujuan & batasan
 
@@ -27,8 +30,11 @@ Target: APK debug sideload (bagi via WA/GDrive), diuji di AVD Android Studio (`D
 
 ## 3. Komponen: hanya 3 yang disentuh
 
-1. `capacitor.config.ts` (BARU, di root web): `appId: app.notedwork`,
-   `appName: notedwork`, `server.url` live, `server.cleartext: false`.
+1. Wrapper standalone di `D:\project-app\notedwork.app\apk\` (folder BARU, repo web tak disentuh):
+   `package.json` + `capacitor.config.ts` dengan `appId: app.notedwork`,
+   `appName: notedwork`, `server.url = https://notedwork.vercel.app`,
+   `server.cleartext: false`. `npx cap add android` dijalankan DI folder `apk\`
+   sehingga hasilnya `apk\android\` — bukan di dalam repo web.
 2. `public/sw.js` (UBAH kecil): tambah fallback offline rapi. Sekarang fallback cuma
    `caches.match("/")` yang bisa tampil polos tanpa CSS bila HTML basi (kasus deploy baru).
 3. `components/NotedworkApp.tsx` + `lib/remote.ts` (UBAH kecil): status online/offline jujur —
@@ -61,7 +67,8 @@ Target: APK debug sideload (bagi via WA/GDrive), diuji di AVD Android Studio (`D
 
 1. Chrome desktop: DevTools → Network → Offline → reload → data lokal kebuka + banner muncul.
 2. Online kembali → refresh → data segar.
-3. Baru setelah user confirm: `npx cap add android` → buka di Android Studio →
+3. Baru setelah user confirm: `npx cap add android` dengan output ke
+   `D:\project-app\notedwork.app\apk\` → buka di Android Studio →
    Build APK debug → install di AVD → cek ikon, splash, tombol back, login via Custom Tab.
 
 ## 8. Upgrade path (ponytail)

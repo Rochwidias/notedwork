@@ -10,6 +10,9 @@
     "test": "node tests/repro.mjs && node tests/repro-email.mjs && node tests/repro-fix.mjs && node tests/repro-double.mjs && node tests/repro-menu-kiri.mjs && node tests/repro-notes-keys.mjs && node tests/repro-i18n-parity.mjs && node tests/repro-topbar-lang.mjs && node tests/repro-settings-i18n.mjs && node tests/repro-drive.mjs && node tests/repro-install.mjs && node tests/repro-logo.mjs && node tests/repro-tampilan.mjs && node tests/repro-notif.mjs && node tests/repro-cepat.mjs && node tests/repro-legal.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
+    "@capacitor/local-notifications": "^8.3.1",
     "@supabase/supabase-js": "^2.116.0",
     "autoprefixer": "^10.5.4",
     "next": "16.2.11",
@@ -18,6 +21,7 @@
     "react-dom": "19.2.4"
   },
   "devDependencies": {
+    "@capacitor/cli": "^8.5.2",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
